@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Colors from mockup
-  static const Color primaryGreen = Color(0xFF4CAF50);
+  static const Color primaryGreen = Color.fromARGB(255, 100, 176, 103);
   static const Color darkBackground = Color(0xFF0D1B2A);
   static const Color cardBackground = Color(0xFF1B2838);
   static const Color surfaceColor = Color(0xFF243447);
@@ -20,7 +20,7 @@ class AppTheme {
         surface: cardBackground,
         error: Color(0xFFE57373),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: cardBackground,
         elevation: 0,
         shape: RoundedRectangleBorder(

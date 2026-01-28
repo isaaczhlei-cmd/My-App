@@ -16,9 +16,7 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: const Center(
-        child: Text('WIP - Home Screen'),
-      ),
+      body: const Center(child: Text('WIP - Home Screen')),
     );
   }
 }
