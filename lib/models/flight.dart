@@ -5,9 +5,11 @@ class Flight {
   final String originCode;
   final String destinationCode;
   final DateTime date;
-  final String travelClass; // economy, business, first
+  final String travelClass; // economy, premium encomnemy, business, first
   final double emissionsKg;
   final DateTime createdAt;
+  final String AirlineCode;
+  final String AirlineNumber;
 
   Flight({
     required this.id,
@@ -17,6 +19,8 @@ class Flight {
     required this.travelClass,
     required this.emissionsKg,
     required this.createdAt,
+    this.AirlineCode = "",
+    this.AirlineNumber = "",
   });
 
   /// Convert to Firestore document
