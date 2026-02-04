@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../config/theme.dart';
 import 'widgets/signup_form.dart';
+import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -69,22 +70,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _signInAsGuest() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final result = await _authService.signInAsGuest();
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        if (result.error != null) {
-          _errorMessage = result.error;
-        }
-      });
-    }
+  void _signInAsGuest() {
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => const HomeScreen()),
+    );
   }
 
   Future<void> _signUpWithEmail(String name, String email, String password) async {

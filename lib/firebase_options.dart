@@ -65,6 +65,7 @@ class DefaultFirebaseOptions {
     projectId: 'my-app-e7fe8',
     storageBucket: 'my-app-e7fe8.firebasestorage.app',
     iosBundleId: 'com.example.myApp',
+    iosClientId: '508069160076-s9fjqt65aqrel020qjrpifu5faaa5n7h.apps.googleusercontent.com',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
