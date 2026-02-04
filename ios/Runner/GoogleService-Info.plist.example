@@ -3,21 +3,21 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>508069160076-s9fjqt65aqrel020qjrpifu5faaa5n7h.apps.googleusercontent.com</string>
+	<string>YOUR_CLIENT_ID.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.508069160076-s9fjqt65aqrel020qjrpifu5faaa5n7h</string>
+	<string>com.googleusercontent.apps.YOUR_CLIENT_ID</string>
 	<key>API_KEY</key>
-	<string>AIzaSyB68Y-1aukWs5xuWsensZILdxhqFfZ3aFw</string>
+	<string>YOUR_API_KEY</string>
 	<key>GCM_SENDER_ID</key>
-	<string>508069160076</string>
+	<string>YOUR_GCM_SENDER_ID</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.example.myApp</string>
 	<key>PROJECT_ID</key>
-	<string>my-app-e7fe8</string>
+	<string>YOUR_PROJECT_ID</string>
 	<key>STORAGE_BUCKET</key>
-	<string>my-app-e7fe8.firebasestorage.app</string>
+	<string>YOUR_PROJECT_ID.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:508069160076:ios:ff3dc519975e4fce6687a9</string>
+	<string>YOUR_GOOGLE_APP_ID</string>
 </dict>
 </plist>
