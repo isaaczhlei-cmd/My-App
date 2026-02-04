@@ -3,7 +3,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   /// Current user
   User? get currentUser => _auth.currentUser;
@@ -71,27 +70,35 @@ class AuthService {
   /// Sign in with Google
   Future<({UserCredential? user, String? error})> signInWithGoogle() async {
     try {
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) {
-        return (user: null, error: 'Google sign-in was cancelled');
-      }
+      // Trigger Google Sign-In flow using the new API (google_sign_in 7.x)
+      final googleSignIn = GoogleSignIn.instance;
+      final account = await googleSignIn.authenticate();
 
-      // Get auth details
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
+      // Get authentication tokens (idToken)
+      final authentication = account.authentication;
 
-      // Create credential
+      // Get authorization for access token
+      final authorization = await account.authorizationClient.authorizeScopes([
+        'email',
+        'profile',
+      ]);
+
+      // Create credential using the tokens
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+        accessToken: authorization.accessToken,
+        idToken: authentication.idToken,
       );
 
       // Sign in to Firebase
       final userCredential = await _auth.signInWithCredential(credential);
       return (user: userCredential, error: null);
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return (user: null, error: 'Google sign-in was cancelled');
+      }
+      return (user: null, error: 'Error signing in with Google: ${e.description}');
     } catch (e) {
-      return (user: null, error: 'Error signing in with Google');
+      return (user: null, error: 'Error signing in with Google: $e');
     }
   }
 
@@ -112,7 +119,11 @@ class AuthService {
 
   /// Sign out
   Future<void> signOut() async {
-    await _googleSignIn.signOut();
+    try {
+      await GoogleSignIn.instance.disconnect();
+    } catch (_) {
+      // Ignore if not signed in with Google
+    }
     await _auth.signOut();
   }
 
