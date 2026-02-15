@@ -9,7 +9,34 @@ class EmmisonService {
 
 class FlightEmissonsResult {}
 
-class FlightEmission {}
+class FlightEmission {
+  final FlightInfo? flight;
+  final EmissionsByClass? emissionsGramsPerPax;
+
+  FlightEmission({this.flight, this.emissionsGramsPerPax});
+
+  factory FlightEmission.fromJson(Map<String, dynamic> json) {
+    return FlightEmission(
+      flight: json['flight'] != null
+          ? FlightInfo.fromJson(json['flight'])
+          : null,
+      emissionsGramsPerPax: json['emissionsGramsPerPax'] != null
+          ? EmissionsByClass.fromJson(json['emissionsGramsPerPax'])
+          : null,
+    );
+  }
+
+  double emissionConvertToKg(CabinClass cabinclass) {
+    if (emissionsGramsPerPax == null) return 0;
+    final grams = switch (cabinclass) {
+      CabinClass.economy => emissionsGramsPerPax!.economy,
+      CabinClass.premiumEconomy => emissionsGramsPerPax!.premiumEconomy,
+      CabinClass.business => emissionsGramsPerPax!.business,
+      CabinClass.first => emissionsGramsPerPax!.first,
+    };
+    return (grams ?? 0) / 1000;
+  }
+}
 
 class FlightInfo {
   final String? origin;
@@ -21,14 +48,16 @@ class FlightInfo {
     this.origin,
     this.destination,
     this.operatingCarrierCode,
-    this.flightNumber, this.departureDate, 
+    this.flightNumber,
+    this.departureDate,
   });
-  factory FlightInfo.fromJson(<Map<String, dynamic>>json){
+  factory FlightInfo.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(Map<String, dynamic>? dateMap) {
       if (dateMap == null) return null;
       return DateTime(dateMap['year'], dateMap['month'], dateMap['day']);
     }
-   return FlightInfo(
+
+    return FlightInfo(
       origin: json['origin'],
       destination: json['destination'],
       operatingCarrierCode: json['operatingCarrierCode'],
@@ -36,8 +65,45 @@ class FlightInfo {
       departureDate: parseDate(json['departureDate'] as Map<String, dynamic>?),
     );
   }
+}
 
+class EmissionsByClass {
+  final int? economy;
+  final int? premiumEconomy;
+  final int? business;
+  final int? first;
 
+  EmissionsByClass({
+    this.economy,
+    this.premiumEconomy,
+    this.business,
+    this.first,
+  });
 
+  factory EmissionsByClass.fromJson(Map<String, dynamic> json) {
+    return EmissionsByClass(
+      economy: json['economy'],
+      premiumEconomy: json['premiumEconomy'],
+      business: json['business'],
+      first: json['first'],
+    );
+  }
+}
 
+enum CabinClass {
+  economy, // 0
+  premiumEconomy, // 1
+  business, // 2
+  first, // 3
+}
+
+extension CabinClassExtension on CabinClass {
+  String get displayName {
+    return switch (this) {
+      CabinClass.economy => 'Economy',
+      CabinClass.premiumEconomy => 'Premium Economy',
+      CabinClass.business => 'Business',
+      CabinClass.first => 'First',
+    };
+  }
 }
