@@ -1,13 +1,30 @@
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:my_app/models/flight.dart';
 
 class EmmisonService {
   static String get API_KEY => dotenv.env["API_KEY"] ?? "";
   static String BASE_URL = 'https://travelimpactmodel.googleapis.com/v1';
 }
 
-class FlightEmissonsResult {}
+class FlightEmissonsResult {
+  final List<FlightEmission> flightEmissionsList;
+  final String? modelVersion;
+
+  FlightEmissonsResult({required this.flightEmissionsList, this.modelVersion});
+
+  factory FlightEmissonsResult.fromJson(Map<String, dynamic> json) {
+     final emissions = (json['flightEmissions'] as List?)
+            ?.map((e) => FlightEmission.fromJson(e))
+            .toList() ??
+        [];
+    return FlightEmissonsResult(
+      flightEmissionsList: emissions,
+      modelVersion: json['modelVersion']?['dated'],
+    );
+  }
+}
 
 class FlightEmission {
   final FlightInfo? flight;
