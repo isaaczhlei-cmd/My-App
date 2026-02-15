@@ -1,11 +1,94 @@
 import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
-import 'package:my_app/models/flight.dart';
 
 class EmmisonService {
   static String get API_KEY => dotenv.env["API_KEY"] ?? "";
   static String BASE_URL = 'https://travelimpactmodel.googleapis.com/v1';
+
+  Future<FlightEmissonsResult?> computeFlightEmssions({
+    required String origin,
+    required String destination,
+    required String operatingCarrierCode,
+    required int flightnumber,
+    required DateTime departureDate,
+  }) async {
+    final url = Uri.parse(
+      '$BASE_URL/flights:computeFlightEmissions?key=$API_KEY',
+    );
+
+    final body = {
+      'flights': [
+        {
+          'origin': origin.toUpperCase(),
+          'destination': destination.toUpperCase(),
+          'operatingCarrierCode': operatingCarrierCode.toUpperCase(),
+          'flightNumber': flightnumber,
+          'departureDate': {
+            'year': departureDate.year,
+            'month': departureDate.month,
+            'day': departureDate.day,
+          },
+        },
+      ],
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return FlightEmissonsResult.fromJson(data);
+      } else {
+        print('Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error computing flight emissions: $e');
+      return null;
+    }
+  }
+
+    /// Compute typical emissions between two airports
+  /// Useful when specific flight details aren't available
+  Future<TypicalEmissionsResult?> computeTypicalEmissions({
+    required String origin,
+    required String destination,
+  }) async {
+    final url = Uri.parse('$BASE_URL/flights:computeTypicalFlightEmissions?key=$API_KEY');
+
+    final body = {
+      'routes': [
+        {
+          'origin': origin.toUpperCase(),
+          'destination': destination.toUpperCase(),
+        }
+      ]
+    };
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return TypicalEmissionsResult.fromJson(data);
+      } else {
+        print('Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error computing typical emissions: $e');
+      return null;
+    }
+  }
 }
 
 class FlightEmissonsResult {
@@ -15,7 +98,8 @@ class FlightEmissonsResult {
   FlightEmissonsResult({required this.flightEmissionsList, this.modelVersion});
 
   factory FlightEmissonsResult.fromJson(Map<String, dynamic> json) {
-     final emissions = (json['flightEmissions'] as List?)
+    final emissions =
+        (json['flightEmissions'] as List?)
             ?.map((e) => FlightEmission.fromJson(e))
             .toList() ??
         [];
@@ -23,6 +107,55 @@ class FlightEmissonsResult {
       flightEmissionsList: emissions,
       modelVersion: json['modelVersion']?['dated'],
     );
+  }
+}
+
+/// Result from computeTypicalFlightEmissions endpoint
+class TypicalEmissionsResult {
+  final List<TypicalRouteEmission> typicalEmissions;
+
+  TypicalEmissionsResult({required this.typicalEmissions});
+
+  factory TypicalEmissionsResult.fromJson(Map<String, dynamic> json) {
+    final emissions = (json['typicalFlightEmissions'] as List?)
+            ?.map((e) => TypicalRouteEmission.fromJson(e))
+            .toList() ??
+        [];
+    return TypicalEmissionsResult(typicalEmissions: emissions);
+  }
+}
+
+class TypicalRouteEmission {
+  final String? origin;
+  final String? destination;
+  final EmissionsByClass? emissionsGramsPerPax;
+
+  TypicalRouteEmission({
+    this.origin,
+    this.destination,
+    this.emissionsGramsPerPax,
+  });
+
+  factory TypicalRouteEmission.fromJson(Map<String, dynamic> json) {
+    return TypicalRouteEmission(
+      origin: json['route']?['origin'],
+      destination: json['route']?['destination'],
+      emissionsGramsPerPax: json['emissionsGramsPerPax'] != null
+          ? EmissionsByClass.fromJson(json['emissionsGramsPerPax'])
+          : null,
+    );
+  }
+
+  /// Get emissions in kg for a specific cabin class
+  double getEmissionsKg(CabinClass cabinClass) {
+    if (emissionsGramsPerPax == null) return 0;
+    final grams = switch (cabinClass) {
+      CabinClass.economy => emissionsGramsPerPax!.economy,
+      CabinClass.premiumEconomy => emissionsGramsPerPax!.premiumEconomy,
+      CabinClass.business => emissionsGramsPerPax!.business,
+      CabinClass.first => emissionsGramsPerPax!.first,
+    };
+    return (grams ?? 0) / 1000;
   }
 }
 
