@@ -68,10 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Text(
               'Welcome back',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 4),
             Text(
@@ -84,12 +81,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        Container(width: 44,
-          height: 44,decoration: BoxDecoration(color: AppColors.primaryGreen, borderRadius: BorderRadius.circular(12),),child: IconButton(icon: const Icon(Icons.person, ), onPressed: () {
-            // TODO: Navigate to profile
-          } ),)
-          ,
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.primaryGreen,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.person),
+            onPressed: () {
+              // TODO: Navigate to profile
+            },
+          ),
+        ),
       ],
     );
   }
+
+  Widget buildfootprintcard() {}
 }
