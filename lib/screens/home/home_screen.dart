@@ -24,7 +24,9 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20), 
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,     
             children: [
               buildheader(),
               const SizedBox(height: 24),
