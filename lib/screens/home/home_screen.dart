@@ -23,7 +23,15 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       body: SafeArea(
-        child: SingleChildScrollView(child: Column(children: [buildheader()])),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              buildheader(),
+              const SizedBox(height: 24),
+              buildfootprintcard(),
+            ],
+          ),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -104,12 +112,78 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget buildfootprintcard() {
     return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color.fromARGB(177, 76, 175, 79), Color(0xFF66BB6A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ), borderRadius: BorderRadius.circular(16),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(),
+          Row(
+            children: [
+              Icon(Icons.calendar_today, color: const Color.fromARGB(255, 255, 255, 255), size: 18),
+              const SizedBox(width: 8),
+              Text(
+                '${DateTime.now().year} carbon footprint',
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
+          // Large CO2 display
           RichText(
-            text: TextSpan(children: [TextSpan(text: '$totalco2tons')]),
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: '$totalco2tons',
+                  style: const TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const TextSpan(
+                  text: "  tons co",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
+                const TextSpan(
+                  text: "2",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white,
+                    fontFeatures: [FontFeature.subscripts()],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(40),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.arrow_downward, size: 14, color: Colors.white),
+                SizedBox(width: 4),
+                Text(
+                  '18% vs last year',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
