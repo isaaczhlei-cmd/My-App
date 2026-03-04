@@ -96,7 +96,10 @@ class AuthService {
       if (e.code == GoogleSignInExceptionCode.canceled) {
         return (user: null, error: 'Google sign-in was cancelled');
       }
-      return (user: null, error: 'Error signing in with Google: ${e.description}');
+      return (
+        user: null,
+        error: 'Error signing in with Google: ${e.description}',
+      );
     } catch (e) {
       return (user: null, error: 'Error signing in with Google: $e');
     }

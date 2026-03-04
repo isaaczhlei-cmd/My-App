@@ -15,6 +15,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Color constants
 
+  final double totalco2tons = 3.4;
+  final int totalflights = 3;
+  final double totalmilestraveled = 4.1;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -99,5 +102,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget buildfootprintcard() {}
+  Widget buildfootprintcard() {
+    return Container(
+      child: Column(
+        children: [
+          Row(),
+          const SizedBox(height: 16),
+          RichText(
+            text: TextSpan(children: [TextSpan(text: '$totalco2tons')]),
+          ),
+        ],
+      ),
+    );
+  }
 }

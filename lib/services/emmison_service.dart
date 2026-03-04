@@ -53,21 +53,23 @@ class EmmisonService {
     }
   }
 
-    /// Compute typical emissions between two airports
+  /// Compute typical emissions between two airports
   /// Useful when specific flight details aren't available
   Future<TypicalEmissionsResult?> computeTypicalEmissions({
     required String origin,
     required String destination,
   }) async {
-    final url = Uri.parse('$BASE_URL/flights:computeTypicalFlightEmissions?key=$API_KEY');
+    final url = Uri.parse(
+      '$BASE_URL/flights:computeTypicalFlightEmissions?key=$API_KEY',
+    );
 
     final body = {
       'routes': [
         {
           'origin': origin.toUpperCase(),
           'destination': destination.toUpperCase(),
-        }
-      ]
+        },
+      ],
     };
 
     try {
@@ -117,7 +119,8 @@ class TypicalEmissionsResult {
   TypicalEmissionsResult({required this.typicalEmissions});
 
   factory TypicalEmissionsResult.fromJson(Map<String, dynamic> json) {
-    final emissions = (json['typicalFlightEmissions'] as List?)
+    final emissions =
+        (json['typicalFlightEmissions'] as List?)
             ?.map((e) => TypicalRouteEmission.fromJson(e))
             .toList() ??
         [];

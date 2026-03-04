@@ -71,12 +71,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _signInAsGuest() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
   }
 
-  Future<void> _signUpWithEmail(String name, String email, String password) async {
+  Future<void> _signUpWithEmail(
+    String name,
+    String email,
+    String password,
+  ) async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -158,19 +162,20 @@ class _LoginScreenState extends State<LoginScreen> {
                   duration: const Duration(milliseconds: 400),
                   switchInCurve: Curves.easeInOut,
                   switchOutCurve: Curves.easeInOut,
-                  transitionBuilder: (Widget child, Animation<double> animation) {
-                    final offsetAnimation = Tween<Offset>(
-                      begin: Offset(_isLoginMode ? -0.3 : 0.3, 0.0),
-                      end: Offset.zero,
-                    ).animate(animation);
-                    return FadeTransition(
-                      opacity: animation,
-                      child: SlideTransition(
-                        position: offsetAnimation,
-                        child: child,
-                      ),
-                    );
-                  },
+                  transitionBuilder:
+                      (Widget child, Animation<double> animation) {
+                        final offsetAnimation = Tween<Offset>(
+                          begin: Offset(_isLoginMode ? -0.3 : 0.3, 0.0),
+                          end: Offset.zero,
+                        ).animate(animation);
+                        return FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: offsetAnimation,
+                            child: child,
+                          ),
+                        );
+                      },
                   child: _isLoginMode
                       ? KeyedSubtree(
                           key: const ValueKey('login'),
@@ -203,11 +208,7 @@ class _LoginScreenState extends State<LoginScreen> {
             color: AppColors.cardBackground,
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.flight,
-            size: 60,
-            color: AppColors.primaryGreen,
-          ),
+          child: Icon(Icons.flight, size: 60, color: AppColors.primaryGreen),
         ),
         const SizedBox(height: 16),
         Text(
@@ -221,10 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(height: 8),
         Text(
           'Track your flight emissions',
-          style: TextStyle(
-            fontSize: 16,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
         ),
       ],
     );
@@ -285,7 +283,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: _isLoginMode ? Colors.white : AppColors.textSecondary,
+                            color: _isLoginMode
+                                ? Colors.white
+                                : AppColors.textSecondary,
                           ),
                           child: const Text('Login'),
                         ),
@@ -309,7 +309,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: !_isLoginMode ? Colors.white : AppColors.textSecondary,
+                            color: !_isLoginMode
+                                ? Colors.white
+                                : AppColors.textSecondary,
                           ),
                           child: const Text('Sign Up'),
                         ),
@@ -338,11 +340,17 @@ class _LoginScreenState extends State<LoginScreen> {
               decoration: BoxDecoration(
                 color: AppColors.errorRed.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.errorRed.withValues(alpha: 0.3)),
+                border: Border.all(
+                  color: AppColors.errorRed.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.error_outline, color: AppColors.errorRed, size: 20),
+                  Icon(
+                    Icons.error_outline,
+                    color: AppColors.errorRed,
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -413,10 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: _isLoading ? null : _resetPassword,
               child: Text(
                 'Forgot Password?',
-                style: TextStyle(
-                  color: AppColors.primaryGreen,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.primaryGreen, fontSize: 14),
               ),
             ),
           ),
@@ -433,7 +438,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                disabledBackgroundColor: AppColors.primaryGreen.withValues(alpha: 0.5),
+                disabledBackgroundColor: AppColors.primaryGreen.withValues(
+                  alpha: 0.5,
+                ),
               ),
               child: _isLoading
                   ? SizedBox(
@@ -458,7 +465,11 @@ class _LoginScreenState extends State<LoginScreen> {
           // OR divider
           Row(
             children: [
-              Expanded(child: Divider(color: AppColors.textSecondary.withValues(alpha: 0.3))),
+              Expanded(
+                child: Divider(
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                ),
+              ),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
@@ -469,7 +480,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              Expanded(child: Divider(color: AppColors.textSecondary.withValues(alpha: 0.3))),
+              Expanded(
+                child: Divider(
+                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 24),
@@ -499,10 +514,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               label: const Text(
                 'Continue with Google',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               ),
             ),
           ),
@@ -521,7 +533,9 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               color: AppColors.errorRed.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.errorRed.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.errorRed.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               children: [

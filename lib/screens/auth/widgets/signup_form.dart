@@ -434,7 +434,8 @@ class _SignupFormState extends State<SignupForm> {
               onPressed: widget.isLoading
                   ? null
                   : () => setState(
-                      () => _obscureConfirmPassword = !_obscureConfirmPassword),
+                      () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                    ),
               icon: Icon(
                 _obscureConfirmPassword
                     ? Icons.visibility_off
@@ -470,7 +471,9 @@ class _SignupFormState extends State<SignupForm> {
       child: ElevatedButton(
         onPressed: isEnabled ? _handleSubmit : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isEnabled ? _primaryGreen : _primaryGreen.withValues(alpha: 0.5),
+          backgroundColor: isEnabled
+              ? _primaryGreen
+              : _primaryGreen.withValues(alpha: 0.5),
           foregroundColor: _textPrimary,
           disabledBackgroundColor: _primaryGreen.withValues(alpha: 0.3),
           disabledForegroundColor: _textPrimary.withValues(alpha: 0.5),
@@ -490,10 +493,7 @@ class _SignupFormState extends State<SignupForm> {
               )
             : const Text(
                 'Create Account',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
       ),
     );
@@ -549,18 +549,12 @@ class _SignupFormState extends State<SignupForm> {
           'https://www.google.com/favicon.ico',
           height: 20,
           width: 20,
-          errorBuilder: (context, error, stackTrace) => const Icon(
-            Icons.g_mobiledata,
-            size: 24,
-            color: _textPrimary,
-          ),
+          errorBuilder: (context, error, stackTrace) =>
+              const Icon(Icons.g_mobiledata, size: 24, color: _textPrimary),
         ),
         label: const Text(
           'Continue with Google',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
       ),
     );
@@ -575,10 +569,7 @@ class _SignupFormState extends State<SignupForm> {
       ),
       child: const Text(
         'Continue as Guest',
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -589,17 +580,16 @@ class _SignupFormState extends State<SignupForm> {
       children: [
         const Text(
           'Already have an account? ',
-          style: TextStyle(
-            color: _textSecondary,
-            fontSize: 14,
-          ),
+          style: TextStyle(color: _textSecondary, fontSize: 14),
         ),
         GestureDetector(
           onTap: widget.isLoading ? null : widget.onSwitchToLogin,
           child: Text(
             'Login',
             style: TextStyle(
-              color: widget.isLoading ? _primaryGreen.withValues(alpha: 0.5) : _primaryGreen,
+              color: widget.isLoading
+                  ? _primaryGreen.withValues(alpha: 0.5)
+                  : _primaryGreen,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -614,10 +604,7 @@ class _SignupFormState extends State<SignupForm> {
       padding: const EdgeInsets.only(top: 6, left: 12),
       child: Text(
         error,
-        style: const TextStyle(
-          color: _errorColor,
-          fontSize: 12,
-        ),
+        style: const TextStyle(color: _errorColor, fontSize: 12),
       ),
     );
   }
@@ -661,9 +648,4 @@ class _SignupFormState extends State<SignupForm> {
 }
 
 /// Enum representing password strength levels
-enum _PasswordStrength {
-  none,
-  weak,
-  medium,
-  strong,
-}
+enum _PasswordStrength { none, weak, medium, strong }
