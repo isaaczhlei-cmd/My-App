@@ -5,11 +5,12 @@ import '../screens/add_flight/add_flight_screen.dart';
 import '../screens/compare/compare_screen.dart';
 import '../screens/reports/reports_screen.dart';
 import '../screens/profile/profile_screen.dart';
+import '../screens/book_flight/book_flight_screen.dart';
 
-/// Shared bottom navigation bar used by all screens except HomeScreen.
-/// HomeScreen has its own bottom nav (Isaac is building it).
+/// Shared bottom navigation bar used across all main screens.
+/// Profile is accessed via the header icon button on the Home screen.
 ///
-/// Usage: AppBottomNav(currentIndex: 1)  // for the Add tab
+/// Tabs: Home(0)  Add(1)  Compare(2)  Reports(3)  Book(4)
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
 
@@ -31,7 +32,7 @@ class AppBottomNav extends StatelessWidget {
           1 => const AddFlightScreen(),
           2 => const CompareScreen(),
           3 => const ReportsScreen(),
-          4 => ProfileScreen(),
+          4 => BookFlightScreen(),
           _ => const HomeScreen(),
         };
 
