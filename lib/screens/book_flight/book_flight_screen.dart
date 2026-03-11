@@ -8,6 +8,6 @@ class BookFlightScreen extends StatelessWidget{
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return Scaffold(bottomNavigationBar: const AppBottomNav(currentIndex: 4));
   }
 }
