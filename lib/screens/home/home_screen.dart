@@ -4,6 +4,7 @@ import '../../config/theme.dart';
 import '../../models/flight.dart';
 import 'widgets/flight_card.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -134,7 +135,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: IconButton(
             icon: const Icon(Icons.person, color: Colors.white, size: 22),
             onPressed: () {
-              // TODO: Navigate to profile
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => ProfileScreen()));
             },
           ),
         ),
