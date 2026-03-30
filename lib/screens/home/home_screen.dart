@@ -81,11 +81,28 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ✅ DONE — Header (Isaac built this!)
+  // Header — welcome uses guest vs account name
   // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget buildheader() {
-    final displayName = _authService.currentUser?.displayName ?? 'Isaac';
+  String _welcomeGreeting() {
+    if (_authService.isGuest) {
+      return 'Welcome User';
+    }
+    final user = _authService.currentUser;
+    final name = user?.displayName?.trim();
+    if (name != null && name.isNotEmpty) {
+      return 'Welcome $name';
+    }
+    final email = user?.email;
+    if (email != null && email.isNotEmpty) {
+      final local = email.split('@').first;
+      if (local.isNotEmpty) {
+        return 'Welcome $local';
+      }
+    }
+    return 'Welcome User';
+  }
 
+  Widget buildheader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -93,17 +110,20 @@ class _HomeScreenState extends State<HomeScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Welcome back',
-              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 4),
             Text(
-              "$displayName's Dashboard",
+              _welcomeGreeting(),
               style: const TextStyle(
                 fontSize: 26,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Dashboard',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
