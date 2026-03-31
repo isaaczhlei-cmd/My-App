@@ -58,5 +58,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app uses your photo library so you can set a profile picture.</string>
 </dict>
 </plist>

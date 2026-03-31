@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 class AuthService {
@@ -9,6 +12,9 @@ class AuthService {
 
   /// Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
+
+  /// Fires when profile fields (e.g. photo URL) change
+  Stream<User?> get userChanges => _auth.userChanges();
 
   /// Register with email and password
   Future<({UserCredential? user, String? error})> registerWithEmail({
@@ -119,6 +125,27 @@ class AuthService {
 
   /// Check if current user is anonymous (guest)
   bool get isGuest => _auth.currentUser?.isAnonymous ?? false;
+
+  /// Upload a new profile photo (signed-in, non-anonymous users only).
+  Future<({bool success, String? error})> updateProfilePhoto(File imageFile) async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) {
+      return (success: false, error: 'Sign in with an account to add a profile photo');
+    }
+    try {
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('profile_photos')
+          .child('${user.uid}.jpg');
+      await ref.putFile(imageFile);
+      final url = await ref.getDownloadURL();
+      await user.updatePhotoURL(url);
+      await user.reload();
+      return (success: true, error: null);
+    } catch (e) {
+      return (success: false, error: 'Could not update photo: $e');
+    }
+  }
 
   /// Sign out
   Future<void> signOut() async {
