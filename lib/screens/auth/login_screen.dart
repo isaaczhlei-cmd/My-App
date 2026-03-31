@@ -70,7 +70,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _signInAsGuest() {
+  Future<void> _signInAsGuest() async {
+    final result = await AuthService().signInAsGuest();
+    if (!mounted) return;
+    if (result.error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.error!)),
+      );
+      return;
+    }
     Navigator.of(
       context,
     ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));

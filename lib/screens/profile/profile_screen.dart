@@ -263,7 +263,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             icon: const Icon(Icons.login, size: 20),
                             label: const Text(
-                              'Sign In',
+                              'Sign In to Your Account',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
