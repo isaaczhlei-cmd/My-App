@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
+import '../../models/flight.dart';
+import '../../services/emissions_service.dart';
+import '../../services/firestore_service.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 
 class AddFlightScreen extends StatefulWidget {
@@ -12,31 +16,26 @@ class AddFlightScreen extends StatefulWidget {
 
 class _AddFlightScreenState extends State<AddFlightScreen> {
   final _flightNumberController = TextEditingController();
-  DateTime _selectedDate = DateTime(2024, 11, 20);
+  final _emissionsService = EmissionsService();
+  final _firestoreService = FirestoreService();
+  final _authService = AuthService();
+
+  DateTime _selectedDate = DateTime.now();
   bool _hasResult = false;
   bool _isLoading = false;
+  bool _isSaving = false;
+  String? _errorMessage;
 
-  // TODO: Replace with real API data from EmmisonService
-  final _mockResult = _MockFlightResult(
-    origin: 'SFO',
-    originCity: 'San Francisco',
-    destination: 'PEK',
-    destinationCity: 'Beijing',
-    distanceMi: 5918,
-    airline: 'United Airlines',
-    aircraft: 'Boeing 777-300',
-    duration: '13h 25m',
-    travelClass: 'Economy',
-    emissionsTons: 1.18,
-    equivalentMiles: 2960,
-  );
+  // Real API result data
+  String _origin = '';
+  String _destination = '';
+  String _airlineCode = '';
+  int _flightNum = 0;
+  double _emissionsKg = 0;
+  CabinClass _selectedCabin = CabinClass.economy;
 
-  @override
-  void initState() {
-    super.initState();
-    _flightNumberController.text = 'UA 857';
-    _hasResult = true; // Show mock result by default for demo
-  }
+  // Emissions by class (from API)
+  FlightEmission? _flightEmission;
 
   @override
   void dispose() {
@@ -44,17 +43,71 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     super.dispose();
   }
 
+  /// Parse "UA 857" or "UA857" into carrier code + number
+  ({String carrier, int number})? _parseFlightNumber(String input) {
+    final cleaned = input.trim().toUpperCase();
+    // Match patterns like "UA 857", "UA857", "UA-857"
+    final regex = RegExp(r'^([A-Z]{2})\s*[-]?\s*(\d{1,5})$');
+    final match = regex.firstMatch(cleaned);
+    if (match == null) return null;
+    final carrier = match.group(1)!;
+    final number = int.tryParse(match.group(2)!);
+    if (number == null) return null;
+    return (carrier: carrier, number: number);
+  }
+
   Future<void> _lookupFlight() async {
-    if (_flightNumberController.text.trim().isEmpty) return;
-
-    setState(() => _isLoading = true);
-
-    // TODO: Call EmmisonService.computeFlightEmissions() here
-    await Future.delayed(const Duration(seconds: 1));
+    final parsed = _parseFlightNumber(_flightNumberController.text);
+    if (parsed == null) {
+      setState(() {
+        _errorMessage = 'Enter a valid flight number (e.g. UA 857)';
+        _hasResult = false;
+      });
+      return;
+    }
 
     setState(() {
-      _isLoading = false;
-      _hasResult = true;
+      _isLoading = true;
+      _errorMessage = null;
+      _hasResult = false;
+    });
+
+    final result = await _emissionsService.computeFlightEmissions(
+      origin: '', // API resolves from flight number
+      destination: '',
+      operatingCarrierCode: parsed.carrier,
+      flightNumber: parsed.number,
+      departureDate: _selectedDate,
+    );
+
+    if (!mounted) return;
+
+    if (result != null && result.flightEmissions.isNotEmpty) {
+      final emission = result.flightEmissions.first;
+      setState(() {
+        _flightEmission = emission;
+        _origin = emission.flight?.origin ?? '';
+        _destination = emission.flight?.destination ?? '';
+        _airlineCode = emission.flight?.operatingCarrierCode ?? parsed.carrier;
+        _flightNum = emission.flight?.flightNumber ?? parsed.number;
+        _emissionsKg = emission.getEmissionsKg(_selectedCabin);
+        _isLoading = false;
+        _hasResult = true;
+      });
+    } else {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Could not find emissions data for this flight. Check the flight number and date.';
+      });
+    }
+  }
+
+  void _onCabinChanged(CabinClass cabin) {
+    setState(() {
+      _selectedCabin = cabin;
+      if (_flightEmission != null) {
+        _emissionsKg = _flightEmission!.getEmissionsKg(cabin);
+      }
     });
   }
 
@@ -63,7 +116,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       context: context,
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -81,14 +134,52 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     }
   }
 
-  void _addToFlightLog() {
-    // TODO: Save flight to Firestore
+  Future<void> _addToFlightLog() async {
+    if (_authService.isGuest) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sign in to save flights to your log'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+
+    final flight = Flight(
+      id: '',
+      originCode: _origin,
+      destinationCode: _destination,
+      date: _selectedDate,
+      travelClass: _selectedCabin.displayName,
+      emissionsKg: _emissionsKg,
+      createdAt: DateTime.now(),
+      AirlineCode: _airlineCode,
+      AirlineNumber: _flightNum.toString(),
+    );
+
+    await _firestoreService.addFlight(flight);
+
+    if (!mounted) return;
+
+    setState(() => _isSaving = false);
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Flight added to your log!'),
         backgroundColor: AppColors.primaryGreen,
       ),
     );
+
+    // Reset form
+    setState(() {
+      _hasResult = false;
+      _flightNumberController.clear();
+      _flightEmission = null;
+      _errorMessage = null;
+    });
   }
 
   @override
@@ -101,10 +192,24 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                'Add Flight',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
               _buildFlightNumberField(),
               const SizedBox(height: 16),
               _buildDateField(),
+              const SizedBox(height: 16),
+              _buildCabinClassSelector(),
+              const SizedBox(height: 16),
+              _buildLookupButton(),
               const SizedBox(height: 24),
+              if (_errorMessage != null) _buildErrorMessage(),
               if (_isLoading) _buildLoadingIndicator(),
               if (_hasResult && !_isLoading) ...[
                 _buildRouteCard(),
@@ -130,10 +235,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       children: [
         const Text(
           'Flight Number',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
         Container(
@@ -144,13 +246,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           ),
           child: Row(
             children: [
-              const Text(
-                '✈  ',
-                style: TextStyle(fontSize: 16),
-              ),
+              const Text('✈  ', style: TextStyle(fontSize: 16)),
               Expanded(
                 child: TextField(
                   controller: _flightNumberController,
+                  textCapitalization: TextCapitalization.characters,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -175,16 +275,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   Widget _buildDateField() {
     final dateStr = DateFormat('MMMM d, yyyy').format(_selectedDate);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'Flight Date',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
         GestureDetector(
@@ -216,6 +312,94 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
+  Widget _buildCabinClassSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Cabin Class',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: CabinClass.values.map((cabin) {
+              final isSelected = cabin == _selectedCabin;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => _onCabinChanged(cabin),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      cabin == CabinClass.premiumEconomy ? 'Prem.' : cabin.displayName,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                        color: isSelected ? Colors.white : const Color(0xFF757575),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLookupButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton.icon(
+        onPressed: _isLoading ? null : _lookupFlight,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.cardBackground,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        icon: const Icon(Icons.search, size: 20),
+        label: const Text('Look Up Flight', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Widget _buildErrorMessage() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFEBEE),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFE53935), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Color(0xFFE53935), fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildLoadingIndicator() {
     return const Center(
       child: Padding(
@@ -235,98 +419,61 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       ),
       child: Column(
         children: [
-          // Outbound label
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFEBEE),
+              color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Text(
-              'Outbound',
-              style: TextStyle(
+            child: Text(
+              '$_airlineCode $_flightNum',
+              style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFFE53935),
+                color: Color(0xFF388E3C),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          // Route visualization
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Origin
               Column(
                 children: [
                   Text(
-                    _mockResult.origin,
+                    _origin,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1A1A2E),
                     ),
                   ),
-                  Text(
-                    _mockResult.originCity,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
                 ],
               ),
-              // Flight path
               Expanded(
                 child: Column(
                   children: [
                     Row(
                       children: [
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: const Color(0xFFE0E0E0),
-                          ),
-                        ),
+                        Expanded(child: Container(height: 1, color: const Color(0xFFE0E0E0))),
                         const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 4),
                           child: Icon(Icons.flight, size: 20, color: Color(0xFF9E9E9E)),
                         ),
-                        Expanded(
-                          child: Container(
-                            height: 1,
-                            color: const Color(0xFFE0E0E0),
-                          ),
-                        ),
+                        Expanded(child: Container(height: 1, color: const Color(0xFFE0E0E0))),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${NumberFormat('#,###').format(_mockResult.distanceMi)} mi',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Color(0xFF9E9E9E),
-                      ),
                     ),
                   ],
                 ),
               ),
-              // Destination
               Column(
                 children: [
                   Text(
-                    _mockResult.destination,
+                    _destination,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  Text(
-                    _mockResult.destinationCity,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF9E9E9E),
                     ),
                   ),
                 ],
@@ -350,23 +497,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         children: [
           Row(
             children: [
-              Expanded(
-                child: _buildDetailItem('Airline', _mockResult.airline),
-              ),
-              Expanded(
-                child: _buildDetailItem('Aircraft', _mockResult.aircraft),
-              ),
+              Expanded(child: _buildDetailItem('Airline', _airlineCode)),
+              Expanded(child: _buildDetailItem('Flight', '$_airlineCode $_flightNum')),
             ],
           ),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: _buildDetailItem('Duration', _mockResult.duration),
-              ),
-              Expanded(
-                child: _buildDetailItem('Class', _mockResult.travelClass),
-              ),
+              Expanded(child: _buildDetailItem('Date', DateFormat('MMM d, yyyy').format(_selectedDate))),
+              Expanded(child: _buildDetailItem('Class', _selectedCabin.displayName)),
             ],
           ),
         ],
@@ -378,27 +517,20 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF9E9E9E),
-          ),
-        ),
+        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF1A1A2E),
-          ),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Color(0xFF1A1A2E)),
         ),
       ],
     );
   }
 
   Widget _buildEmissionsCard() {
+    final tons = (_emissionsKg / 1000).toStringAsFixed(2);
+    final equivalentMiles = (_emissionsKg * 2.51).round(); // ~2.51 driving miles per kg CO2
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -422,7 +554,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: '${_mockResult.emissionsTons}',
+                  text: tons,
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -431,21 +563,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 ),
                 const TextSpan(
                   text: ' tons CO\u2082',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF1A1A2E),
-                  ),
+                  style: TextStyle(fontSize: 18, color: Color(0xFF1A1A2E)),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Equivalent to driving ${NumberFormat('#,###').format(_mockResult.equivalentMiles)} miles',
-            style: const TextStyle(
-              fontSize: 13,
-              color: Color(0xFF757575),
-            ),
+            'Equivalent to driving ${NumberFormat('#,###').format(equivalentMiles)} miles',
+            style: const TextStyle(fontSize: 13, color: Color(0xFF757575)),
           ),
         ],
       ),
@@ -457,49 +583,20 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       width: double.infinity,
       height: 52,
       child: ElevatedButton.icon(
-        onPressed: _addToFlightLog,
+        onPressed: _isSaving ? null : _addToFlightLog,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primaryGreen,
           foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'Add to Flight Log',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        icon: _isSaving
+            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+            : const Icon(Icons.add, size: 20),
+        label: Text(
+          _isSaving ? 'Saving...' : 'Add to Flight Log',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
     );
   }
-}
-
-/// Temporary mock data class — will be replaced by EmmisonService results
-class _MockFlightResult {
-  final String origin;
-  final String originCity;
-  final String destination;
-  final String destinationCity;
-  final int distanceMi;
-  final String airline;
-  final String aircraft;
-  final String duration;
-  final String travelClass;
-  final double emissionsTons;
-  final int equivalentMiles;
-
-  const _MockFlightResult({
-    required this.origin,
-    required this.originCity,
-    required this.destination,
-    required this.destinationCity,
-    required this.distanceMi,
-    required this.airline,
-    required this.aircraft,
-    required this.duration,
-    required this.travelClass,
-    required this.emissionsTons,
-    required this.equivalentMiles,
-  });
 }

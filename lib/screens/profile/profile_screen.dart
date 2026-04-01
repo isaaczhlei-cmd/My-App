@@ -207,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (isGuest) {
                         _openGuestPrompt('Flight History');
                       } else {
-                        _pushSignedIn(const FlightHistoryScreen());
+                        _pushSignedIn(FlightHistoryScreen());
                       }
                     },
                   ),

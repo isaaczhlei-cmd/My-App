@@ -4,7 +4,6 @@ import '../screens/home/home_screen.dart';
 import '../screens/add_flight/add_flight_screen.dart';
 import '../screens/compare/compare_screen.dart';
 import '../screens/reports/reports_screen.dart';
-import '../screens/profile/profile_screen.dart';
 import '../screens/book_flight/book_flight_screen.dart';
 
 /// Shared bottom navigation bar used across all main screens.
@@ -32,7 +31,7 @@ class AppBottomNav extends StatelessWidget {
           1 => const AddFlightScreen(),
           2 => const CompareScreen(),
           3 => const ReportsScreen(),
-          4 => BookFlightScreen(),
+          4 => const BookFlightScreen(),
           _ => const HomeScreen(),
         };
 

@@ -44,11 +44,9 @@ class EmissionsService {
         final data = jsonDecode(response.body);
         return FlightEmissionsResult.fromJson(data);
       } else {
-        print('Error: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error computing flight emissions: $e');
       return null;
     }
   }
@@ -81,11 +79,9 @@ class EmissionsService {
         final data = jsonDecode(response.body);
         return TypicalEmissionsResult.fromJson(data);
       } else {
-        print('Error: ${response.statusCode} - ${response.body}');
         return null;
       }
     } catch (e) {
-      print('Error computing typical emissions: $e');
       return null;
     }
   }

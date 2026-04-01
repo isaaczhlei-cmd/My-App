@@ -1,41 +1,114 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
+import '../../models/flight.dart';
+import '../../services/firestore_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 
-class CompareScreen extends StatelessWidget {
+class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key});
 
-  // TODO: Replace with real data from flight selection
-  static const double _yourEmissions = 1.18;
-  static const double _avgEmissions = 1.82;
-  static const int _percentBelow = 35;
+  @override
+  State<CompareScreen> createState() => _CompareScreenState();
+}
+
+class _CompareScreenState extends State<CompareScreen> {
+  final _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildCarbonImpactCard(),
-              const SizedBox(height: 20),
-              _buildEnvironmentalEquivalents(),
-              const SizedBox(height: 20),
-              _buildAircraftInfo(),
-              const SizedBox(height: 20),
-            ],
-          ),
+        child: StreamBuilder<List<Flight>>(
+          stream: _firestoreService.getFlightsStream(),
+          builder: (context, snapshot) {
+            final flights = snapshot.data ?? [];
+            final totalKg = flights.fold<double>(0, (sum, f) => sum + f.emissionsKg);
+            final totalTons = totalKg / 1000;
+
+            // Average American flies ~3 round trips/year ≈ 1.82 tons CO2
+            const avgTons = 1.82;
+            final percentDiff = avgTons > 0
+                ? (((avgTons - totalTons) / avgTons) * 100).round().abs()
+                : 0;
+            final isBelow = totalTons < avgTons;
+
+            // Environmental equivalents (based on EPA factors)
+            final milesDriven = (totalKg * 2.51).round();
+            final monthsElectricity = (totalKg / 280).toStringAsFixed(1);
+            final trees = (totalKg / 22).round();
+            final burgers = (totalKg / 2.5).round();
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Compare',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  if (flights.isEmpty)
+                    _buildEmptyState()
+                  else ...[
+                    _buildCarbonImpactCard(totalTons, avgTons, percentDiff, isBelow),
+                    const SizedBox(height: 20),
+                    _buildEnvironmentalEquivalents(
+                      milesDriven: milesDriven,
+                      monthsElectricity: monthsElectricity,
+                      trees: trees,
+                      burgers: burgers,
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 2),
     );
   }
 
-  Widget _buildCarbonImpactCard() {
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.compare_arrows, size: 48, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text(
+            'No flights to compare',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Add flights to see how your carbon footprint compares to the average.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCarbonImpactCard(double yourTons, double avgTons, int percentDiff, bool isBelow) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -55,36 +128,31 @@ class CompareScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
-          // Gauge and stats row
           Row(
             children: [
-              // Circular gauge
               SizedBox(
                 width: 120,
                 height: 120,
                 child: CustomPaint(
                   painter: _GaugePainter(
-                    value: _yourEmissions,
-                    maxValue: _avgEmissions * 1.3,
+                    value: yourTons,
+                    maxValue: max(avgTons * 1.3, yourTons * 1.1),
                   ),
-                  child: const Center(
+                  child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          '$_yourEmissions',
-                          style: TextStyle(
+                          yourTons.toStringAsFixed(2),
+                          style: const TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                             color: Color(0xFF1A1A2E),
                           ),
                         ),
-                        Text(
+                        const Text(
                           'tons',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF9E9E9E),
-                          ),
+                          style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                         ),
                       ],
                     ),
@@ -92,20 +160,19 @@ class CompareScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 24),
-              // Comparison stats
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildComparisonRow(
-                      'Your flight',
-                      '${_yourEmissions}t CO\u2082',
+                      'Your total',
+                      '${yourTons.toStringAsFixed(2)}t CO\u2082',
                       AppColors.primaryGreen,
                     ),
                     const SizedBox(height: 12),
                     _buildComparisonRow(
-                      'Avg. emission',
-                      '${_avgEmissions}t CO\u2082',
+                      'Avg. American',
+                      '${avgTons}t CO\u2082',
                       const Color(0xFFFF8F00),
                     ),
                   ],
@@ -114,28 +181,27 @@ class CompareScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 20),
-          // Below average indicator
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: isBelow ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  Icons.arrow_downward,
+                  isBelow ? Icons.arrow_downward : Icons.arrow_upward,
                   size: 16,
-                  color: AppColors.primaryGreen,
+                  color: isBelow ? AppColors.primaryGreen : const Color(0xFFFF8F00),
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '$_percentBelow% below average for this route',
+                  '$percentDiff% ${isBelow ? 'below' : 'above'} average',
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: AppColors.primaryGreen,
+                    color: isBelow ? AppColors.primaryGreen : const Color(0xFFFF8F00),
                   ),
                 ),
               ],
@@ -152,22 +218,13 @@ class CompareScreen extends StatelessWidget {
         Container(
           width: 10,
           height: 10,
-          decoration: BoxDecoration(
-            color: dotColor,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Color(0xFF9E9E9E),
-              ),
-            ),
+            Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
             Text(
               value,
               style: const TextStyle(
@@ -182,7 +239,12 @@ class CompareScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEnvironmentalEquivalents() {
+  Widget _buildEnvironmentalEquivalents({
+    required int milesDriven,
+    required String monthsElectricity,
+    required int trees,
+    required int burgers,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -202,26 +264,19 @@ class CompareScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          // 2x2 grid
           Row(
             children: [
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.directions_car,
-                  '2,960',
-                  'Miles driven',
-                  const Color(0xFF5C6BC0),
-                  const Color(0xFFE8EAF6),
+                  Icons.directions_car, '$milesDriven', 'Miles driven',
+                  const Color(0xFF5C6BC0), const Color(0xFFE8EAF6),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.bolt,
-                  '4.2',
-                  'Months of electricity',
-                  const Color(0xFFFF8F00),
-                  const Color(0xFFFFF3E0),
+                  Icons.bolt, monthsElectricity, 'Months electricity',
+                  const Color(0xFFFF8F00), const Color(0xFFFFF3E0),
                 ),
               ),
             ],
@@ -231,21 +286,15 @@ class CompareScreen extends StatelessWidget {
             children: [
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.park,
-                  '54',
-                  'Trees for 1 year',
-                  AppColors.primaryGreen,
-                  const Color(0xFFE8F5E9),
+                  Icons.park, '$trees', 'Trees for 1 year',
+                  AppColors.primaryGreen, const Color(0xFFE8F5E9),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.lunch_dining,
-                  '472',
-                  'Beef burgers',
-                  const Color(0xFFE53935),
-                  const Color(0xFFFFEBEE),
+                  Icons.lunch_dining, '$burgers', 'Beef burgers',
+                  const Color(0xFFE53935), const Color(0xFFFFEBEE),
                 ),
               ),
             ],
@@ -256,11 +305,7 @@ class CompareScreen extends StatelessWidget {
   }
 
   Widget _buildEquivalentItem(
-    IconData icon,
-    String value,
-    String label,
-    Color iconColor,
-    Color bgColor,
+    IconData icon, String value, String label, Color iconColor, Color bgColor,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -292,74 +337,7 @@ class CompareScreen extends StatelessWidget {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF9E9E9E),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAircraftInfo() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Aircraft Information',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.flight,
-                  color: Color(0xFF616161),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Boeing 777-300ER',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    'Fuel efficiency: 89g CO\u2082/km/pax',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF9E9E9E),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
           ),
         ],
       ),
@@ -367,7 +345,6 @@ class CompareScreen extends StatelessWidget {
   }
 }
 
-/// Custom painter for the circular emissions gauge
 class _GaugePainter extends CustomPainter {
   final double value;
   final double maxValue;
@@ -379,7 +356,6 @@ class _GaugePainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2 - 8;
 
-    // Background track
     final bgPaint = Paint()
       ..color = const Color(0xFFE0E0E0)
       ..strokeWidth = 10
@@ -388,26 +364,19 @@ class _GaugePainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      2 * pi,
-      false,
-      bgPaint,
+      -pi / 2, 2 * pi, false, bgPaint,
     );
 
-    // Value arc
     final valuePaint = Paint()
       ..color = AppColors.primaryGreen
       ..strokeWidth = 10
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
 
-    final sweepAngle = (value / maxValue) * 2 * pi;
+    final sweepAngle = maxValue > 0 ? (value / maxValue) * 2 * pi : 0.0;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2,
-      sweepAngle,
-      false,
-      valuePaint,
+      -pi / 2, sweepAngle, false, valuePaint,
     );
   }
 

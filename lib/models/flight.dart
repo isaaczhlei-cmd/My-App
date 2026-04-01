@@ -32,6 +32,8 @@ class Flight {
       'travelClass': travelClass,
       'emissionsKg': emissionsKg,
       'createdAt': Timestamp.fromDate(createdAt),
+      'airlineCode': AirlineCode,
+      'airlineNumber': AirlineNumber,
     };
   }
 
@@ -46,6 +48,8 @@ class Flight {
       travelClass: data['travelClass'] ?? 'economy',
       emissionsKg: (data['emissionsKg'] ?? 0).toDouble(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
+      AirlineCode: data['airlineCode'] ?? '',
+      AirlineNumber: data['airlineNumber'] ?? '',
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/firestore_service.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
 import 'widgets/flight_card.dart';
@@ -15,74 +16,53 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _authService = AuthService();
-
-  // ──────────────────────────────────────────────────────────
-  // MOCK DATA — TODO: Replace with Firestore data later
-  // ──────────────────────────────────────────────────────────
-  final double totalco2tons = 2.4;
-  final int totalflights = 12;
-  final double totalmilestraveled = 28.5;
-  final int avgKgPerFlight = 200;
-
-  // Mock flight list using the Flight model from lib/models/flight.dart
-  // Each Flight needs: id, originCode, destinationCode, date, travelClass,
-  //                    emissionsKg, createdAt, AirlineCode, AirlineNumber
-  final List<Flight> _mockFlights = [
-    Flight(
-      id: '1',
-      originCode: 'SFO',
-      destinationCode: 'JFK',
-      date: DateTime(2024, 11, 15),
-      travelClass: 'economy',
-      emissionsKg: 520,
-      createdAt: DateTime.now(),
-      AirlineCode: 'UA',
-      AirlineNumber: '123',
-    ),
-    Flight(
-      id: '2',
-      originCode: 'LAX',
-      destinationCode: 'ORD',
-      date: DateTime(2024, 11, 8),
-      travelClass: 'business',
-      emissionsKg: 380,
-      createdAt: DateTime.now(),
-      AirlineCode: 'DL',
-      AirlineNumber: '456',
-    ),
-  ];
+  final _firestoreService = FirestoreService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              buildheader(),
-              const SizedBox(height: 24),
-              buildfootprintcard(),
-              const SizedBox(height: 20),
-              buildstatsrow(),
-              const SizedBox(height: 24),
-              buildrecentflights(),
-              const SizedBox(height: 20),
-              buildecotip(),
-              const SizedBox(height: 20),
-            ],
-          ),
+        child: StreamBuilder<List<Flight>>(
+          stream: _firestoreService.getFlightsStream(),
+          builder: (context, snapshot) {
+            final flights = snapshot.data ?? [];
+
+            // Calculate real stats from flight data
+            final totalFlights = flights.length;
+            final totalEmissionsKg = flights.fold<double>(0, (sum, f) => sum + f.emissionsKg);
+            final totalCO2Tons = totalEmissionsKg / 1000;
+            final avgKgPerFlight = totalFlights > 0 ? (totalEmissionsKg / totalFlights).round() : 0;
+            // Rough estimate: 1 kg CO2 ≈ 2.51 miles flown
+            final totalMilesK = (totalEmissionsKg * 2.51 / 1000);
+
+            final recentFlights = flights.take(5).toList();
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 24),
+                  _buildFootprintCard(totalCO2Tons),
+                  const SizedBox(height: 20),
+                  _buildStatsRow(totalFlights, totalMilesK, avgKgPerFlight),
+                  const SizedBox(height: 24),
+                  _buildRecentFlights(recentFlights),
+                  const SizedBox(height: 20),
+                  _buildEcoTip(),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Header — welcome uses guest vs account name
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   String _welcomeGreeting() {
     if (_authService.isGuest) {
       return 'Welcome User';
@@ -102,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Welcome User';
   }
 
-  Widget buildheader() {
+  Widget _buildHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,10 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 4),
             const Text(
               'Dashboard',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-              ),
+              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -138,9 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: IconButton(
             icon: const Icon(Icons.person, color: Colors.white, size: 22),
             onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
             },
           ),
         ),
@@ -148,10 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // ✅ DONE — Carbon Footprint Card (Isaac built this!)
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget buildfootprintcard() {
+  Widget _buildFootprintCard(double totalCO2Tons) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -181,7 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: '$totalco2tons',
+                  text: totalCO2Tons.toStringAsFixed(1),
                   style: const TextStyle(
                     fontSize: 40,
                     fontWeight: FontWeight.bold,
@@ -210,14 +184,14 @@ class _HomeScreenState extends State<HomeScreen> {
               color: Colors.white.withAlpha(40),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.arrow_downward, size: 14, color: Colors.white),
-                SizedBox(width: 4),
+                const Icon(Icons.eco, size: 14, color: Colors.white),
+                const SizedBox(width: 4),
                 Text(
-                  '18% vs last year',
-                  style: TextStyle(
+                  totalCO2Tons == 0 ? 'Start tracking your flights!' : 'Track & reduce your impact',
+                  style: const TextStyle(
                     fontSize: 13,
                     color: Colors.white,
                     fontWeight: FontWeight.w500,
@@ -231,10 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Stats row — Flights, Miles, Avg / flight
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget buildstatsrow() {
+  Widget _buildStatsRow(int totalFlights, double totalMilesK, int avgKgPerFlight) {
     return Row(
       children: [
         Expanded(
@@ -242,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.flight,
             iconColor: const Color(0xFF5C6BC0),
             iconBgColor: const Color(0xFFE8EAF6),
-            value: '$totalflights',
+            value: '$totalFlights',
             label: 'Flights',
           ),
         ),
@@ -252,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.route,
             iconColor: const Color(0xFFFF8F00),
             iconBgColor: const Color(0xFFFFF3E0),
-            value: '${totalmilestraveled}K',
+            value: '${totalMilesK.toStringAsFixed(1)}K',
             label: 'Miles',
           ),
         ),
@@ -307,54 +278,61 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF9E9E9E),
-            ),
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
           ),
         ],
       ),
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Recent flights
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget buildrecentflights() {
+  Widget _buildRecentFlights(List<Flight> recentFlights) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Flights',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryGreen,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-              ),
-              child: const Text('See All'),
-            ),
-          ],
+        const Text(
+          'Recent Flights',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
         ),
         const SizedBox(height: 8),
-        ..._mockFlights.map((flight) => FlightCard(flight: flight)),
+        if (recentFlights.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.flight_takeoff, size: 40, color: Colors.grey[400]),
+                const SizedBox(height: 12),
+                const Text(
+                  'No flights yet',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1A2E),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Add your first flight to start tracking',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          )
+        else
+          ...recentFlights.map((flight) => FlightCard(flight: flight)),
       ],
     );
   }
 
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  // Eco tip
-  // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Widget buildecotip() {
+  Widget _buildEcoTip() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -372,11 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(20),
             ),
-            child: const Icon(
-              Icons.eco,
-              color: AppColors.primaryGreen,
-              size: 20,
-            ),
+            child: const Icon(Icons.eco, color: AppColors.primaryGreen, size: 20),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -394,10 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 SizedBox(height: 4),
                 Text(
                   'Direct flights produce 20% less CO\u2082 than connecting flights.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF757575),
-                  ),
+                  style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
                 ),
               ],
             ),

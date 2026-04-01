@@ -6,7 +6,11 @@
       "Bash(flutter analyze:*)",
       "Bash(firebase:*)",
       "Bash(npm install:*)",
-      "Bash(dart pub:*)"
+      "Bash(dart pub:*)",
+      "Bash(flutter --version)",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter pub:*)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }
