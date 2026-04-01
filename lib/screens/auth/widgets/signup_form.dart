@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 /// - Real-time validation with error messages
 /// - Password strength indicator
 /// - Password visibility toggle
-/// - Google Sign-In and Guest mode options
+/// - Google Sign-In option
 /// - Loading state support
 class SignupForm extends StatefulWidget {
   /// Callback when signup is submitted with valid credentials
@@ -19,9 +19,6 @@ class SignupForm extends StatefulWidget {
   /// Callback for Google Sign-In
   final VoidCallback onGoogleSignIn;
 
-  /// Callback for Guest Sign-In
-  final VoidCallback onGuestSignIn;
-
   /// Whether the form is in a loading state
   final bool isLoading;
 
@@ -30,7 +27,6 @@ class SignupForm extends StatefulWidget {
     required this.onSignup,
     required this.onSwitchToLogin,
     required this.onGoogleSignIn,
-    required this.onGuestSignIn,
     this.isLoading = false,
   });
 
@@ -233,10 +229,6 @@ class _SignupFormState extends State<SignupForm> {
 
           // Google Sign-In button
           _buildGoogleSignInButton(),
-          const SizedBox(height: 12),
-
-          // Guest mode button
-          _buildGuestModeButton(),
           const SizedBox(height: 24),
 
           // Switch to login link
@@ -556,20 +548,6 @@ class _SignupFormState extends State<SignupForm> {
           'Continue with Google',
           style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGuestModeButton() {
-    return TextButton(
-      onPressed: widget.isLoading ? null : widget.onGuestSignIn,
-      style: TextButton.styleFrom(
-        foregroundColor: _textSecondary,
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
-      child: const Text(
-        'Continue as Guest',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

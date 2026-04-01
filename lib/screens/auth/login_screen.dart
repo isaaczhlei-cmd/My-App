@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../config/theme.dart';
 import 'widgets/signup_form.dart';
-import '../home/home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -21,6 +20,15 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   String? _errorMessage;
+
+  void _handleSuccessfulAuth() {
+    if (!mounted) return;
+
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    }
+  }
 
   @override
   void dispose() {
@@ -49,6 +57,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = result.error;
         }
       });
+
+      if (result.error == null) {
+        _handleSuccessfulAuth();
+      }
     }
   }
 
@@ -67,21 +79,11 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = result.error;
         }
       });
-    }
-  }
 
-  Future<void> _signInAsGuest() async {
-    final result = await AuthService().signInAsGuest();
-    if (!mounted) return;
-    if (result.error != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.error!)),
-      );
-      return;
+      if (result.error == null) {
+        _handleSuccessfulAuth();
+      }
     }
-    Navigator.of(
-      context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
   }
 
   Future<void> _signUpWithEmail(
@@ -107,6 +109,10 @@ class _LoginScreenState extends State<LoginScreen> {
           _errorMessage = result.error;
         }
       });
+
+      if (result.error == null) {
+        _handleSuccessfulAuth();
+      }
     }
   }
 
@@ -197,8 +203,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // Guest mode button
-                _buildGuestButton(),
               ],
             ),
           ),
@@ -570,24 +574,8 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           },
           onGoogleSignIn: _signInWithGoogle,
-          onGuestSignIn: _signInAsGuest,
         ),
       ],
-    );
-  }
-
-  Widget _buildGuestButton() {
-    return TextButton(
-      onPressed: _isLoading ? null : _signInAsGuest,
-      child: Text(
-        'Continue as Guest',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 16,
-          decoration: TextDecoration.underline,
-          decorationColor: AppColors.textSecondary,
-        ),
-      ),
     );
   }
 

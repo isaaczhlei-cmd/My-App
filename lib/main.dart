@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'screens/auth/login_screen.dart';
@@ -8,6 +9,7 @@ import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: '.env');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
@@ -42,12 +44,14 @@ class AuthWrapper extends StatelessWidget {
           );
         }
 
-        // User is logged in
-        if (snapshot.hasData) {
+        final user = snapshot.data;
+
+        // Only fully signed-in accounts should reach the app home.
+        if (user != null && !user.isAnonymous) {
           return const HomeScreen();
         }
 
-        // User is not logged in
+        // Signed out or anonymous users go to the auth flow.
         return const LoginScreen();
       },
     );

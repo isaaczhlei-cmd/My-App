@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
-import '../auth/login_screen.dart';
 
 /// Shown when a guest taps a profile menu item. Includes a **Sign In** tab
 /// and a button that signs out the anonymous session so the app root shows
@@ -12,16 +11,12 @@ class GuestSignInPromptScreen extends StatelessWidget {
   final String featureLabel;
 
   Future<void> _onSignIn(BuildContext context) async {
-    // End anonymous session, then route user to the login UI.
+    // End the anonymous session, then reveal the root auth gate so it can
+    // show the login/signup screen without removing the app's auth wrapper.
     await AuthService().signOut();
     if (!context.mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
-      MaterialPageRoute<void>(
-        builder: (_) => const LoginScreen(),
-      ),
-      (route) => false,
-    );
+    Navigator.of(context, rootNavigator: true).popUntil((route) => route.isFirst);
   }
 
   @override

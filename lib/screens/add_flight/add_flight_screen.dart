@@ -16,6 +16,8 @@ class AddFlightScreen extends StatefulWidget {
 
 class _AddFlightScreenState extends State<AddFlightScreen> {
   final _flightNumberController = TextEditingController();
+  final _originController = TextEditingController();
+  final _destinationController = TextEditingController();
   final _emissionsService = EmissionsService();
   final _firestoreService = FirestoreService();
   final _authService = AuthService();
@@ -40,6 +42,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   @override
   void dispose() {
     _flightNumberController.dispose();
+    _originController.dispose();
+    _destinationController.dispose();
     super.dispose();
   }
 
@@ -56,12 +60,39 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return (carrier: carrier, number: number);
   }
 
+  String? _parseAirportCode(String input) {
+    final cleaned = input.trim().toUpperCase();
+    final regex = RegExp(r'^[A-Z]{3}$');
+    if (!regex.hasMatch(cleaned)) return null;
+    return cleaned;
+  }
+
+  void _clearLookupResult() {
+    _hasResult = false;
+    _flightEmission = null;
+    _origin = '';
+    _destination = '';
+    _airlineCode = '';
+    _flightNum = 0;
+    _emissionsKg = 0;
+  }
+
   Future<void> _lookupFlight() async {
     final parsed = _parseFlightNumber(_flightNumberController.text);
     if (parsed == null) {
       setState(() {
         _errorMessage = 'Enter a valid flight number (e.g. UA 857)';
-        _hasResult = false;
+        _clearLookupResult();
+      });
+      return;
+    }
+
+    final origin = _parseAirportCode(_originController.text);
+    final destination = _parseAirportCode(_destinationController.text);
+    if (origin == null || destination == null) {
+      setState(() {
+        _errorMessage = 'Enter valid 3-letter airport codes like SFO and JFK';
+        _clearLookupResult();
       });
       return;
     }
@@ -69,12 +100,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
-      _hasResult = false;
+      _clearLookupResult();
     });
 
     final result = await _emissionsService.computeFlightEmissions(
-      origin: '', // API resolves from flight number
-      destination: '',
+      origin: origin,
+      destination: destination,
       operatingCarrierCode: parsed.carrier,
       flightNumber: parsed.number,
       departureDate: _selectedDate,
@@ -97,7 +128,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     } else {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Could not find emissions data for this flight. Check the flight number and date.';
+        _errorMessage =
+            'No emissions data was returned for this exact route and flight. Double-check the airline code, flight number, date, origin, and destination.';
       });
     }
   }
@@ -130,7 +162,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       },
     );
     if (picked != null) {
-      setState(() => _selectedDate = picked);
+      setState(() {
+        _selectedDate = picked;
+        _errorMessage = null;
+        _clearLookupResult();
+      });
     }
   }
 
@@ -175,8 +211,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
     // Reset form
     setState(() {
-      _hasResult = false;
+      _clearLookupResult();
       _flightNumberController.clear();
+      _originController.clear();
+      _destinationController.clear();
       _flightEmission = null;
       _errorMessage = null;
     });
@@ -202,6 +240,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
               ),
               const SizedBox(height: 20),
               _buildFlightNumberField(),
+              const SizedBox(height: 16),
+              _buildRouteInputs(),
               const SizedBox(height: 16),
               _buildDateField(),
               const SizedBox(height: 16),
@@ -261,12 +301,86 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     hintText: 'e.g. UA 857',
                     hintStyle: TextStyle(color: Color(0xFFBDBDBD)),
                   ),
+                  onChanged: (_) {
+                    setState(() {
+                      _errorMessage = null;
+                      _clearLookupResult();
+                    });
+                  },
                   onSubmitted: (_) => _lookupFlight(),
                 ),
               ),
               if (_hasResult)
                 const Icon(Icons.check_circle, color: AppColors.primaryGreen, size: 22),
             ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRouteInputs() {
+    return Row(
+      children: [
+        Expanded(
+          child: _buildAirportCodeField(
+            label: 'Origin',
+            controller: _originController,
+            hintText: 'e.g. SFO',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _buildAirportCodeField(
+            label: 'Destination',
+            controller: _destinationController,
+            hintText: 'e.g. JFK',
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAirportCodeField({
+    required String label,
+    required TextEditingController controller,
+    required String hintText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TextField(
+            controller: controller,
+            textCapitalization: TextCapitalization.characters,
+            maxLength: 3,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF1A1A2E),
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              counterText: '',
+              hintText: hintText,
+              hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
+            ),
+            onChanged: (_) {
+              setState(() {
+                _errorMessage = null;
+                _clearLookupResult();
+              });
+            },
           ),
         ),
       ],

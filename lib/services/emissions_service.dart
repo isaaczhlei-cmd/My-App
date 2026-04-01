@@ -3,7 +3,11 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class EmissionsService {
-  static String get _apiKey => dotenv.env['GOOGLE_CLOUD_API_KEY'] ?? '';
+  static String get _apiKey {
+    return dotenv.env['GOOGLE_CLOUD_API_KEY'] ??
+        dotenv.env['API_KEY'] ??
+        '';
+  }
   static const String _baseUrl = 'https://travelimpactmodel.googleapis.com/v1';
 
   /// Compute emissions for a specific flight
