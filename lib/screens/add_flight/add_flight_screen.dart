@@ -38,6 +38,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   // Emissions by class (from API)
   FlightEmission? _flightEmission;
+  TypicalRouteEmission? _typicalEmission;
+  bool _usedTypicalFallback = false;
 
   @override
   void dispose() {
@@ -70,6 +72,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   void _clearLookupResult() {
     _hasResult = false;
     _flightEmission = null;
+    _typicalEmission = null;
+    _usedTypicalFallback = false;
     _origin = '';
     _destination = '';
     _airlineCode = '';
@@ -103,6 +107,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _clearLookupResult();
     });
 
+    // Try specific flight lookup first
     final result = await _emissionsService.computeFlightEmissions(
       origin: origin,
       destination: destination,
@@ -113,15 +118,48 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
     if (!mounted) return;
 
+    // Check if we got real emissions data (not 0)
     if (result != null && result.flightEmissions.isNotEmpty) {
       final emission = result.flightEmissions.first;
+      final kg = emission.getEmissionsKg(_selectedCabin);
+
+      if (kg > 0) {
+        // Specific flight data worked
+        setState(() {
+          _flightEmission = emission;
+          _origin = emission.flight?.origin ?? origin;
+          _destination = emission.flight?.destination ?? destination;
+          _airlineCode = emission.flight?.operatingCarrierCode ?? parsed.carrier;
+          _flightNum = emission.flight?.flightNumber ?? parsed.number;
+          _emissionsKg = kg;
+          _usedTypicalFallback = false;
+          _isLoading = false;
+          _hasResult = true;
+        });
+        return;
+      }
+    }
+
+    // Fallback: use typical route emissions (works for any airport pair)
+    final typicalResult = await _emissionsService.computeTypicalEmissions(
+      origin: origin,
+      destination: destination,
+    );
+
+    if (!mounted) return;
+
+    if (typicalResult != null && typicalResult.typicalEmissions.isNotEmpty) {
+      final typical = typicalResult.typicalEmissions.first;
+      final kg = typical.getEmissionsKg(_selectedCabin);
+
       setState(() {
-        _flightEmission = emission;
-        _origin = emission.flight?.origin ?? '';
-        _destination = emission.flight?.destination ?? '';
-        _airlineCode = emission.flight?.operatingCarrierCode ?? parsed.carrier;
-        _flightNum = emission.flight?.flightNumber ?? parsed.number;
-        _emissionsKg = emission.getEmissionsKg(_selectedCabin);
+        _typicalEmission = typical;
+        _origin = origin;
+        _destination = destination;
+        _airlineCode = parsed.carrier;
+        _flightNum = parsed.number;
+        _emissionsKg = kg;
+        _usedTypicalFallback = true;
         _isLoading = false;
         _hasResult = true;
       });
@@ -129,7 +167,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            'No emissions data was returned for this exact route and flight. Double-check the airline code, flight number, date, origin, and destination.';
+            'Could not find emissions data for this route. Double-check the airport codes.';
       });
     }
   }
@@ -139,6 +177,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _selectedCabin = cabin;
       if (_flightEmission != null) {
         _emissionsKg = _flightEmission!.getEmissionsKg(cabin);
+      } else if (_typicalEmission != null) {
+        _emissionsKg = _typicalEmission!.getEmissionsKg(cabin);
       }
     });
   }
@@ -655,9 +695,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Estimated Carbon Emission',
-            style: TextStyle(
+          Text(
+            _usedTypicalFallback
+                ? 'Estimated Carbon Emission (route average)'
+                : 'Estimated Carbon Emission',
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.primaryGreen,
