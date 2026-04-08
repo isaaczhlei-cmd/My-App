@@ -514,12 +514,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   Widget _buildLookupButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48,
+      height: 54,
       child: ElevatedButton.icon(
         onPressed: _isLoading ? null : _lookupFlight,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.cardBackground,
           foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
         icon: const Icon(Icons.search, size: 20),
