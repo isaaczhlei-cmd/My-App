@@ -271,7 +271,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           )
                         : OutlinedButton.icon(
-                            onPressed: () => _authService.signOut(),
+                            onPressed: () async {
+                              await _authService.signOut();
+                              if (context.mounted) {
+                                Navigator.of(context).popUntil((route) => route.isFirst);
+                              }
+                            },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.errorRed,
                               side: BorderSide(

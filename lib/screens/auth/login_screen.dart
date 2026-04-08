@@ -1,20 +1,16 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../config/theme.dart';
-import 'forgot_password_debug_screen.dart';
+import 'forgot_password_screen.dart';
 import 'widgets/signup_form.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({
     super.key,
     this.authService,
-    bool? enableForgotPasswordDebugScreen,
-  }) : enableForgotPasswordDebugScreen =
-           enableForgotPasswordDebugScreen ?? kDebugMode;
+  });
 
   final AuthServiceLike? authService;
-  final bool enableForgotPasswordDebugScreen;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -124,58 +120,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    final email = _emailController.text.trim();
-    if (email.isEmpty) {
-      setState(() {
-        _errorMessage = 'Please enter your email address first';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    final result = await _authService.sendPasswordResetEmail(email);
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (result.success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Password reset email sent!'),
-            backgroundColor: AppColors.successGreen,
-          ),
-        );
-      } else {
-        setState(() {
-          _errorMessage = result.error;
-        });
-      }
-    }
-  }
-
-  Future<void> _handleForgotPasswordTap() async {
-    final email = _emailController.text.trim();
-
-    if (widget.enableForgotPasswordDebugScreen) {
-      await Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (_) => ForgotPasswordDebugScreen(
-            email: email,
-            onSendResetEmail: _resetPassword,
-          ),
+  void _handleForgotPasswordTap() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ForgotPasswordScreen(
+          authService: _authService,
+          initialEmail: _emailController.text.trim(),
         ),
-      );
-      return;
-    }
-
-    await _resetPassword();
+      ),
+    );
   }
 
   @override
