@@ -4,7 +4,36 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-class AuthService {
+abstract class AuthServiceLike {
+  Stream<User?> get authStateChanges;
+  Stream<User?> get userChanges;
+  User? get currentUser;
+
+  Future<({UserCredential? user, String? error})> registerWithEmail({
+    required String email,
+    required String password,
+    String? displayName,
+  });
+
+  Future<({UserCredential? user, String? error})> signInWithEmail({
+    required String email,
+    required String password,
+  });
+
+  Future<({bool success, String? error})> sendPasswordResetEmail(String email);
+
+  Future<({UserCredential? user, String? error})> signInWithGoogle();
+
+  Future<({UserCredential? user, String? error})> signInAsGuest();
+
+  bool get isGuest;
+
+  Future<({bool success, String? error})> updateProfilePhoto(File imageFile);
+
+  Future<void> signOut();
+}
+
+class AuthService implements AuthServiceLike {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   /// Current user

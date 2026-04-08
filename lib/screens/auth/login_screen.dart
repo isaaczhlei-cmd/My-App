@@ -1,10 +1,20 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../config/theme.dart';
+import 'forgot_password_debug_screen.dart';
 import 'widgets/signup_form.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({
+    super.key,
+    this.authService,
+    bool? enableForgotPasswordDebugScreen,
+  }) : enableForgotPasswordDebugScreen =
+           enableForgotPasswordDebugScreen ?? kDebugMode;
+
+  final AuthServiceLike? authService;
+  final bool enableForgotPasswordDebugScreen;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -14,8 +24,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
-
   bool _isLoginMode = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -150,6 +158,24 @@ class _LoginScreenState extends State<LoginScreen> {
         });
       }
     }
+  }
+
+  Future<void> _handleForgotPasswordTap() async {
+    final email = _emailController.text.trim();
+
+    if (widget.enableForgotPasswordDebugScreen) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ForgotPasswordDebugScreen(
+            email: email,
+            onSendResetEmail: _resetPassword,
+          ),
+        ),
+      );
+      return;
+    }
+
+    await _resetPassword();
   }
 
   @override
@@ -430,7 +456,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: _isLoading ? null : _resetPassword,
+              onPressed: _isLoading ? null : _handleForgotPasswordTap,
               child: Text(
                 'Forgot Password?',
                 style: TextStyle(color: AppColors.primaryGreen, fontSize: 14),
@@ -614,4 +640,8 @@ class _LoginScreenState extends State<LoginScreen> {
       errorStyle: TextStyle(color: AppColors.errorRed),
     );
   }
+
+  AuthServiceLike get _authService => widget.authService ?? _defaultAuthService;
 }
+
+final AuthServiceLike _defaultAuthService = AuthService();
