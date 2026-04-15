@@ -197,7 +197,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             )
           else
             SizedBox(
-              height: 160,
+              height: 168,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: monthlyData.map((data) {

@@ -1,7 +1,7 @@
 # GameGala 2026 Student Practice Card
 
 ## Intro
-"Hi, my name is [Name], and my project is called Flight Carbon Tracker. I designed it because people can see the price of a flight, but they usually cannot see the carbon impact. I wanted to turn an invisible problem into something people can actually see."
+"Hi, my name is Isaac Lei, and my project is called Flight Carbon Tracker. I designed it because people can see the price of a flight, but they usually cannot see the carbon impact. I wanted to turn an invisible problem into something people can actually see."
 
 ## Demo Order
 1. `Home`
@@ -14,7 +14,7 @@
    "This shows patterns over time, like this month and this year."
 
 ## Simple Tech Line
-"I built the app in Flutter, I save data with Firebase, and I use Google’s Travel Impact Model to estimate emissions."
+"I built the app in Flutter, I save data with Firebase, and I use Google’s Travel Impact API Model to estimate emissions."
 
 ## Best Creator Phrases
 - "I designed..."
@@ -47,7 +47,7 @@ Choose the true one:
 - "I designed this so one travel choice can become a smarter environmental choice."
 
 ## Closing
-"I’m proud of this project because it connects coding with a real-world problem and helps people make smarter travel choices. Thank you."
+"I’m proud of this project because it connects coding with a real-world problem and helps people make smarter travel choices that helps the enviorment and saves money at the same time. Thank you."
 
 ## Before You Start
 - Slow down
