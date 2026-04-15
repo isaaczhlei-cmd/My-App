@@ -27,26 +27,47 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
             // Calculate this month's stats
             final now = DateTime.now();
-            final thisMonthFlights = flights.where((f) =>
-                f.date.year == now.year && f.date.month == now.month).toList();
-            final thisMonthKg = thisMonthFlights.fold<double>(0, (s, f) => s + f.emissionsKg);
+            final thisMonthFlights = flights
+                .where(
+                  (f) => f.date.year == now.year && f.date.month == now.month,
+                )
+                .toList();
+            final thisMonthKg = thisMonthFlights.fold<double>(
+              0,
+              (s, f) => s + f.emissionsKg,
+            );
 
             // Calculate this year's stats
-            final thisYearFlights = flights.where((f) => f.date.year == now.year).toList();
-            final thisYearKg = thisYearFlights.fold<double>(0, (s, f) => s + f.emissionsKg);
+            final thisYearFlights = flights
+                .where((f) => f.date.year == now.year)
+                .toList();
+            final thisYearKg = thisYearFlights.fold<double>(
+              0,
+              (s, f) => s + f.emissionsKg,
+            );
 
             // Build monthly breakdown for chart (last 6 months)
             final monthlyData = <_MonthData>[];
             for (int i = 5; i >= 0; i--) {
               final month = DateTime(now.year, now.month - i, 1);
-              final monthFlights = flights.where((f) =>
-                  f.date.year == month.year && f.date.month == month.month).toList();
-              final monthKg = monthFlights.fold<double>(0, (s, f) => s + f.emissionsKg);
-              monthlyData.add(_MonthData(
-                label: DateFormat('MMM').format(month),
-                emissionsKg: monthKg,
-                flightCount: monthFlights.length,
-              ));
+              final monthFlights = flights
+                  .where(
+                    (f) =>
+                        f.date.year == month.year &&
+                        f.date.month == month.month,
+                  )
+                  .toList();
+              final monthKg = monthFlights.fold<double>(
+                0,
+                (s, f) => s + f.emissionsKg,
+              );
+              monthlyData.add(
+                _MonthData(
+                  label: DateFormat('MMM').format(month),
+                  emissionsKg: monthKg,
+                  flightCount: monthFlights.length,
+                ),
+              );
             }
 
             return SingleChildScrollView(
@@ -128,7 +149,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 const SizedBox(height: 2),
                 Text(
                   '$flights flight${flights == 1 ? '' : 's'}',
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF9E9E9E),
+                  ),
                 ),
               ],
             ),
@@ -156,7 +180,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildMonthlyChart(List<_MonthData> monthlyData) {
-    final maxKg = monthlyData.fold<double>(0, (m, d) => d.emissionsKg > m ? d.emissionsKg : m);
+    final maxKg = monthlyData.fold<double>(
+      0,
+      (m, d) => d.emissionsKg > m ? d.emissionsKg : m,
+    );
     final hasData = maxKg > 0;
 
     return Container(
@@ -201,7 +228,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: monthlyData.map((data) {
-                  final barHeight = maxKg > 0 ? (data.emissionsKg / maxKg) * 120 : 0.0;
+                  final barHeight = maxKg > 0
+                      ? (data.emissionsKg / maxKg) * 120
+                      : 0.0;
                   return Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
