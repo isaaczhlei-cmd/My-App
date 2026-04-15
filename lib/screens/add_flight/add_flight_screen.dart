@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/theme.dart';
 import '../../models/flight.dart';
@@ -17,6 +19,8 @@ class AddFlightScreen extends StatefulWidget {
 }
 
 class _AddFlightScreenState extends State<AddFlightScreen> {
+  static const _hiddenCatalogPrefsKey = 'debug_hidden_flight_catalog_entries';
+
   final _heroSearchController = TextEditingController();
   final _flightNumberController = TextEditingController();
   final _originController = TextEditingController();
@@ -30,9 +34,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   bool _isLoading = false;
   bool _isSaving = false;
   bool _manualEntryExpanded = false;
+  bool _didLoadDebugHiddenEntries = !kDebugMode;
   String? _errorMessage;
   String? _selectedAirlineFilter;
   FlightCatalogEntry? _selectedCatalogEntry;
+  Set<String> _hiddenCatalogEntryIds = <String>{};
+  final Map<String, _CatalogVerificationStatus> _verificationStatusByKey = {};
+  final Set<String> _activeVerificationKeys = <String>{};
 
   String _origin = '';
   String _destination = '';
@@ -44,6 +52,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   FlightEmission? _flightEmission;
   TypicalRouteEmission? _typicalEmission;
   bool _usedTypicalFallback = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHiddenCatalogEntries();
+  }
 
   @override
   void dispose() {
@@ -89,11 +103,13 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   List<FlightCatalogEntry> get _suggestedFlights {
     final query = _heroSearchController.text.trim();
     if (query.isEmpty) return const [];
-    return FlightCatalog.search(
+    final matches = FlightCatalog.search(
       query,
       airlineName: _selectedAirlineFilter,
       limit: 6,
+      hiddenEntryIds: _hiddenCatalogEntryIds,
     );
+    return _filterVerifiedEntries(matches);
   }
 
   List<FlightCatalogEntry> get _catalogFlights {
@@ -102,13 +118,23 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       return FlightCatalog.featured(
         airlineName: _selectedAirlineFilter,
         limit: 12,
+        hiddenEntryIds: _hiddenCatalogEntryIds,
       );
     }
-    return FlightCatalog.search(
+    final matches = FlightCatalog.search(
       query,
       airlineName: _selectedAirlineFilter,
       limit: 16,
+      hiddenEntryIds: _hiddenCatalogEntryIds,
     );
+    return _filterVerifiedEntries(matches);
+  }
+
+  List<FlightCatalogEntry> _filterVerifiedEntries(List<FlightCatalogEntry> entries) {
+    if (kDebugMode) return entries;
+    return entries.where((entry) {
+      return _verificationStatusFor(entry) != _CatalogVerificationStatus.invalid;
+    }).toList();
   }
 
   Future<void> _lookupFlight() async {
@@ -219,6 +245,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         _clearLookupResult();
       }
     });
+    _verifyVisibleCatalogEntries();
   }
 
   Future<void> _selectCatalogFlight(FlightCatalogEntry entry) async {
@@ -259,7 +286,108 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         _errorMessage = null;
         _clearLookupResult();
       });
+      _verifyVisibleCatalogEntries(forceRefresh: true);
     }
+  }
+
+  Future<void> _loadHiddenCatalogEntries() async {
+    if (!kDebugMode) return;
+    final prefs = await SharedPreferences.getInstance();
+    final hiddenIds =
+        prefs.getStringList(_hiddenCatalogPrefsKey)?.toSet() ?? <String>{};
+    if (!mounted) return;
+    setState(() {
+      _hiddenCatalogEntryIds = hiddenIds;
+      _didLoadDebugHiddenEntries = true;
+    });
+    _verifyVisibleCatalogEntries();
+  }
+
+  Future<void> _hideCatalogEntry(FlightCatalogEntry entry) async {
+    if (!kDebugMode) return;
+    final nextHidden = {..._hiddenCatalogEntryIds, entry.id};
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_hiddenCatalogPrefsKey, nextHidden.toList()..sort());
+    if (!mounted) return;
+    setState(() {
+      _hiddenCatalogEntryIds = nextHidden;
+      if (_selectedCatalogEntry?.id == entry.id) {
+        _selectedCatalogEntry = null;
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${entry.flightCode} hidden for this debug build.'),
+        backgroundColor: AppColors.warningOrange,
+      ),
+    );
+  }
+
+  void _verifyVisibleCatalogEntries({bool forceRefresh = false}) {
+    final query = _heroSearchController.text.trim();
+    if (query.isEmpty) return;
+
+    final visibleEntries = <FlightCatalogEntry>[
+      ...FlightCatalog.search(
+        query,
+        airlineName: _selectedAirlineFilter,
+        limit: 6,
+        hiddenEntryIds: _hiddenCatalogEntryIds,
+      ),
+      ...FlightCatalog.search(
+        query,
+        airlineName: _selectedAirlineFilter,
+        limit: 16,
+        hiddenEntryIds: _hiddenCatalogEntryIds,
+      ),
+    ];
+
+    final seenIds = <String>{};
+    for (final entry in visibleEntries) {
+      if (!seenIds.add(entry.id)) continue;
+      final key = _verificationKeyFor(entry);
+      if (!forceRefresh &&
+          (_verificationStatusByKey.containsKey(key) || _activeVerificationKeys.contains(key))) {
+        continue;
+      }
+      _startVerification(entry);
+    }
+  }
+
+  Future<void> _startVerification(FlightCatalogEntry entry) async {
+    final key = _verificationKeyFor(entry);
+    setState(() {
+      _activeVerificationKeys.add(key);
+      _verificationStatusByKey[key] = _CatalogVerificationStatus.verifying;
+    });
+
+    final result = await _emissionsService.computeFlightEmissions(
+      origin: entry.originCode,
+      destination: entry.destinationCode,
+      operatingCarrierCode: entry.carrierCode,
+      flightNumber: entry.flightNumber,
+      departureDate: _selectedDate,
+    );
+
+    if (!mounted) return;
+
+    final isValid = result != null && result.flightEmissions.isNotEmpty;
+    setState(() {
+      _activeVerificationKeys.remove(key);
+      _verificationStatusByKey[key] =
+          isValid ? _CatalogVerificationStatus.valid : _CatalogVerificationStatus.invalid;
+    });
+  }
+
+  String _verificationKeyFor(FlightCatalogEntry entry) {
+    final month = _selectedDate.month.toString().padLeft(2, '0');
+    final day = _selectedDate.day.toString().padLeft(2, '0');
+    return '${entry.id}_${_selectedDate.year}-$month-$day';
+  }
+
+  _CatalogVerificationStatus _verificationStatusFor(FlightCatalogEntry entry) {
+    return _verificationStatusByKey[_verificationKeyFor(entry)] ??
+        _CatalogVerificationStatus.unverified;
   }
 
   Future<void> _addToFlightLog() async {
@@ -453,6 +581,16 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           ),
           const SizedBox(height: 16),
           _buildAirlineFilterRow(),
+          if (kDebugMode && !_didLoadDebugHiddenEntries) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Loading debug catalog controls...',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFFD6E0E7),
+              ),
+            ),
+          ],
           if (suggestions.isNotEmpty) ...[
             const SizedBox(height: 16),
             const Text(
@@ -504,6 +642,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         setState(() {
           _selectedAirlineFilter = label == 'All Airlines' ? null : label;
         });
+        _verifyVisibleCatalogEntries();
       },
       labelStyle: TextStyle(
         color: isSelected ? Colors.white : AppColors.textSecondary,
@@ -519,6 +658,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   Widget _buildSuggestionTile(FlightCatalogEntry entry) {
+    final verificationStatus = _verificationStatusFor(entry);
+    final isInvalid = verificationStatus == _CatalogVerificationStatus.invalid;
+    final isVerifying = verificationStatus == _CatalogVerificationStatus.verifying;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
@@ -526,7 +669,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         borderRadius: BorderRadius.circular(18),
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
-          onTap: () => _selectCatalogFlight(entry),
+          onTap: isInvalid ? null : () => _selectCatalogFlight(entry),
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Row(
@@ -564,14 +707,55 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           fontSize: 13,
                         ),
                       ),
+                      if (isVerifying) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Checking with Travel Impact Model...',
+                          style: TextStyle(
+                            color: AppColors.warningOrange,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                      if (isInvalid && kDebugMode) ...[
+                        const SizedBox(height: 6),
+                        const Text(
+                          'No Travel Impact Model result found for this flight.',
+                          style: TextStyle(
+                            color: AppColors.errorRed,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Color(0xFF9AA7B4),
-                ),
+                if (isVerifying)
+                  const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.warningOrange,
+                    ),
+                  )
+                else if (isInvalid && kDebugMode)
+                  IconButton(
+                    onPressed: () => _hideCatalogEntry(entry),
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: AppColors.errorRed,
+                    ),
+                    tooltip: 'Hide invalid catalog entry in debug',
+                  )
+                else
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Color(0xFF9AA7B4),
+                  ),
               ],
             ),
           ),
@@ -717,6 +901,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   Widget _buildCatalogTile(FlightCatalogEntry entry) {
     final isSelected = _selectedCatalogEntry == entry;
+    final verificationStatus = _verificationStatusFor(entry);
+    final isInvalid = verificationStatus == _CatalogVerificationStatus.invalid;
+    final isVerifying = verificationStatus == _CatalogVerificationStatus.verifying;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -725,7 +912,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => _selectCatalogFlight(entry),
+          onTap: isInvalid ? null : () => _selectCatalogFlight(entry),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -769,6 +956,24 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
+                      )
+                    else if (isVerifying)
+                      const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AppColors.warningOrange,
+                        ),
+                      )
+                    else if (isInvalid && kDebugMode)
+                      IconButton(
+                        onPressed: () => _hideCatalogEntry(entry),
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          color: AppColors.errorRed,
+                        ),
+                        tooltip: 'Hide invalid catalog entry in debug',
                       ),
                   ],
                 ),
@@ -790,6 +995,28 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                     _buildCatalogMetric('Airline', entry.carrierCode),
                   ],
                 ),
+                if (isVerifying) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Checking this catalog row against the Travel Impact Model...',
+                    style: TextStyle(
+                      color: AppColors.warningOrange,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+                if (isInvalid && kDebugMode) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No valid Travel Impact Model result. You can hide this row in debug mode.',
+                    style: TextStyle(
+                      color: AppColors.errorRed,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -1415,4 +1642,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       ),
     );
   }
+}
+
+enum _CatalogVerificationStatus {
+  unverified,
+  verifying,
+  valid,
+  invalid,
 }

@@ -19,6 +19,7 @@ class FlightCatalogEntry {
   final String destinationCity;
   final bool isFeatured;
 
+  String get id => '${carrierCode}_${flightNumber}_${originCode}_$destinationCode';
   String get flightCode => '$carrierCode $flightNumber';
   String get compactFlightCode => '$carrierCode$flightNumber';
   String get routeCodeLabel => '$originCode -> $destinationCode';
@@ -77,8 +78,13 @@ class FlightCatalog {
     return airlines;
   }
 
-  static List<FlightCatalogEntry> featured({String? airlineName, int limit = 12}) {
+  static List<FlightCatalogEntry> featured({
+    String? airlineName,
+    int limit = 12,
+    Set<String> hiddenEntryIds = const {},
+  }) {
     var featuredEntries = entries.where((entry) {
+      if (hiddenEntryIds.contains(entry.id)) return false;
       if (!entry.isFeatured) return false;
       if (airlineName == null) return true;
       return entry.airlineName == airlineName;
@@ -86,7 +92,11 @@ class FlightCatalog {
       ..sort((a, b) => a.flightCode.compareTo(b.flightCode));
 
     if (featuredEntries.isEmpty && airlineName != null) {
-      featuredEntries = entries.where((entry) => entry.airlineName == airlineName).toList()
+      featuredEntries = entries
+          .where((entry) =>
+              entry.airlineName == airlineName &&
+              !hiddenEntryIds.contains(entry.id))
+          .toList()
         ..sort((a, b) => a.flightCode.compareTo(b.flightCode));
     }
 
@@ -97,14 +107,22 @@ class FlightCatalog {
     String query, {
     String? airlineName,
     int limit = 12,
+    Set<String> hiddenEntryIds = const {},
   }) {
     final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) {
-      return featured(airlineName: airlineName, limit: limit);
+      return featured(
+        airlineName: airlineName,
+        limit: limit,
+        hiddenEntryIds: hiddenEntryIds,
+      );
     }
 
     final scoredEntries = <({FlightCatalogEntry entry, int score})>[];
     for (final entry in entries) {
+      if (hiddenEntryIds.contains(entry.id)) {
+        continue;
+      }
       if (airlineName != null && entry.airlineName != airlineName) {
         continue;
       }
