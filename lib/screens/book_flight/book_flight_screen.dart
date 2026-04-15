@@ -1,11 +1,11 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/theme.dart';
+import '../../services/auth_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../profile/guest_sign_in_prompt_screen.dart';
 import 'airport_directory.dart';
 import 'booking_handoff_screen.dart';
 
@@ -17,6 +17,7 @@ class BookFlightScreen extends StatefulWidget {
 }
 
 class _BookFlightScreenState extends State<BookFlightScreen> {
+  final _authService = AuthService();
   bool _isRoundTrip = true;
   AirportOption _fromAirport = AirportDirectory.airports.firstWhere(
     (airport) => airport.code == 'JFK',
@@ -34,7 +35,6 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   DateTime _returnDate = DateTime(2026, 4, 22);
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
-  bool _hasSearched = false;
 
   @override
   void initState() {
@@ -156,6 +156,11 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   }
 
   Future<void> _runSearch() async {
+    if (_authService.isGuest) {
+      _openGuestPrompt();
+      return;
+    }
+
     final fromMatch = AirportDirectory.findBestMatch(
       _fromController.text,
       excludeCode: _toAirport.code,
@@ -190,7 +195,6 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
       _toAirport = toMatch;
       _fromController.text = fromMatch.shortLabel;
       _toController.text = toMatch.shortLabel;
-      _hasSearched = true;
       _fromMatches = const [];
       _toMatches = const [];
     });
@@ -229,13 +233,18 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     );
   }
 
+  void _openGuestPrompt() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const GuestSignInPromptScreen(
+          featureLabel: 'flight booking',
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final offers = _buildOffers();
-    final ecoRoute = offers.reduce(
-      (current, next) => current.emissionsKg <= next.emissionsKg ? current : next,
-    );
-
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
       body: SafeArea(
@@ -246,11 +255,13 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
+              if (_authService.isGuest) ...[
+                _buildGuestAccessCard(),
+                const SizedBox(height: 20),
+              ],
               _buildBookingCard(),
               const SizedBox(height: 20),
-              _buildEcoRouteCard(ecoRoute),
-              const SizedBox(height: 20),
-              _buildCheapestOptions(offers),
+              _buildLiveResultsCard(),
             ],
           ),
         ),
@@ -288,6 +299,53 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
             style: TextStyle(
               fontSize: 16,
               color: Color(0xFFDCE2FF),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuestAccessCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppColors.warningOrange.withValues(alpha: 0.6),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lock_outline,
+                color: AppColors.warningOrange,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Sign in required',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Guests can explore the form, but you need to sign in before opening live flight results.',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 14,
+              height: 1.5,
             ),
           ),
         ],
@@ -693,7 +751,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     );
   }
 
-  Widget _buildEcoRouteCard(_FlightOffer ecoRoute) {
+  Widget _buildLiveResultsCard() {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -712,12 +770,12 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
                   color: AppColors.primaryGreen.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.eco, color: AppColors.primaryGreen),
+                child: const Icon(Icons.public, color: AppColors.primaryGreen),
               ),
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
-                  'Most Eco-Friendly Route',
+                  'Live Flight Results',
                   style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 18,
@@ -725,213 +783,33 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
                   ),
                 ),
               ),
-              _buildBadge('Lowest CO2', AppColors.primaryGreen),
+              _buildBadge('Real search', AppColors.primaryGreen),
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            '${ecoRoute.airline} • ${ecoRoute.stopsLabel}',
-            style: const TextStyle(
+          const Text(
+            'This screen opens live airline schedules and pricing on the booking provider instead of showing generated sample fares inside the app.',
+            style: TextStyle(
               color: AppColors.textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 14),
           Text(
-            ecoRoute.routeDescription,
+            _authService.isGuest
+                ? 'Sign in to access real flight search results.'
+                : _isRoundTrip
+                    ? 'Round trips open the outbound search first, then a second step opens the return-leg search back to your original airport.'
+                    : 'One-way searches open directly to live results for your selected route, date, passenger count, and cabin class.',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetric(
-                  label: 'Carbon',
-                  value: '${ecoRoute.emissionsKg.toStringAsFixed(0)} kg CO2',
-                ),
-              ),
-              Expanded(
-                child: _buildMetric(
-                  label: 'Duration',
-                  value: ecoRoute.durationLabel,
-                ),
-              ),
-              Expanded(
-                child: _buildMetric(
-                  label: 'Price',
-                  value: _formatPrice(ecoRoute.price),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCheapestOptions(List<_FlightOffer> offers) {
-    final sortedByPrice = [...offers]..sort((a, b) => a.price.compareTo(b.price));
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Cheapest Options',
-                  style: TextStyle(
-                    color: Color(0xFF10131E),
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              if (_hasSearched)
-                const Text(
-                  'Updated',
-                  style: TextStyle(
-                    color: AppColors.primaryGreen,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Based on ${_selectedCabin.displayName.toLowerCase()} fares for $_passengers passenger${_passengers == 1 ? '' : 's'}.',
-            style: const TextStyle(
-              color: Color(0xFF737896),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 16),
-          for (var i = 0; i < sortedByPrice.length; i++) ...[
-            _buildOfferTile(sortedByPrice[i], isCheapest: i == 0),
-            if (i != sortedByPrice.length - 1) const SizedBox(height: 12),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOfferTile(_FlightOffer offer, {required bool isCheapest}) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FB),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isCheapest
-              ? AppColors.primaryGreen.withValues(alpha: 0.45)
-              : const Color(0xFFE2E5EE),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  offer.airline,
-                  style: const TextStyle(
-                    color: Color(0xFF10131E),
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              if (isCheapest) _buildBadge('Cheapest', AppColors.primaryGreen),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            offer.routeDescription,
-            style: const TextStyle(color: Color(0xFF737896)),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildLightMetric(
-                  label: 'Fare',
-                  value: _formatPrice(offer.price),
-                ),
-              ),
-              Expanded(
-                child: _buildLightMetric(
-                  label: 'Emissions',
-                  value: '${offer.emissionsKg.toStringAsFixed(0)} kg',
-                ),
-              ),
-              Expanded(
-                child: _buildLightMetric(
-                  label: 'Trip',
-                  value: offer.stopsLabel,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetric({required String label, required String value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLightMetric({required String label, required String value}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFF8A8FA7),
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Color(0xFF10131E),
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
     );
   }
 
@@ -953,84 +831,10 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     );
   }
 
-  List<_FlightOffer> _buildOffers() {
-    final distanceKm = _distanceKm(_fromAirport, _toAirport);
-    final tripMultiplier = _isRoundTrip ? 1.82 : 1.0;
-    final cabinPriceMultiplier = switch (_selectedCabin) {
-      CabinClass.economy => 1.0,
-      CabinClass.premiumEconomy => 1.35,
-      CabinClass.business => 2.2,
-      CabinClass.first => 3.1,
-    };
-    final cabinEmissionMultiplier = switch (_selectedCabin) {
-      CabinClass.economy => 1.0,
-      CabinClass.premiumEconomy => 1.28,
-      CabinClass.business => 1.85,
-      CabinClass.first => 2.45,
-    };
-    final passengerMultiplier = math.max(1, _passengers).toDouble();
-    final basePrice = (58 + distanceKm * 0.092) * tripMultiplier * cabinPriceMultiplier;
-    final baseEmissions = distanceKm * 0.115 * tripMultiplier * cabinEmissionMultiplier;
-    final baseDurationHours = distanceKm / 790;
-
-    return [
-      _FlightOffer(
-        airline: 'BudgetSky',
-        price: basePrice * 0.86 * passengerMultiplier,
-        emissionsKg: baseEmissions * 1.12 * passengerMultiplier,
-        durationHours: baseDurationHours + 2.1,
-        stopsLabel: '1 stop',
-        routeDescription: '${_fromAirport.code} → ${_toAirport.code}',
-      ),
-      _FlightOffer(
-        airline: 'CoastAir',
-        price: basePrice * 1.03 * passengerMultiplier,
-        emissionsKg: baseEmissions * 0.96 * passengerMultiplier,
-        durationHours: baseDurationHours + 0.4,
-        stopsLabel: 'Direct',
-        routeDescription: '${_fromAirport.code} → ${_toAirport.code}',
-      ),
-      _FlightOffer(
-        airline: 'EcoWings',
-        price: basePrice * 1.11 * passengerMultiplier,
-        emissionsKg: baseEmissions * 0.79 * passengerMultiplier,
-        durationHours: baseDurationHours + 0.9,
-        stopsLabel: 'Direct',
-        routeDescription: '${_fromAirport.code} → ${_toAirport.code}',
-      ),
-    ];
-  }
-
-  double _distanceKm(AirportOption from, AirportOption to) {
-    const earthRadiusKm = 6371.0;
-    final lat1 = _degreesToRadians(from.latitude);
-    final lon1 = _degreesToRadians(from.longitude);
-    final lat2 = _degreesToRadians(to.latitude);
-    final lon2 = _degreesToRadians(to.longitude);
-
-    final dLat = lat2 - lat1;
-    final dLon = lon2 - lon1;
-
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(lat1) *
-            math.cos(lat2) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-
-    return earthRadiusKm * c;
-  }
-
-  double _degreesToRadians(double degrees) => degrees * math.pi / 180;
-
   String _formatDate(DateTime date) {
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$month/$day/${date.year}';
-  }
-
-  String _formatPrice(double value) {
-    return '\$${value.round()}';
   }
 
   Uri _buildFlightSearchUri({
@@ -1054,8 +858,17 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     );
   }
 
-  Future<void> _launchExternalSearch(Uri url) async {
-    final success = await launchUrl(url, mode: LaunchMode.externalApplication);
+  Future<bool> _launchExternalSearch(Uri url) async {
+    var success = await launchUrl(url, mode: LaunchMode.externalApplication);
+
+    if (!success) {
+      success = await launchUrl(url, mode: LaunchMode.platformDefault);
+    }
+
+    if (!success) {
+      success = await launchUrl(url, mode: LaunchMode.inAppBrowserView);
+    }
+
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1064,6 +877,8 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
         ),
       );
     }
+
+    return success;
   }
 
   String _formatIsoDate(DateTime date) {
@@ -1079,30 +894,5 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
       CabinClass.business => 'business',
       CabinClass.first => 'first',
     };
-  }
-}
-
-class _FlightOffer {
-  const _FlightOffer({
-    required this.airline,
-    required this.price,
-    required this.emissionsKg,
-    required this.durationHours,
-    required this.stopsLabel,
-    required this.routeDescription,
-  });
-
-  final String airline;
-  final double price;
-  final double emissionsKg;
-  final double durationHours;
-  final String stopsLabel;
-  final String routeDescription;
-
-  String get durationLabel {
-    final totalMinutes = (durationHours * 60).round();
-    final hours = totalMinutes ~/ 60;
-    final minutes = totalMinutes % 60;
-    return '${hours}h ${minutes.toString().padLeft(2, '0')}m';
   }
 }

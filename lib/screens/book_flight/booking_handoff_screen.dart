@@ -20,7 +20,7 @@ class BookingHandoffScreen extends StatefulWidget {
   final DateTime returnDate;
   final Uri outboundUrl;
   final Uri returnUrl;
-  final Future<void> Function(Uri url) onLaunchUrl;
+  final Future<bool> Function(Uri url) onLaunchUrl;
 
   @override
   State<BookingHandoffScreen> createState() => _BookingHandoffScreenState();
@@ -28,6 +28,8 @@ class BookingHandoffScreen extends StatefulWidget {
 
 class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
   bool _outboundOpened = false;
+  bool _isOpeningOutbound = false;
+  bool _isOpeningReturn = false;
 
   @override
   Widget build(BuildContext context) {
@@ -79,14 +81,19 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                     '${widget.origin} to ${widget.destination} • ${_formatDate(widget.outboundDate)}',
                 buttonLabel: 'Open outbound search',
                 onPressed: () async {
-                  await widget.onLaunchUrl(widget.outboundUrl);
+                  setState(() {
+                    _isOpeningOutbound = true;
+                  });
+                  final opened = await widget.onLaunchUrl(widget.outboundUrl);
                   if (mounted) {
                     setState(() {
-                      _outboundOpened = true;
+                      _isOpeningOutbound = false;
+                      _outboundOpened = opened;
                     });
                   }
                 },
                 isActive: true,
+                isLoading: _isOpeningOutbound,
               ),
               const SizedBox(height: 14),
               _buildStepCard(
@@ -97,10 +104,19 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                 buttonLabel: 'Open return search',
                 onPressed: _outboundOpened
                     ? () async {
+                        setState(() {
+                          _isOpeningReturn = true;
+                        });
                         await widget.onLaunchUrl(widget.returnUrl);
+                        if (mounted) {
+                          setState(() {
+                            _isOpeningReturn = false;
+                          });
+                        }
                       }
                     : null,
                 isActive: _outboundOpened,
+                isLoading: _isOpeningReturn,
               ),
               const Spacer(),
               Text(
@@ -126,79 +142,106 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
     required String buttonLabel,
     required VoidCallback? onPressed,
     required bool isActive,
+    bool isLoading = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onPressed,
         borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? AppColors.primaryGreen
-                      : const Color(0xFFE3E6EF),
-                  borderRadius: BorderRadius.circular(17),
+              Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.primaryGreen
+                          : const Color(0xFFE3E6EF),
+                      borderRadius: BorderRadius.circular(17),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      step,
+                      style: TextStyle(
+                        color: isActive ? Colors.white : const Color(0xFF5F657A),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFF10131E),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Color(0xFF737896),
+                  fontSize: 14,
                 ),
-                alignment: Alignment.center,
-                child: Text(
-                  step,
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: onPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: isActive
+                        ? const Color(0xFF0A0B1C)
+                        : const Color(0xFFC2C7D6),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          buttonLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                ),
+              ),
+              if (isActive && onPressed != null) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'You can tap the button or anywhere on this card.',
                   style: TextStyle(
-                    color: isActive ? Colors.white : const Color(0xFF5F657A),
-                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF737896),
+                    fontSize: 12,
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Color(0xFF10131E),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
+              ],
             ],
           ),
-          const SizedBox(height: 10),
-          Text(
-            subtitle,
-            style: const TextStyle(
-              color: Color(0xFF737896),
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: isActive
-                    ? const Color(0xFF0A0B1C)
-                    : const Color(0xFFC2C7D6),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Text(
-                buttonLabel,
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
