@@ -614,11 +614,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildAirlineChip(
-            label: 'All Airlines',
-            isSelected: _selectedAirlineFilter == null,
-          ),
-          const SizedBox(width: 8),
           ..._airlineFilters.expand((airline) => [
                 _buildAirlineChip(
                   label: airline,
@@ -640,7 +635,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       selected: isSelected,
       onSelected: (_) {
         setState(() {
-          _selectedAirlineFilter = label == 'All Airlines' ? null : label;
+          _selectedAirlineFilter = label;
         });
         _verifyVisibleCatalogEntries();
       },

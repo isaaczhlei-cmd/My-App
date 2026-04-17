@@ -15,6 +15,10 @@ class CompareScreen extends StatefulWidget {
 class _CompareScreenState extends State<CompareScreen> {
   final _firestoreService = FirestoreService();
 
+  bool _isInCurrentMonth(DateTime date, DateTime now) {
+    return date.year == now.year && date.month == now.month;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -23,7 +27,10 @@ class _CompareScreenState extends State<CompareScreen> {
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
-            final flights = snapshot.data ?? [];
+            final now = DateTime.now();
+            final flights = (snapshot.data ?? [])
+                .where((flight) => _isInCurrentMonth(flight.date, now))
+                .toList();
             final totalKg = flights.fold<double>(0, (sum, f) => sum + f.emissionsKg);
             final totalTons = totalKg / 1000;
 
