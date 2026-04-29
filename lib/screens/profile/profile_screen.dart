@@ -147,24 +147,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                        if (!isGuest)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: AppColors.cardBackground,
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppColors.surface),
-                              ),
-                              child: const Icon(
-                                Icons.edit,
-                                size: 16,
-                                color: AppColors.primaryGreen,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                   ),
@@ -186,14 +168,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (!isGuest)
-                    const Text(
-                      'Tap photo to change',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
                   // Debug auth panel: omitted in profile & release (`kDebugMode` is false).
                   if (kDebugMode) ...[
                     const SizedBox(height: 20),
