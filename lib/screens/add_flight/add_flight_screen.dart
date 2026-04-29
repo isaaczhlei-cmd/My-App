@@ -454,12 +454,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeader(),
-              const SizedBox(height: 20),
               _buildHeroSearchCard(),
               const SizedBox(height: 18),
-              _buildTripSettingsCard(),
-              const SizedBox(height: 18),
+              _buildHeader(),
+              const SizedBox(height: 20),
               _buildFlightCatalogCard(),
               const SizedBox(height: 18),
               _buildManualEntryCard(),
@@ -584,6 +582,48 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           ),
           const SizedBox(height: 16),
           _buildAirlineFilterRow(),
+          const SizedBox(height: 18),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0x14FFFFFF),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0x26FFFFFF)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Trip settings',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Choose the date and cabin class before you add or compare flights.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.5,
+                    color: Color(0xFFD6E0E7),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildDateField(
+                  backgroundColor: Colors.white,
+                  labelColor: const Color(0xFFD6E0E7),
+                ),
+                const SizedBox(height: 16),
+                _buildCabinClassSelector(
+                  backgroundColor: Colors.white,
+                  labelColor: const Color(0xFFD6E0E7),
+                ),
+              ],
+            ),
+          ),
           if (kDebugMode && !_didLoadDebugHiddenEntries) ...[
             const SizedBox(height: 12),
             const Text(
@@ -758,43 +798,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildTripSettingsCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Trip settings',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1A1A2E),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'These settings are used when you tap a suggested flight or browse the catalog.',
-            style: TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: Color(0xFF6D7B88),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildDateField(),
-          const SizedBox(height: 16),
-          _buildCabinClassSelector(),
-        ],
       ),
     );
   }
@@ -1059,7 +1062,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(22),
       ),
       child: Column(
@@ -1080,11 +1083,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Enter flight manually',
+                          'Flight lookup',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: Color(0xFF1A1A2E),
                           ),
                         ),
                         SizedBox(height: 6),
@@ -1092,7 +1095,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                           'Use this if you already know the exact flight details.',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppColors.textSecondary,
+                            color: Color(0xFF6D7B88),
                           ),
                         ),
                       ],
@@ -1100,14 +1103,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                   ),
                   Icon(
                     _manualEntryExpanded ? Icons.remove : Icons.add,
-                    color: Colors.white,
+                    color: Color(0xFF1A1A2E),
                   ),
                 ],
               ),
             ),
           ),
           if (_manualEntryExpanded) ...[
-            const Divider(height: 1, color: Color(0xFF304356)),
+            const Divider(height: 1, color: Color(0xFFE3E8EE)),
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
               child: Column(
@@ -1251,16 +1254,19 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  Widget _buildDateField() {
+  Widget _buildDateField({
+    Color backgroundColor = const Color(0xFFF6F8FA),
+    Color labelColor = const Color(0xFF6D7B88),
+  }) {
     final dateStr = DateFormat('MMMM d, yyyy').format(_selectedDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Flight Date',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF6D7B88),
+            color: labelColor,
           ),
         ),
         const SizedBox(height: 8),
@@ -1270,7 +1276,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF6F8FA),
+              color: backgroundColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1297,56 +1303,104 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  Widget _buildCabinClassSelector() {
+  Widget _buildCabinClassSelector({
+    Color backgroundColor = const Color(0xFFF6F8FA),
+    Color labelColor = const Color(0xFF6D7B88),
+  }) {
+    final cabins = CabinClass.values;
+    final selectedIndex = cabins.indexOf(_selectedCabin);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Cabin Class',
           style: TextStyle(
             fontSize: 14,
-            color: Color(0xFF6D7B88),
+            color: labelColor,
           ),
         ),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF6F8FA),
+            color: backgroundColor,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            children: CabinClass.values.map((cabin) {
-              final isSelected = cabin == _selectedCabin;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => _onCabinChanged(cabin),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.primaryGreen
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      cabin == CabinClass.premiumEconomy
-                          ? 'Prem.'
-                          : cabin.displayName,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                        color: isSelected
-                            ? Colors.white
-                            : const Color(0xFF757575),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final segmentWidth = constraints.maxWidth / cabins.length;
+
+              return Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    left: segmentWidth * selectedIndex,
+                    top: 0,
+                    bottom: 0,
+                    width: segmentWidth,
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGreen,
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x24000000),
+                              blurRadius: 12,
+                              offset: Offset(0, 6),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  Row(
+                    children: cabins.map((cabin) {
+                      final isSelected = cabin == _selectedCabin;
+                      return Expanded(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            splashColor: AppColors.primaryGreen.withValues(
+                              alpha: 0.14,
+                            ),
+                            highlightColor: Colors.transparent,
+                            onTap: () => _onCabinChanged(cabin),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : const Color(0xFF757575),
+                                ),
+                                child: Text(
+                                  cabin == CabinClass.premiumEconomy
+                                      ? 'Prem.'
+                                      : cabin.displayName,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
               );
-            }).toList(),
+            },
           ),
         ),
       ],
