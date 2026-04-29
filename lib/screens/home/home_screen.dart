@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
+import '../../services/eco_tip_service.dart';
 import '../../services/firestore_service.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
+import 'widgets/eco_tip_card.dart';
 import 'widgets/flight_card.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../profile/profile_screen.dart';
@@ -17,6 +19,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
+  final _ecoTipService = EcoTipService();
+  final Map<String, Future<EcoTipSuggestion>> _ecoTipFutures = {};
+  int _ecoTipRefreshNonce = 0;
+
+  @override
+  void dispose() {
+    _ecoTipService.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +48,12 @@ class _HomeScreenState extends State<HomeScreen> {
             final totalMilesK = (totalEmissionsKg * 2.51 / 1000);
 
             final recentFlights = flights.take(5).toList();
+            final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
+            final ecoTipFuture = _getEcoTipFuture(
+              flightCount: totalFlights,
+              totalEmissionsKg: totalEmissionsKg,
+              recentTravelPattern: recentTravelPattern,
+            );
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -51,7 +68,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 24),
                   _buildRecentFlights(recentFlights),
                   const SizedBox(height: 20),
-                  _buildEcoTip(),
+                  _buildEcoTip(
+                    ecoTipFuture,
+                  ),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -332,49 +351,57 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildEcoTip() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.eco, color: AppColors.primaryGreen, size: 20),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Eco Tip',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Direct flights produce 20% less CO\u2082 than connecting flights.',
-                  style: TextStyle(fontSize: 14, color: Color(0xFF757575)),
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildEcoTip(
+    Future<EcoTipSuggestion> ecoTipFuture,
+  ) {
+    return FutureBuilder<EcoTipSuggestion>(
+      future: ecoTipFuture,
+      builder: (context, snapshot) {
+        final tip = snapshot.data?.tip ?? 'Finding a fresh eco tip...';
+        final isRefreshing = snapshot.connectionState == ConnectionState.waiting;
+        return EcoTipCard(
+          tip: tip,
+          isRefreshing: isRefreshing,
+          onRefresh: isRefreshing
+              ? null
+              : () {
+                  if (!mounted) return;
+                  setState(() {
+                    _ecoTipRefreshNonce++;
+                  });
+                },
+        );
+      },
+    );
+  }
+
+  Future<EcoTipSuggestion> _getEcoTipFuture({
+    required int flightCount,
+    required double totalEmissionsKg,
+    required String recentTravelPattern,
+  }) {
+    final cacheKey =
+        '$flightCount|${totalEmissionsKg.toStringAsFixed(1)}|$recentTravelPattern|$_ecoTipRefreshNonce';
+    return _ecoTipFutures.putIfAbsent(
+      cacheKey,
+      () => _ecoTipService.fetchEcoTip(
+        flightCount: flightCount,
+        totalEmissionsKg: totalEmissionsKg,
+        recentTravelPattern: recentTravelPattern,
+        refreshToken: _ecoTipRefreshNonce,
       ),
     );
+  }
+
+  String _buildRecentTravelPattern(List<Flight> recentFlights) {
+    if (recentFlights.isEmpty) {
+      return 'No recorded flights yet.';
+    }
+
+    final routes = recentFlights
+        .take(3)
+        .map((flight) => '${flight.originCode} -> ${flight.destinationCode}')
+        .join(', ');
+    return 'Recent routes: $routes.';
   }
 }

@@ -2,8 +2,15 @@ import 'package:flutter/material.dart';
 
 class EcoTipCard extends StatelessWidget {
   final String tip;
+  final VoidCallback? onRefresh;
+  final bool isRefreshing;
 
-  const EcoTipCard({super.key, required this.tip});
+  const EcoTipCard({
+    super.key,
+    required this.tip,
+    this.onRefresh,
+    this.isRefreshing = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -33,18 +40,49 @@ class EcoTipCard extends StatelessWidget {
           ),
           const SizedBox(width: 12),
 
-          // Text content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Eco Tip',
-                  style: TextStyle(
-                    color: Color(0xFF2E7D32),
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Eco Tip',
+                        style: TextStyle(
+                          color: Color(0xFF2E7D32),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (onRefresh != null)
+                      SizedBox(
+                        height: 30,
+                        child: TextButton.icon(
+                          onPressed: isRefreshing ? null : onRefresh,
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF2E7D32),
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            minimumSize: const Size(0, 30),
+                          ),
+                          icon: isRefreshing
+                              ? const SizedBox(
+                                  width: 14,
+                                  height: 14,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFF2E7D32),
+                                  ),
+                                )
+                              : const Icon(Icons.refresh, size: 16),
+                          label: Text(isRefreshing ? 'Refreshing' : 'Refresh'),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text(
