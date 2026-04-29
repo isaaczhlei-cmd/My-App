@@ -31,14 +31,17 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   final FocusNode _toFocusNode = FocusNode();
   List<AirportOption> _fromMatches = const [];
   List<AirportOption> _toMatches = const [];
-  DateTime _departDate = DateTime(2026, 4, 15);
-  DateTime _returnDate = DateTime(2026, 4, 22);
+  late DateTime _departDate;
+  late DateTime _returnDate;
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
 
   @override
   void initState() {
     super.initState();
+    final today = DateUtils.dateOnly(DateTime.now());
+    _departDate = today;
+    _returnDate = today.add(const Duration(days: 2));
     _fromController = TextEditingController(text: _fromAirport.shortLabel);
     _toController = TextEditingController(text: _toAirport.shortLabel);
 
