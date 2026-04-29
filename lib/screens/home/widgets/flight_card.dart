@@ -11,7 +11,7 @@ class FlightCard extends StatelessWidget {
 
   String get _airlineLogoUrl {
     if (_airlineCode.isEmpty) return '';
-    return 'https://content.airhex.com/content/logos/airlines_${_airlineCode}_350_100_r.png';
+    return 'https://pics.avs.io/200/200/$_airlineCode.png';
   }
 
   @override
