@@ -7,12 +7,19 @@ class FlightCard extends StatelessWidget {
 
   const FlightCard({super.key, required this.flight});
 
+  String get _airlineCode => flight.AirlineCode.trim().toUpperCase();
+
+  String get _airlineLogoUrl {
+    if (_airlineCode.isEmpty) return '';
+    return 'https://content.airhex.com/content/logos/airlines_${_airlineCode}_350_100_r.png';
+  }
+
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('MMM d').format(flight.date);
     final emissionsTons = (flight.emissionsKg / 1000).toStringAsFixed(2);
-    final airlineInfo = flight.AirlineCode.isNotEmpty
-        ? '${flight.AirlineCode} ${flight.AirlineNumber}'
+    final airlineInfo = _airlineCode.isNotEmpty
+        ? '$_airlineCode ${flight.AirlineNumber}'
         : 'Unknown';
 
     return Container(
@@ -24,7 +31,6 @@ class FlightCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Airline logo placeholder
           Container(
             width: 44,
             height: 44,
@@ -32,16 +38,43 @@ class FlightCard extends StatelessWidget {
               color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Center(
-              child: Text(
-                flight.AirlineCode.isNotEmpty ? flight.AirlineCode : '??',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF616161),
-                ),
-              ),
-            ),
+            child: _airlineCode.isEmpty
+                ? const Center(
+                    child: Icon(
+                      Icons.flight,
+                      size: 22,
+                      color: Color(0xFF616161),
+                    ),
+                  )
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      _airlineLogoUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Text(
+                            _airlineCode,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF616161),
+                            ),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
           const SizedBox(width: 12),
           // Flight route info
