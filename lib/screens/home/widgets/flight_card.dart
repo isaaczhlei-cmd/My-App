@@ -11,7 +11,7 @@ class FlightCard extends StatelessWidget {
 
   String get _airlineLogoUrl {
     if (_airlineCode.isEmpty) return '';
-    return 'https://pics.avs.io/200/200/$_airlineCode.png';
+    return 'https://www.gstatic.com/flights/airline_logos/70px/$_airlineCode.png';
   }
 
   @override
@@ -50,7 +50,7 @@ class FlightCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     child: Image.network(
                       _airlineLogoUrl,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
                         return Center(
                           child: Text(
