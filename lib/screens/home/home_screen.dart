@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const int _recentFlightsLimit = 5;
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
   final _ecoTipService = EcoTipService();
@@ -47,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Rough estimate: 1 kg CO2 ≈ 2.51 miles flown
             final totalMilesK = (totalEmissionsKg * 2.51 / 1000);
 
-            final recentFlights = flights.take(5).toList();
+            final recentFlights = flights.take(_recentFlightsLimit).toList();
             final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
             final ecoTipFuture = _getEcoTipFuture(
               flightCount: totalFlights,
