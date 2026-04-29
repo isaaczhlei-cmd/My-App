@@ -16,7 +16,8 @@ class BookFlightScreen extends StatefulWidget {
   State<BookFlightScreen> createState() => _BookFlightScreenState();
 }
 
-class _BookFlightScreenState extends State<BookFlightScreen> {
+class _BookFlightScreenState extends State<BookFlightScreen>
+    with SingleTickerProviderStateMixin {
   final _authService = AuthService();
   bool _isRoundTrip = true;
   AirportOption _fromAirport = AirportDirectory.airports.firstWhere(
@@ -31,6 +32,8 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   final FocusNode _toFocusNode = FocusNode();
   List<AirportOption> _fromMatches = const [];
   List<AirportOption> _toMatches = const [];
+  late final AnimationController _swapAnimationController;
+  late final Animation<double> _swapRotationAnimation;
   late DateTime _departDate;
   late DateTime _returnDate;
   int _passengers = 1;
@@ -39,6 +42,14 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   @override
   void initState() {
     super.initState();
+    _swapAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _swapRotationAnimation = CurvedAnimation(
+      parent: _swapAnimationController,
+      curve: Curves.easeInOut,
+    );
     final today = DateUtils.dateOnly(DateTime.now());
     _departDate = today;
     _returnDate = today.add(const Duration(days: 2));
@@ -51,6 +62,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
 
   @override
   void dispose() {
+    _swapAnimationController.dispose();
     _fromController.dispose();
     _toController.dispose();
     _fromFocusNode
@@ -156,6 +168,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
       _fromMatches = const [];
       _toMatches = const [];
     });
+    _swapAnimationController.forward(from: 0);
   }
 
   Future<void> _runSearch() async {
@@ -397,7 +410,13 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
               ),
               child: IconButton(
                 onPressed: _swapAirports,
-                icon: const Icon(Icons.swap_vert, color: Color(0xFF30324A)),
+                icon: RotationTransition(
+                  turns: _swapRotationAnimation,
+                  child: const Icon(
+                    Icons.swap_vert,
+                    color: Color(0xFF30324A),
+                  ),
+                ),
               ),
             ),
           ),

@@ -163,13 +163,19 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _clearLookupResult();
     });
 
-    final result = await _emissionsService.computeFlightEmissions(
+    final specificEmissionFuture = _emissionsService.computeFlightEmissions(
       origin: origin,
       destination: destination,
       operatingCarrierCode: parsed.carrier,
       flightNumber: parsed.number,
       departureDate: _selectedDate,
     );
+    final typicalEmissionFuture = _emissionsService.computeTypicalEmissions(
+      origin: origin,
+      destination: destination,
+    );
+
+    final result = await specificEmissionFuture;
 
     if (!mounted) return;
 
@@ -193,10 +199,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       }
     }
 
-    final typicalResult = await _emissionsService.computeTypicalEmissions(
-      origin: origin,
-      destination: destination,
-    );
+    final typicalResult = await typicalEmissionFuture;
 
     if (!mounted) return;
 
