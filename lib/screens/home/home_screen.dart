@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/eco_tip_service.dart';
@@ -28,10 +30,56 @@ class _HomeScreenState extends State<HomeScreen> {
     return date.year == now.year && date.month == now.month;
   }
 
+  final Map<String, Timer> _pendingDeletions = {};
+  final Map<String, Flight> _pendingFlightData = {};
+
   @override
   void dispose() {
+    for (final entry in _pendingDeletions.entries) {
+      entry.value.cancel();
+      _firestoreService.deleteFlight(entry.key);
+    }
+    _pendingDeletions.clear();
+    _pendingFlightData.clear();
     _ecoTipService.dispose();
     super.dispose();
+  }
+
+  void _handleFlightDismiss(Flight flight) {
+    final flightId = flight.id;
+    setState(() {
+      _pendingFlightData[flightId] = flight;
+      _pendingDeletions[flightId] = Timer(
+        const Duration(seconds: 5),
+        () {
+          _firestoreService.deleteFlight(flightId);
+          if (mounted) {
+            setState(() {
+              _pendingDeletions.remove(flightId);
+              _pendingFlightData.remove(flightId);
+            });
+          }
+        },
+      );
+    });
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Flight deleted'),
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            _pendingDeletions[flightId]?.cancel();
+            setState(() {
+              _pendingDeletions.remove(flightId);
+              _pendingFlightData.remove(flightId);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -314,6 +362,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentFlights(List<Flight> recentFlights) {
+    final visibleFlights = recentFlights
+        .where((f) => !_pendingDeletions.containsKey(f.id))
+        .toList();
+    final isGuest = _authService.isGuest;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -326,7 +379,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 8),
-        if (recentFlights.isEmpty)
+        if (visibleFlights.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
@@ -355,7 +408,25 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )
         else
-          ...recentFlights.map((flight) => FlightCard(flight: flight)),
+          ...visibleFlights.map((flight) {
+            if (isGuest) return FlightCard(flight: flight);
+            return Dismissible(
+              key: Key(flight.id),
+              direction: DismissDirection.endToStart,
+              onDismissed: (_) => _handleFlightDismiss(flight),
+              background: Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.only(right: 20),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              child: FlightCard(flight: flight),
+            );
+          }),
       ],
     );
   }
