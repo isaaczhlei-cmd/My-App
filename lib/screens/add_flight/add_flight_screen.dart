@@ -33,8 +33,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   bool _hasResult = false;
   bool _isLoading = false;
   bool _isSaving = false;
-  bool _manualEntryExpanded = false;
-  bool _didLoadDebugHiddenEntries = !kDebugMode;
   String? _errorMessage;
   String? _selectedAirlineFilter;
   FlightCatalogEntry? _selectedCatalogEntry;
@@ -100,18 +98,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
 
   List<String> get _airlineFilters => FlightCatalog.airlineOptions();
 
-  List<FlightCatalogEntry> get _suggestedFlights {
-    final query = _heroSearchController.text.trim();
-    if (query.isEmpty) return const [];
-    final matches = FlightCatalog.search(
-      query,
-      airlineName: _selectedAirlineFilter,
-      limit: 6,
-      hiddenEntryIds: _hiddenCatalogEntryIds,
-    );
-    return _filterVerifiedEntries(matches);
-  }
-
   List<FlightCatalogEntry> get _catalogFlights {
     final query = _heroSearchController.text.trim();
     if (query.isEmpty) {
@@ -130,28 +116,35 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return _filterVerifiedEntries(matches);
   }
 
-  List<FlightCatalogEntry> _filterVerifiedEntries(List<FlightCatalogEntry> entries) {
+  List<FlightCatalogEntry> _filterVerifiedEntries(
+    List<FlightCatalogEntry> entries,
+  ) {
     if (kDebugMode) return entries;
     return entries.where((entry) {
-      return _verificationStatusFor(entry) != _CatalogVerificationStatus.invalid;
+      return _verificationStatusFor(entry) !=
+          _CatalogVerificationStatus.invalid;
     }).toList();
   }
 
   Future<void> _lookupFlight() async {
-    final parsed = _parseFlightNumber(_flightNumberController.text);
-    if (parsed == null) {
-      setState(() {
-        _errorMessage = 'Enter a valid flight number (e.g. UA 857)';
-        _clearLookupResult();
-      });
-      return;
-    }
-
     final origin = _parseAirportCode(_originController.text);
     final destination = _parseAirportCode(_destinationController.text);
     if (origin == null || destination == null) {
       setState(() {
         _errorMessage = 'Enter valid 3-letter airport codes like SFO and JFK';
+        _clearLookupResult();
+      });
+      return;
+    }
+
+    final flightNumber = _flightNumberController.text.trim();
+    final parsed = flightNumber.isEmpty
+        ? null
+        : _parseFlightNumber(flightNumber);
+    if (flightNumber.isNotEmpty && parsed == null) {
+      setState(() {
+        _errorMessage =
+            'Enter a valid flight number like UA 857, or leave it blank.';
         _clearLookupResult();
       });
       return;
@@ -163,39 +156,41 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _clearLookupResult();
     });
 
-    final specificEmissionFuture = _emissionsService.computeFlightEmissions(
-      origin: origin,
-      destination: destination,
-      operatingCarrierCode: parsed.carrier,
-      flightNumber: parsed.number,
-      departureDate: _selectedDate,
-    );
     final typicalEmissionFuture = _emissionsService.computeTypicalEmissions(
       origin: origin,
       destination: destination,
     );
 
-    final result = await specificEmissionFuture;
+    if (parsed != null) {
+      final result = await _emissionsService.computeFlightEmissions(
+        origin: origin,
+        destination: destination,
+        operatingCarrierCode: parsed.carrier,
+        flightNumber: parsed.number,
+        departureDate: _selectedDate,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result != null && result.flightEmissions.isNotEmpty) {
-      final emission = result.flightEmissions.first;
-      final kg = emission.getEmissionsKg(_selectedCabin);
+      if (result != null && result.flightEmissions.isNotEmpty) {
+        final emission = result.flightEmissions.first;
+        final kg = emission.getEmissionsKg(_selectedCabin);
 
-      if (kg > 0) {
-        setState(() {
-          _flightEmission = emission;
-          _origin = emission.flight?.origin ?? origin;
-          _destination = emission.flight?.destination ?? destination;
-          _airlineCode = emission.flight?.operatingCarrierCode ?? parsed.carrier;
-          _flightNum = emission.flight?.flightNumber ?? parsed.number;
-          _emissionsKg = kg;
-          _usedTypicalFallback = false;
-          _isLoading = false;
-          _hasResult = true;
-        });
-        return;
+        if (kg > 0) {
+          setState(() {
+            _flightEmission = emission;
+            _origin = emission.flight?.origin ?? origin;
+            _destination = emission.flight?.destination ?? destination;
+            _airlineCode =
+                emission.flight?.operatingCarrierCode ?? parsed.carrier;
+            _flightNum = emission.flight?.flightNumber ?? parsed.number;
+            _emissionsKg = kg;
+            _usedTypicalFallback = false;
+            _isLoading = false;
+            _hasResult = true;
+          });
+          return;
+        }
       }
     }
 
@@ -211,8 +206,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         _typicalEmission = typical;
         _origin = origin;
         _destination = destination;
-        _airlineCode = parsed.carrier;
-        _flightNum = parsed.number;
+        _airlineCode = parsed?.carrier ?? '';
+        _flightNum = parsed?.number ?? 0;
         _emissionsKg = kg;
         _usedTypicalFallback = true;
         _isLoading = false;
@@ -251,11 +246,22 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _verifyVisibleCatalogEntries();
   }
 
+  void _swapRoute() {
+    final origin = _originController.text;
+    _originController.text = _destinationController.text;
+    _destinationController.text = origin;
+    setState(() {
+      _errorMessage = null;
+      _selectedCatalogEntry = null;
+      _clearLookupResult();
+    });
+  }
+
   Future<void> _selectCatalogFlight(FlightCatalogEntry entry) async {
     setState(() {
       _selectedCatalogEntry = entry;
       _heroSearchController.text = entry.flightCode;
-      _flightNumberController.text = entry.flightCode;
+      _flightNumberController.text = entry.compactFlightCode;
       _originController.text = entry.originCode;
       _destinationController.text = entry.destinationCode;
       _errorMessage = null;
@@ -301,7 +307,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     if (!mounted) return;
     setState(() {
       _hiddenCatalogEntryIds = hiddenIds;
-      _didLoadDebugHiddenEntries = true;
     });
     _verifyVisibleCatalogEntries();
   }
@@ -310,7 +315,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     if (!kDebugMode) return;
     final nextHidden = {..._hiddenCatalogEntryIds, entry.id};
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_hiddenCatalogPrefsKey, nextHidden.toList()..sort());
+    await prefs.setStringList(
+      _hiddenCatalogPrefsKey,
+      nextHidden.toList()..sort(),
+    );
     if (!mounted) return;
     setState(() {
       _hiddenCatalogEntryIds = nextHidden;
@@ -350,7 +358,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       if (!seenIds.add(entry.id)) continue;
       final key = _verificationKeyFor(entry);
       if (!forceRefresh &&
-          (_verificationStatusByKey.containsKey(key) || _activeVerificationKeys.contains(key))) {
+          (_verificationStatusByKey.containsKey(key) ||
+              _activeVerificationKeys.contains(key))) {
         continue;
       }
       _startVerification(entry);
@@ -377,8 +386,9 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     final isValid = result != null && result.flightEmissions.isNotEmpty;
     setState(() {
       _activeVerificationKeys.remove(key);
-      _verificationStatusByKey[key] =
-          isValid ? _CatalogVerificationStatus.valid : _CatalogVerificationStatus.invalid;
+      _verificationStatusByKey[key] = isValid
+          ? _CatalogVerificationStatus.valid
+          : _CatalogVerificationStatus.invalid;
     });
   }
 
@@ -416,7 +426,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       emissionsKg: _emissionsKg,
       createdAt: DateTime.now(),
       AirlineCode: _airlineCode,
-      AirlineNumber: _flightNum.toString(),
+      AirlineNumber: _flightNum > 0 ? _flightNum.toString() : '',
     );
 
     await _firestoreService.addFlight(flight);
@@ -454,14 +464,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroSearchCard(),
-              const SizedBox(height: 18),
               _buildHeader(),
-              const SizedBox(height: 20),
-              _buildFlightCatalogCard(),
               const SizedBox(height: 18),
-              _buildManualEntryCard(),
-              const SizedBox(height: 24),
+              _buildFindFlightCard(),
+              const SizedBox(height: 20),
               if (_errorMessage != null) _buildErrorMessage(),
               if (_isLoading) _buildLoadingIndicator(),
               if (_hasResult && !_isLoading) ...[
@@ -496,29 +502,23 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         ),
         SizedBox(height: 6),
         Text(
-          'Search, browse, and add a flight with one tap.',
-          style: TextStyle(
-            fontSize: 15,
-            color: AppColors.textSecondary,
-          ),
+          'Search the catalog or enter route details manually.',
+          style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
         ),
       ],
     );
   }
 
-  Widget _buildHeroSearchCard() {
-    final suggestions = _suggestedFlights;
+  Widget _buildFindFlightCard() {
+    final flights = _catalogFlights;
+    final hasQuery = _heroSearchController.text.trim().isNotEmpty;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF24415B), Color(0xFF1B2838)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -526,129 +526,188 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           const Text(
             'Find your flight fast',
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Type a flight number, airline, or route and the app will suggest flights you can add instantly.',
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.5,
-              color: Color(0xFFD6E0E7),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: TextField(
-              controller: _heroSearchController,
-              textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(
-                color: Color(0xFF1A1A2E),
-                fontSize: 17,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Try UA 857, Delta, or SFO to JFK',
-                hintStyle: const TextStyle(color: Color(0xFF93A1AE)),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFF607080)),
-                suffixIcon: _heroSearchController.text.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          setState(() {
-                            _heroSearchController.clear();
-                            _selectedCatalogEntry = null;
-                            _errorMessage = null;
-                            _clearLookupResult();
-                          });
-                        },
-                        icon: const Icon(Icons.close, color: Color(0xFF607080)),
-                      ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                  vertical: 18,
-                ),
-              ),
-              onChanged: _onHeroQueryChanged,
-            ),
-          ),
           const SizedBox(height: 16),
-          _buildAirlineFilterRow(),
+          _buildTripOptionsRow(),
           const SizedBox(height: 18),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0x14FFFFFF),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0x26FFFFFF)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Trip settings',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
+          _buildAirportCodeField(
+            label: 'From',
+            controller: _originController,
+            hintText: 'LAX',
+            icon: Icons.radio_button_checked,
+            backgroundColor: AppColors.surface,
+            borderColor: const Color(0xFF3A4B5C),
+            labelColor: AppColors.textSecondary,
+            textColor: Colors.white,
+            hintColor: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: IconButton.filled(
+              onPressed: _swapRoute,
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surface,
+                foregroundColor: AppColors.primaryGreen,
+                shape: const CircleBorder(
+                  side: BorderSide(color: Color(0xFF3A4B5C)),
                 ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Choose the date and cabin class before you add or compare flights.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    height: 1.5,
-                    color: Color(0xFFD6E0E7),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildDateField(
-                  backgroundColor: Colors.white,
-                  labelColor: const Color(0xFFD6E0E7),
-                ),
-                const SizedBox(height: 16),
-                _buildCabinClassSelector(
-                  backgroundColor: Colors.white,
-                  labelColor: const Color(0xFFD6E0E7),
-                ),
-              ],
+              ),
+              tooltip: 'Swap route',
+              icon: const Icon(Icons.swap_vert, size: 24),
             ),
           ),
-          if (kDebugMode && !_didLoadDebugHiddenEntries) ...[
-            const SizedBox(height: 12),
-            const Text(
-              'Loading debug catalog controls...',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFFD6E0E7),
-              ),
+          const SizedBox(height: 8),
+          _buildAirportCodeField(
+            label: 'To',
+            controller: _destinationController,
+            hintText: 'JFK',
+            icon: Icons.location_on_outlined,
+            backgroundColor: AppColors.surface,
+            borderColor: const Color(0xFF3A4B5C),
+            labelColor: AppColors.textSecondary,
+            textColor: Colors.white,
+            hintColor: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 14),
+          _buildDateField(
+            backgroundColor: AppColors.surface,
+            labelColor: AppColors.textSecondary,
+            borderColor: const Color(0xFF3A4B5C),
+            textColor: Colors.white,
+          ),
+          const SizedBox(height: 14),
+          _buildCabinClassSelector(
+            backgroundColor: AppColors.surface,
+            labelColor: AppColors.textSecondary,
+          ),
+          const SizedBox(height: 20),
+          const Divider(height: 1, color: Color(0xFF3A4B5C)),
+          const SizedBox(height: 18),
+          _buildCatalogSearchField(),
+          const SizedBox(height: 12),
+          _buildAirlineFilterRow(),
+          const SizedBox(height: 14),
+          Text(
+            hasQuery
+                ? 'Tap a match to autofill the route and airline details.'
+                : 'Featured flights appear here. Search CX881, Cathay, or LAX to HKG.',
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.5,
+              color: AppColors.textSecondary,
             ),
-          ],
-          if (suggestions.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            const Text(
-              'Suggestions',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ...suggestions.map(_buildSuggestionTile),
-          ],
+          ),
+          const SizedBox(height: 14),
+          if (flights.isEmpty)
+            _buildCatalogEmptyState()
+          else
+            ...flights.map(_buildCatalogTile),
+          const SizedBox(height: 18),
+          const Divider(height: 1, color: Color(0xFF3A4B5C)),
+          const SizedBox(height: 18),
+          _buildOptionalAirlineSection(),
+          const SizedBox(height: 16),
+          _buildLookupButton(),
         ],
       ),
+    );
+  }
+
+  Widget _buildTripOptionsRow() {
+    return Wrap(
+      spacing: 18,
+      runSpacing: 10,
+      children: [
+        _buildTripOption(Icons.swap_horiz, 'One way'),
+        _buildTripOption(Icons.person_outline, '1'),
+        _buildTripOption(Icons.event_seat_outlined, _selectedCabin.displayName),
+      ],
+    );
+  }
+
+  Widget _buildTripOption(IconData icon, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20, color: AppColors.textSecondary),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(width: 4),
+        const Icon(
+          Icons.arrow_drop_down,
+          size: 20,
+          color: AppColors.textSecondary,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOptionalAirlineSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: const Color(0x1A64B067),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.airlines,
+                color: AppColors.primaryGreen,
+                size: 21,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Airline details',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Optional',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildFlightNumberField(
+          labelColor: AppColors.textSecondary,
+          backgroundColor: AppColors.surface,
+          borderColor: const Color(0xFF3A4B5C),
+          textColor: Colors.white,
+          hintColor: AppColors.textSecondary,
+          hintText: 'CX881',
+        ),
+      ],
     );
   }
 
@@ -657,22 +716,21 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          ..._airlineFilters.expand((airline) => [
-                _buildAirlineChip(
-                  label: airline,
-                  isSelected: _selectedAirlineFilter == airline,
-                ),
-                const SizedBox(width: 8),
-              ]),
+          ..._airlineFilters.expand(
+            (airline) => [
+              _buildAirlineChip(
+                label: airline,
+                isSelected: _selectedAirlineFilter == airline,
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAirlineChip({
-    required String label,
-    required bool isSelected,
-  }) {
+  Widget _buildAirlineChip({required String label, required bool isSelected}) {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
@@ -695,176 +753,45 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  Widget _buildSuggestionTile(FlightCatalogEntry entry) {
-    final verificationStatus = _verificationStatusFor(entry);
-    final isInvalid = verificationStatus == _CatalogVerificationStatus.invalid;
-    final isVerifying = verificationStatus == _CatalogVerificationStatus.verifying;
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: isInvalid ? null : () => _selectCatalogFlight(entry),
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF6EB),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.flight_takeoff,
-                    color: AppColors.primaryGreen,
-                  ),
+  Widget _buildCatalogSearchField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF6F8FA),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: TextField(
+        controller: _heroSearchController,
+        textCapitalization: TextCapitalization.characters,
+        style: const TextStyle(
+          color: Color(0xFF1A1A2E),
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          border: InputBorder.none,
+          hintText: 'Search airline, flight, or route',
+          hintStyle: const TextStyle(color: Color(0xFF93A1AE)),
+          prefixIcon: const Icon(Icons.search, color: Color(0xFF607080)),
+          suffixIcon: _heroSearchController.text.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _heroSearchController.clear();
+                      _selectedCatalogEntry = null;
+                      _errorMessage = null;
+                      _clearLookupResult();
+                    });
+                    _verifyVisibleCatalogEntries();
+                  },
+                  icon: const Icon(Icons.close, color: Color(0xFF607080)),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '${entry.flightCode} • ${entry.airlineName}',
-                        style: const TextStyle(
-                          color: Color(0xFF1A1A2E),
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${entry.routeCodeLabel} • ${entry.routeCityLabel}',
-                        style: const TextStyle(
-                          color: Color(0xFF6D7B88),
-                          fontSize: 13,
-                        ),
-                      ),
-                      if (isVerifying) ...[
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Checking with Travel Impact Model...',
-                          style: TextStyle(
-                            color: AppColors.warningOrange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                      if (isInvalid && kDebugMode) ...[
-                        const SizedBox(height: 6),
-                        const Text(
-                          'No Travel Impact Model result found for this flight.',
-                          style: TextStyle(
-                            color: AppColors.errorRed,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (isVerifying)
-                  const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppColors.warningOrange,
-                    ),
-                  )
-                else if (isInvalid && kDebugMode)
-                  IconButton(
-                    onPressed: () => _hideCatalogEntry(entry),
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: AppColors.errorRed,
-                    ),
-                    tooltip: 'Hide invalid catalog entry in debug',
-                  )
-                else
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    size: 16,
-                    color: Color(0xFF9AA7B4),
-                  ),
-              ],
-            ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildFlightCatalogCard() {
-    final flights = _catalogFlights;
-    final hasQuery = _heroSearchController.text.trim().isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Browse flights',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ),
-              ),
-              if (_selectedAirlineFilter != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEAF6EB),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    _selectedAirlineFilter!,
-                    style: const TextStyle(
-                      color: AppColors.primaryGreen,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            hasQuery
-                ? 'Tap a match to autofill the flight and run the emissions lookup.'
-                : 'Featured flights make it easy to try the app quickly.',
-            style: const TextStyle(
-              fontSize: 13,
-              height: 1.5,
-              color: Color(0xFF6D7B88),
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (flights.isEmpty)
-            _buildCatalogEmptyState()
-          else
-            ...flights.map(_buildCatalogTile),
-        ],
+        onChanged: _onHeroQueryChanged,
       ),
     );
   }
@@ -891,9 +818,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           SizedBox(height: 6),
           Text(
             'Try another airline, route, or flight number.',
-            style: TextStyle(
-              color: Color(0xFF6D7B88),
-            ),
+            style: TextStyle(color: Color(0xFF6D7B88)),
           ),
         ],
       ),
@@ -904,7 +829,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     final isSelected = _selectedCatalogEntry == entry;
     final verificationStatus = _verificationStatusFor(entry);
     final isInvalid = verificationStatus == _CatalogVerificationStatus.invalid;
-    final isVerifying = verificationStatus == _CatalogVerificationStatus.verifying;
+    final isVerifying =
+        verificationStatus == _CatalogVerificationStatus.verifying;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -1039,10 +965,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                fontSize: 11,
-                color: Color(0xFF8A97A3),
-              ),
+              style: const TextStyle(fontSize: 11, color: Color(0xFF8A97A3)),
             ),
             const SizedBox(height: 3),
             Text(
@@ -1058,96 +981,31 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  Widget _buildManualEntryCard() {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(22),
-            onTap: () {
-              setState(() {
-                _manualEntryExpanded = !_manualEntryExpanded;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(18),
-              child: Row(
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Flight lookup',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF1A1A2E),
-                          ),
-                        ),
-                        SizedBox(height: 6),
-                        Text(
-                          'Use this if you already know the exact flight details.',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Color(0xFF6D7B88),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    _manualEntryExpanded ? Icons.remove : Icons.add,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (_manualEntryExpanded) ...[
-            const Divider(height: 1, color: Color(0xFFE3E8EE)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFlightNumberField(),
-                  const SizedBox(height: 16),
-                  _buildRouteInputs(),
-                  const SizedBox(height: 16),
-                  _buildLookupButton(),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFlightNumberField() {
+  Widget _buildFlightNumberField({
+    Color backgroundColor = const Color(0xFFF6F8FA),
+    Color borderColor = Colors.transparent,
+    Color labelColor = const Color(0xFF6D7B88),
+    Color textColor = const Color(0xFF1A1A2E),
+    Color hintColor = const Color(0xFFBDBDBD),
+    String hintText = 'e.g. UA 857',
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Flight Number',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 14, color: labelColor),
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: backgroundColor,
+            border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Text('✈  ', style: TextStyle(fontSize: 16)),
               Expanded(
                 child: TextField(
                   controller: _flightNumberController,
@@ -1155,12 +1013,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1A2E),
-                  ),
-                  decoration: const InputDecoration(
+                  ).copyWith(color: textColor),
+                  decoration: InputDecoration(
                     border: InputBorder.none,
-                    hintText: 'e.g. UA 857',
-                    hintStyle: TextStyle(color: Color(0xFFBDBDBD)),
+                    hintText: hintText,
+                    hintStyle: TextStyle(color: hintColor),
                   ),
                   onChanged: (_) {
                     setState(() {
@@ -1185,69 +1042,61 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
-  Widget _buildRouteInputs() {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildAirportCodeField(
-            label: 'Origin',
-            controller: _originController,
-            hintText: 'e.g. SFO',
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildAirportCodeField(
-            label: 'Destination',
-            controller: _destinationController,
-            hintText: 'e.g. JFK',
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildAirportCodeField({
     required String label,
     required TextEditingController controller,
     required String hintText,
+    IconData? icon,
+    Color backgroundColor = const Color(0xFFF6F8FA),
+    Color borderColor = Colors.transparent,
+    Color labelColor = const Color(0xFF6D7B88),
+    Color textColor = const Color(0xFF1A1A2E),
+    Color hintColor = const Color(0xFFBDBDBD),
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-        ),
+        Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: backgroundColor,
+            border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: TextField(
-            controller: controller,
-            textCapitalization: TextCapitalization.characters,
-            maxLength: 3,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF1A1A2E),
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              counterText: '',
-              hintText: hintText,
-              hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
-            ),
-            onChanged: (_) {
-              setState(() {
-                _errorMessage = null;
-                _selectedCatalogEntry = null;
-                _clearLookupResult();
-              });
-            },
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 22, color: AppColors.textSecondary),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  textCapitalization: TextCapitalization.characters,
+                  maxLength: 3,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    counterText: '',
+                    hintText: hintText,
+                    hintStyle: TextStyle(color: hintColor),
+                  ),
+                  onChanged: (_) {
+                    setState(() {
+                      _errorMessage = null;
+                      _selectedCatalogEntry = null;
+                      _clearLookupResult();
+                    });
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -1257,18 +1106,14 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   Widget _buildDateField({
     Color backgroundColor = const Color(0xFFF6F8FA),
     Color labelColor = const Color(0xFF6D7B88),
+    Color borderColor = Colors.transparent,
+    Color textColor = const Color(0xFF1A1A2E),
   }) {
     final dateStr = DateFormat('MMMM d, yyyy').format(_selectedDate);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Flight Date',
-          style: TextStyle(
-            fontSize: 14,
-            color: labelColor,
-          ),
-        ),
+        Text('Flight Date', style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 8),
         GestureDetector(
           onTap: _pickDate,
@@ -1277,6 +1122,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: backgroundColor,
+              border: Border.all(color: borderColor),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1289,10 +1135,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 const SizedBox(width: 12),
                 Text(
                   dateStr,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: Color(0xFF1A1A2E),
+                    color: textColor,
                   ),
                 ),
               ],
@@ -1313,13 +1159,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Cabin Class',
-          style: TextStyle(
-            fontSize: 14,
-            color: labelColor,
-          ),
-        ),
+        Text('Cabin Class', style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
@@ -1442,19 +1282,12 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Color(0xFFE53935),
-              size: 20,
-            ),
+            const Icon(Icons.error_outline, color: Color(0xFFE53935), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 _errorMessage!,
-                style: const TextStyle(
-                  color: Color(0xFFE53935),
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Color(0xFFE53935), fontSize: 14),
               ),
             ),
           ],
@@ -1473,6 +1306,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   Widget _buildRouteCard() {
+    final flightLabel = _flightNum > 0
+        ? '$_airlineCode $_flightNum'
+        : 'Route average';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -1489,7 +1326,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
               borderRadius: BorderRadius.circular(6),
             ),
             child: Text(
-              '$_airlineCode $_flightNum',
+              flightLabel,
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
@@ -1551,6 +1388,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 
   Widget _buildFlightDetails() {
+    final airlineValue = _airlineCode.isEmpty ? 'Not specified' : _airlineCode;
+    final flightValue = _flightNum > 0
+        ? '$_airlineCode $_flightNum'
+        : 'Route average';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -1562,10 +1404,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         children: [
           Row(
             children: [
-              Expanded(child: _buildDetailItem('Airline', _airlineCode)),
-              Expanded(
-                child: _buildDetailItem('Flight', '$_airlineCode $_flightNum'),
-              ),
+              Expanded(child: _buildDetailItem('Airline', airlineValue)),
+              Expanded(child: _buildDetailItem('Flight', flightValue)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1646,10 +1486,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 ),
                 const TextSpan(
                   text: ' tons CO\u2082',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Color(0xFF1A1A2E),
-                  ),
+                  style: TextStyle(fontSize: 18, color: Color(0xFF1A1A2E)),
                 ),
               ],
             ),
@@ -1696,9 +1533,4 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   }
 }
 
-enum _CatalogVerificationStatus {
-  unverified,
-  verifying,
-  valid,
-  invalid,
-}
+enum _CatalogVerificationStatus { unverified, verifying, valid, invalid }

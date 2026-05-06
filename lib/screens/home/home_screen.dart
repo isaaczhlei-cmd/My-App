@@ -24,6 +24,10 @@ class _HomeScreenState extends State<HomeScreen> {
   final Map<String, Future<EcoTipSuggestion>> _ecoTipFutures = {};
   int _ecoTipRefreshNonce = 0;
 
+  bool _isInCurrentMonth(DateTime date, DateTime now) {
+    return date.year == now.year && date.month == now.month;
+  }
+
   @override
   void dispose() {
     _ecoTipService.dispose();
@@ -39,6 +43,10 @@ class _HomeScreenState extends State<HomeScreen> {
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
             final flights = snapshot.data ?? [];
+            final now = DateTime.now();
+            final currentMonthFlights = flights
+                .where((flight) => _isInCurrentMonth(flight.date, now))
+                .toList();
 
             // Calculate real stats from flight data
             final totalFlights = flights.length;
@@ -48,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Rough estimate: 1 kg CO2 ≈ 2.51 miles flown
             final totalMilesK = (totalEmissionsKg * 2.51 / 1000);
 
-            final recentFlights = flights.take(_recentFlightsLimit).toList();
+            final recentFlights = currentMonthFlights.take(_recentFlightsLimit).toList();
             final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
             final ecoTipFuture = _getEcoTipFuture(
               flightCount: totalFlights,
@@ -331,7 +339,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icon(Icons.flight_takeoff, size: 40, color: Colors.grey[400]),
                 const SizedBox(height: 12),
                 const Text(
-                  'No flights yet',
+                  'No flights this month',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -340,7 +348,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Add your first flight to start tracking',
+                  'Add a flight dated this month to start tracking',
                   style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                 ),
               ],
