@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,6 +26,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final _flightNumberController = TextEditingController();
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
+  final _passengerCountController = TextEditingController(text: '1');
   final _emissionsService = EmissionsService();
   final _firestoreService = FirestoreService();
   final _authService = AuthService();
@@ -63,6 +65,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     _flightNumberController.dispose();
     _originController.dispose();
     _destinationController.dispose();
+    _passengerCountController.dispose();
     super.dispose();
   }
 
@@ -82,6 +85,16 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     final regex = RegExp(r'^[A-Z]{3}$');
     if (!regex.hasMatch(cleaned)) return null;
     return cleaned;
+  }
+
+  int? _parsePassengerCount() {
+    final count = int.tryParse(_passengerCountController.text.trim());
+    if (count == null || count < 1) return null;
+    return count;
+  }
+
+  double _totalEmissionsKg(double kgPerPassenger) {
+    return kgPerPassenger * (_parsePassengerCount() ?? 1);
   }
 
   void _clearLookupResult() {
@@ -137,6 +150,15 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       return;
     }
 
+    final passengerCount = _parsePassengerCount();
+    if (passengerCount == null) {
+      setState(() {
+        _errorMessage = 'Enter at least 1 passenger.';
+        _clearLookupResult();
+      });
+      return;
+    }
+
     final flightNumber = _flightNumberController.text.trim();
     final parsed = flightNumber.isEmpty
         ? null
@@ -184,7 +206,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             _airlineCode =
                 emission.flight?.operatingCarrierCode ?? parsed.carrier;
             _flightNum = emission.flight?.flightNumber ?? parsed.number;
-            _emissionsKg = kg;
+            _emissionsKg = kg * passengerCount;
             _usedTypicalFallback = false;
             _isLoading = false;
             _hasResult = true;
@@ -208,7 +230,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         _destination = destination;
         _airlineCode = parsed?.carrier ?? '';
         _flightNum = parsed?.number ?? 0;
-        _emissionsKg = kg;
+        _emissionsKg = kg * passengerCount;
         _usedTypicalFallback = true;
         _isLoading = false;
         _hasResult = true;
@@ -226,9 +248,28 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     setState(() {
       _selectedCabin = cabin;
       if (_flightEmission != null) {
-        _emissionsKg = _flightEmission!.getEmissionsKg(cabin);
+        _emissionsKg = _totalEmissionsKg(
+          _flightEmission!.getEmissionsKg(cabin),
+        );
       } else if (_typicalEmission != null) {
-        _emissionsKg = _typicalEmission!.getEmissionsKg(cabin);
+        _emissionsKg = _totalEmissionsKg(
+          _typicalEmission!.getEmissionsKg(cabin),
+        );
+      }
+    });
+  }
+
+  void _onPassengerCountChanged(String value) {
+    setState(() {
+      _errorMessage = null;
+      if (_flightEmission != null) {
+        _emissionsKg = _totalEmissionsKg(
+          _flightEmission!.getEmissionsKg(_selectedCabin),
+        );
+      } else if (_typicalEmission != null) {
+        _emissionsKg = _totalEmissionsKg(
+          _typicalEmission!.getEmissionsKg(_selectedCabin),
+        );
       }
     });
   }
@@ -449,6 +490,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
       _flightNumberController.clear();
       _originController.clear();
       _destinationController.clear();
+      _passengerCountController.text = '1';
       _flightEmission = null;
       _errorMessage = null;
     });
@@ -577,6 +619,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
             borderColor: const Color(0xFF3A4B5C),
             textColor: Colors.white,
           ),
+          const SizedBox(height: 14),
+          _buildPassengerCountField(),
           const SizedBox(height: 14),
           _buildCabinClassSelector(
             backgroundColor: AppColors.surface,
@@ -996,6 +1040,56 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     );
   }
 
+  Widget _buildPassengerCountField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Passengers',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border.all(color: const Color(0xFF3A4B5C)),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.person_outline,
+                size: 22,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _passengerCountController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: 'How many people?',
+                    hintStyle: TextStyle(color: AppColors.textSecondary),
+                  ),
+                  onChanged: _onPassengerCountChanged,
+                  onSubmitted: (_) => _lookupFlight(),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAirportCodeField({
     required String label,
     required TextEditingController controller,
@@ -1405,6 +1499,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   Widget _buildEmissionsCard() {
     final tons = (_emissionsKg / 1000).toStringAsFixed(2);
     final equivalentMiles = (_emissionsKg * 2.51).round();
+    final passengerCount = _parsePassengerCount() ?? 1;
 
     return Container(
       width: double.infinity,
@@ -1418,8 +1513,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
         children: [
           Text(
             _usedTypicalFallback
-                ? 'Estimated Carbon Emission (route average)'
-                : 'Estimated Carbon Emission',
+                ? 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'} (route average)'
+                : 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'}',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
