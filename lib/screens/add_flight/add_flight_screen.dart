@@ -531,8 +531,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 16),
-          _buildTripOptionsRow(),
           const SizedBox(height: 18),
           _buildAirportCodeField(
             label: 'From',
@@ -614,42 +612,6 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           _buildLookupButton(),
         ],
       ),
-    );
-  }
-
-  Widget _buildTripOptionsRow() {
-    return Wrap(
-      spacing: 18,
-      runSpacing: 10,
-      children: [
-        _buildTripOption(Icons.swap_horiz, 'One way'),
-        _buildTripOption(Icons.person_outline, '1'),
-        _buildTripOption(Icons.event_seat_outlined, _selectedCabin.displayName),
-      ],
-    );
-  }
-
-  Widget _buildTripOption(IconData icon, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 20, color: AppColors.textSecondary),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(width: 4),
-        const Icon(
-          Icons.arrow_drop_down,
-          size: 20,
-          color: AppColors.textSecondary,
-        ),
-      ],
     );
   }
 
