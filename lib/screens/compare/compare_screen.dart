@@ -15,8 +15,8 @@ class CompareScreen extends StatefulWidget {
 class _CompareScreenState extends State<CompareScreen> {
   final _firestoreService = FirestoreService();
 
-  bool _isInCurrentMonth(DateTime date, DateTime now) {
-    return date.year == now.year && date.month == now.month;
+  bool _isInCurrentYear(DateTime date, DateTime now) {
+    return date.year == now.year;
   }
 
   @override
@@ -29,9 +29,12 @@ class _CompareScreenState extends State<CompareScreen> {
           builder: (context, snapshot) {
             final now = DateTime.now();
             final flights = (snapshot.data ?? [])
-                .where((flight) => _isInCurrentMonth(flight.date, now))
+                .where((flight) => _isInCurrentYear(flight.date, now))
                 .toList();
-            final totalKg = flights.fold<double>(0, (sum, f) => sum + f.emissionsKg);
+            final totalKg = flights.fold<double>(
+              0,
+              (sum, f) => sum + f.emissionsKg,
+            );
             final totalTons = totalKg / 1000;
 
             // Average American flies ~3 round trips/year ≈ 1.82 tons CO2
@@ -64,7 +67,12 @@ class _CompareScreenState extends State<CompareScreen> {
                   if (flights.isEmpty)
                     _buildEmptyState()
                   else ...[
-                    _buildCarbonImpactCard(totalTons, avgTons, percentDiff, isBelow),
+                    _buildCarbonImpactCard(
+                      totalTons,
+                      avgTons,
+                      percentDiff,
+                      isBelow,
+                    ),
                     const SizedBox(height: 20),
                     _buildEnvironmentalEquivalents(
                       milesDriven: milesDriven,
@@ -97,7 +105,7 @@ class _CompareScreenState extends State<CompareScreen> {
           Icon(Icons.compare_arrows, size: 48, color: Colors.grey[400]),
           const SizedBox(height: 16),
           const Text(
-            'No flights to compare',
+            'No flights this year',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -106,7 +114,7 @@ class _CompareScreenState extends State<CompareScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add flights to see how your carbon footprint compares to the average.',
+            'Add flights from this year to see how your annual carbon footprint compares to the average.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
@@ -115,7 +123,12 @@ class _CompareScreenState extends State<CompareScreen> {
     );
   }
 
-  Widget _buildCarbonImpactCard(double yourTons, double avgTons, int percentDiff, bool isBelow) {
+  Widget _buildCarbonImpactCard(
+    double yourTons,
+    double avgTons,
+    int percentDiff,
+    bool isBelow,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -159,7 +172,10 @@ class _CompareScreenState extends State<CompareScreen> {
                         ),
                         const Text(
                           'tons',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF9E9E9E),
+                          ),
                         ),
                       ],
                     ),
@@ -172,13 +188,13 @@ class _CompareScreenState extends State<CompareScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildComparisonRow(
-                      'Your total',
+                      'Your annual total',
                       '${yourTons.toStringAsFixed(2)}t CO\u2082',
                       AppColors.primaryGreen,
                     ),
                     const SizedBox(height: 12),
                     _buildComparisonRow(
-                      'Avg. American',
+                      'Avg. American/year',
                       '${avgTons}t CO\u2082',
                       const Color(0xFFFF8F00),
                     ),
@@ -191,7 +207,9 @@ class _CompareScreenState extends State<CompareScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isBelow ? const Color(0xFFE8F5E9) : const Color(0xFFFFF3E0),
+              color: isBelow
+                  ? const Color(0xFFE8F5E9)
+                  : const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -200,7 +218,9 @@ class _CompareScreenState extends State<CompareScreen> {
                 Icon(
                   isBelow ? Icons.arrow_downward : Icons.arrow_upward,
                   size: 16,
-                  color: isBelow ? AppColors.primaryGreen : const Color(0xFFFF8F00),
+                  color: isBelow
+                      ? AppColors.primaryGreen
+                      : const Color(0xFFFF8F00),
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -208,7 +228,9 @@ class _CompareScreenState extends State<CompareScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
-                    color: isBelow ? AppColors.primaryGreen : const Color(0xFFFF8F00),
+                    color: isBelow
+                        ? AppColors.primaryGreen
+                        : const Color(0xFFFF8F00),
                   ),
                 ),
               ],
@@ -231,7 +253,10 @@ class _CompareScreenState extends State<CompareScreen> {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+            ),
             Text(
               value,
               style: const TextStyle(
@@ -275,15 +300,21 @@ class _CompareScreenState extends State<CompareScreen> {
             children: [
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.directions_car, '$milesDriven', 'Miles driven',
-                  const Color(0xFF5C6BC0), const Color(0xFFE8EAF6),
+                  Icons.directions_car,
+                  '$milesDriven',
+                  'Miles driven',
+                  const Color(0xFF5C6BC0),
+                  const Color(0xFFE8EAF6),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.bolt, monthsElectricity, 'Months electricity',
-                  const Color(0xFFFF8F00), const Color(0xFFFFF3E0),
+                  Icons.bolt,
+                  monthsElectricity,
+                  'Months electricity',
+                  const Color(0xFFFF8F00),
+                  const Color(0xFFFFF3E0),
                 ),
               ),
             ],
@@ -293,15 +324,21 @@ class _CompareScreenState extends State<CompareScreen> {
             children: [
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.park, '$trees', 'Trees for 1 year',
-                  AppColors.primaryGreen, const Color(0xFFE8F5E9),
+                  Icons.park,
+                  '$trees',
+                  'Trees for 1 year',
+                  AppColors.primaryGreen,
+                  const Color(0xFFE8F5E9),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildEquivalentItem(
-                  Icons.lunch_dining, '$burgers', 'Beef burgers',
-                  const Color(0xFFE53935), const Color(0xFFFFEBEE),
+                  Icons.lunch_dining,
+                  '$burgers',
+                  'Beef burgers',
+                  const Color(0xFFE53935),
+                  const Color(0xFFFFEBEE),
                 ),
               ),
             ],
@@ -312,7 +349,11 @@ class _CompareScreenState extends State<CompareScreen> {
   }
 
   Widget _buildEquivalentItem(
-    IconData icon, String value, String label, Color iconColor, Color bgColor,
+    IconData icon,
+    String value,
+    String label,
+    Color iconColor,
+    Color bgColor,
   ) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -371,7 +412,10 @@ class _GaugePainter extends CustomPainter {
 
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2, 2 * pi, false, bgPaint,
+      -pi / 2,
+      2 * pi,
+      false,
+      bgPaint,
     );
 
     final valuePaint = Paint()
@@ -383,7 +427,10 @@ class _GaugePainter extends CustomPainter {
     final sweepAngle = maxValue > 0 ? (value / maxValue) * 2 * pi : 0.0;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: radius),
-      -pi / 2, sweepAngle, false, valuePaint,
+      -pi / 2,
+      sweepAngle,
+      false,
+      valuePaint,
     );
   }
 
