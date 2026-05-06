@@ -537,7 +537,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           _buildAirportCodeField(
             label: 'From',
             controller: _originController,
-            hintText: 'LAX',
+            hintText: 'Departing airport',
             icon: Icons.radio_button_checked,
             backgroundColor: AppColors.surface,
             borderColor: const Color(0xFF3A4B5C),
@@ -564,7 +564,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           _buildAirportCodeField(
             label: 'To',
             controller: _destinationController,
-            hintText: 'JFK',
+            hintText: 'Arriving airport',
             icon: Icons.location_on_outlined,
             backgroundColor: AppColors.surface,
             borderColor: const Color(0xFF3A4B5C),
