@@ -38,6 +38,7 @@ class FirestoreService {
   /// Delete a flight by ID
   Future<void> deleteFlight(String flightId) async {
     if (_uid == null) return;
+    if (_auth.currentUser?.isAnonymous == true) return;
     await _flightsRef.doc(flightId).delete();
   }
 }
