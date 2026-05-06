@@ -33,6 +33,10 @@ pubspec.lock
 # Environment
 .env
 
+# Claude Code & local tooling
+.claude/
+.codex/
+
 # Firebase & Google Services secrets
 lib/firebase_options.dart
 ios/Runner/GoogleService-Info.plist
