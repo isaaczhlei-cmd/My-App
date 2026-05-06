@@ -678,19 +678,11 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Airline details',
+                    'Manual enter flight',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                       color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 3),
-                  Text(
-                    'Optional',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -705,7 +697,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
           borderColor: const Color(0xFF3A4B5C),
           textColor: Colors.white,
           hintColor: AppColors.textSecondary,
-          hintText: 'CX881',
+          hintText: 'Flight number',
         ),
       ],
     );
