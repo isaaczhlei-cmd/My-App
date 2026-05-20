@@ -80,7 +80,10 @@ class NotificationInboxService extends ChangeNotifier {
 
   Future<void> load() {
     if (_isLoaded) return Future.value();
-    return _loadFuture ??= _doLoad();
+    return _loadFuture ??= _doLoad().catchError((Object e) {
+      _loadFuture = null;
+      throw e;
+    });
   }
 
   Future<void> _doLoad() async {
