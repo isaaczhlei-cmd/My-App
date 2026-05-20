@@ -34,18 +34,28 @@ abstract class AuthServiceLike {
 }
 
 class AuthService implements AuthServiceLike {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  factory AuthService() => _instance;
+
+  AuthService._();
+
+  static final AuthService _instance = AuthService._();
+
+  FirebaseAuth get _auth => FirebaseAuth.instance;
 
   /// Current user
+  @override
   User? get currentUser => _auth.currentUser;
 
   /// Auth state stream
+  @override
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   /// Fires when profile fields (e.g. photo URL) change
+  @override
   Stream<User?> get userChanges => _auth.userChanges();
 
   /// Register with email and password
+  @override
   Future<({UserCredential? user, String? error})> registerWithEmail({
     required String email,
     required String password,
@@ -71,6 +81,7 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Sign in with email and password
+  @override
   Future<({UserCredential? user, String? error})> signInWithEmail({
     required String email,
     required String password,
@@ -89,6 +100,7 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Send password reset email
+  @override
   Future<({bool success, String? error})> sendPasswordResetEmail(
     String email,
   ) async {
@@ -103,6 +115,7 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Sign in with Google
+  @override
   Future<({UserCredential? user, String? error})> signInWithGoogle() async {
     try {
       // Trigger Google Sign-In flow using the new API (google_sign_in 7.x)
@@ -141,6 +154,7 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Sign in anonymously (guest mode)
+  @override
   Future<({UserCredential? user, String? error})> signInAsGuest() async {
     try {
       final credential = await _auth.signInAnonymously();
@@ -153,9 +167,11 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Check if current user is anonymous (guest)
+  @override
   bool get isGuest => _auth.currentUser?.isAnonymous ?? false;
 
   /// Upload a new profile photo (signed-in, non-anonymous users only).
+  @override
   Future<({bool success, String? error})> updateProfilePhoto(File imageFile) async {
     final user = _auth.currentUser;
     if (user == null || user.isAnonymous) {
@@ -177,6 +193,7 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Sign out
+  @override
   Future<void> signOut() async {
     try {
       await GoogleSignIn.instance.disconnect();
