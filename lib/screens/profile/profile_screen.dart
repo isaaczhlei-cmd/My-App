@@ -200,7 +200,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         label: 'Notifications',
                         badgeCount: _notificationInbox.unreadCount,
                         onTap: () {
-                          _pushSignedIn(const NotificationSettingsScreen());
+                          if (isGuest) {
+                            _openGuestPrompt('Notifications');
+                          } else {
+                            _pushSignedIn(const NotificationSettingsScreen());
+                          }
                         },
                       );
                     },
