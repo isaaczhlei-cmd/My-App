@@ -7,6 +7,8 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/notification_inbox_service.dart';
+import '../../widgets/notification_badge.dart';
 import 'guest_sign_in_prompt_screen.dart';
 import 'profile_subscreens.dart';
 
@@ -19,7 +21,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
+  final _notificationInbox = NotificationInboxService.instance;
   bool _uploadingPhoto = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationInbox.load();
+  }
 
   Future<void> _onAvatarTap() async {
     if (_authService.isGuest) {
@@ -48,9 +57,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (result.success) {
       setState(() {});
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result.error ?? 'Update failed')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.error ?? 'Update failed')));
     }
   }
 
@@ -63,9 +72,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _pushSignedIn(Widget screen) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => screen),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
   }
 
   @override
@@ -76,8 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final user = _authService.currentUser;
         final isGuest = _authService.isGuest;
         final dn = user?.displayName?.trim();
-        final displayName =
-            dn != null && dn.isNotEmpty ? dn : 'Traveler';
+        final displayName = dn != null && dn.isNotEmpty ? dn : 'Traveler';
         final email = user?.email ?? 'Guest';
         final photoUrl = user?.photoURL;
 
@@ -110,7 +116,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           clipBehavior: Clip.antiAlias,
-                          child: (!isGuest &&
+                          child:
+                              (!isGuest &&
                                   photoUrl != null &&
                                   photoUrl.isNotEmpty)
                               ? Image.network(
@@ -185,15 +192,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       }
                     },
                   ),
-                  _buildMenuItem(
-                    icon: Icons.notifications_outlined,
-                    label: 'Notifications',
-                    onTap: () {
-                      if (isGuest) {
-                        _openGuestPrompt('Notifications');
-                      } else {
-                        _pushSignedIn(const NotificationSettingsScreen());
-                      }
+                  AnimatedBuilder(
+                    animation: _notificationInbox,
+                    builder: (context, _) {
+                      return _buildMenuItem(
+                        icon: Icons.notifications_outlined,
+                        label: 'Notifications',
+                        badgeCount: _notificationInbox.unreadCount,
+                        onTap: () {
+                          _pushSignedIn(const NotificationSettingsScreen());
+                        },
+                      );
                     },
                   ),
                   _buildMenuItem(
@@ -224,8 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     height: 52,
                     child: isGuest
                         ? OutlinedButton.icon(
-                            onPressed: () =>
-                                _openGuestPrompt('your account'),
+                            onPressed: () => _openGuestPrompt('your account'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.primaryGreen,
                               side: BorderSide(
@@ -248,7 +256,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             onPressed: () async {
                               await _authService.signOut();
                               if (context.mounted) {
-                                Navigator.of(context).popUntil((route) => route.isFirst);
+                                Navigator.of(
+                                  context,
+                                ).popUntil((route) => route.isFirst);
                               }
                             },
                             style: OutlinedButton.styleFrom(
@@ -282,12 +292,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// Only called when [kDebugMode] is true (see call site). Strips out in release via `if (kDebugMode)`.
   Widget _buildDebugPanel(User? user, bool isGuest) {
     assert(kDebugMode, 'Debug panel must not be built outside debug builds');
-    final providers = user?.providerData
-            .map((u) => u.providerId)
-            .toList() ??
-        <String>[];
-    final providerStr =
-        providers.isEmpty ? '(none)' : providers.join(', ');
+    final providers =
+        user?.providerData.map((u) => u.providerId).toList() ?? <String>[];
+    final providerStr = providers.isEmpty ? '(none)' : providers.join(', ');
 
     return Container(
       width: double.infinity,
@@ -295,7 +302,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFFFB74D).withValues(alpha: 0.6)),
+        border: Border.all(
+          color: const Color(0xFFFFB74D).withValues(alpha: 0.6),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,48 +397,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required IconData icon,
     required String label,
     required VoidCallback onTap,
+    int badgeCount = 0,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF5F5F5),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: const Color(0xFF616161), size: 20),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Material(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(14),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A2E),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF5F5F5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: const Color(0xFF616161),
+                        size: 20,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right,
+                      color: Color(0xFFBDBDBD),
+                      size: 22,
+                    ),
+                  ],
                 ),
-                const Icon(
-                  Icons.chevron_right,
-                  color: Color(0xFFBDBDBD),
-                  size: 22,
-                ),
-              ],
+              ),
             ),
           ),
-        ),
+          Positioned(
+            top: -5,
+            right: -5,
+            child: NotificationBadge(count: badgeCount),
+          ),
+        ],
       ),
     );
   }
