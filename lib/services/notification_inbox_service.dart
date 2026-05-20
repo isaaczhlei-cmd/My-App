@@ -70,6 +70,7 @@ class NotificationInboxService extends ChangeNotifier {
   final List<AppNotification> _notifications = <AppNotification>[];
   final Set<String> _deliveredEcoTipKeys = <String>{};
   bool _isLoaded = false;
+  Future<void>? _loadFuture;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
 
@@ -77,9 +78,12 @@ class NotificationInboxService extends ChangeNotifier {
     return _notifications.where((notification) => !notification.isRead).length;
   }
 
-  Future<void> load() async {
-    if (_isLoaded) return;
+  Future<void> load() {
+    if (_isLoaded) return Future.value();
+    return _loadFuture ??= _doLoad();
+  }
 
+  Future<void> _doLoad() async {
     final prefs = await SharedPreferences.getInstance();
     final savedNotifications =
         prefs.getStringList(_notificationsPrefsKey) ?? const <String>[];
@@ -141,9 +145,9 @@ class NotificationInboxService extends ChangeNotifier {
     _notifications.removeWhere((notification) => notification.id == id);
     if (_notifications.length == removedCount) return;
 
-    notifyListeners();
     await _save();
     await _syncAppIconBadge();
+    notifyListeners();
   }
 
   AppNotification? _decodeNotification(String source) {

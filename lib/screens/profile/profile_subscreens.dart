@@ -167,14 +167,9 @@ class _NotificationSettingsScreenState
                   itemBuilder: (context, index) {
                     final notification = notifications[index];
                     return Dismissible(
-                      key: ValueKey(
-                        'notification-${notification.id}-${notification.createdAt.microsecondsSinceEpoch}',
-                      ),
-                      direction: DismissDirection.horizontal,
+                      key: ValueKey('notification-${notification.id}'),
+                      direction: DismissDirection.endToStart,
                       background: const _DeleteNotificationBackground(
-                        alignment: Alignment.centerLeft,
-                      ),
-                      secondaryBackground: const _DeleteNotificationBackground(
                         alignment: Alignment.centerRight,
                       ),
                       onDismissed: (_) {

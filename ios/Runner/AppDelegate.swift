@@ -40,37 +40,40 @@ import UserNotifications
   }
 
   private func setAppIconBadge(_ count: Int, result: @escaping FlutterResult) {
-    UNUserNotificationCenter.current().requestAuthorization(options: [.badge]) { _, error in
-      if let error = error {
-        result(
-          FlutterError(
-            code: "BADGE_PERMISSION_ERROR",
-            message: error.localizedDescription,
-            details: nil
-          )
-        )
-        return
-      }
-
-      DispatchQueue.main.async {
-        if #available(iOS 16.0, *) {
-          UNUserNotificationCenter.current().setBadgeCount(count) { error in
-            if let error = error {
-              result(
-                FlutterError(
-                  code: "BADGE_UPDATE_ERROR",
-                  message: error.localizedDescription,
-                  details: nil
-                )
-              )
-            } else {
-              result(nil)
-            }
+    let center = UNUserNotificationCenter.current()
+    center.getNotificationSettings { settings in
+      switch settings.badgeSetting {
+      case .enabled:
+        self.applyBadge(count, result: result)
+      case .notDetermined:
+        center.requestAuthorization(options: [.badge]) { _, error in
+          if let error = error {
+            result(FlutterError(code: "BADGE_PERMISSION_ERROR", message: error.localizedDescription, details: nil))
+            return
           }
-        } else {
-          UIApplication.shared.applicationIconBadgeNumber = count
-          result(nil)
+          self.applyBadge(count, result: result)
         }
+      case .disabled:
+        result(nil)
+      @unknown default:
+        result(nil)
+      }
+    }
+  }
+
+  private func applyBadge(_ count: Int, result: @escaping FlutterResult) {
+    DispatchQueue.main.async {
+      if #available(iOS 16.0, *) {
+        UNUserNotificationCenter.current().setBadgeCount(count) { error in
+          if let error = error {
+            result(FlutterError(code: "BADGE_UPDATE_ERROR", message: error.localizedDescription, details: nil))
+          } else {
+            result(nil)
+          }
+        }
+      } else {
+        UIApplication.shared.applicationIconBadgeNumber = count
+        result(nil)
       }
     }
   }
