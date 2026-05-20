@@ -26,7 +26,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final _ecoTipService = EcoTipService();
   final _notificationInbox = NotificationInboxService.instance;
   final Set<String> _queuedEcoTipDeliveryKeys = <String>{};
-  StreamSubscription<List<Flight>>? _flightsSub;
 
   bool _isInCurrentMonth(DateTime date, DateTime now) {
     return date.year == now.year && date.month == now.month;
@@ -39,29 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _notificationInbox.load();
-    _flightsSub = _firestoreService.getFlightsStream().listen((flights) {
-      final now = DateTime.now();
-      final totalFlights = flights.length;
-      final totalEmissionsKg = flights.fold<double>(
-        0,
-        (sum, f) => sum + f.emissionsKg,
-      );
-      final currentMonthFlights = flights
-          .where((flight) => _isInCurrentMonth(flight.date, now))
-          .toList();
-      final recentFlights = currentMonthFlights.take(_recentFlightsLimit).toList();
-      final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
-      _queueEcoTipNotification(
-        flightCount: totalFlights,
-        totalEmissionsKg: totalEmissionsKg,
-        recentTravelPattern: recentTravelPattern,
-      );
-    });
   }
 
   @override
   void dispose() {
-    _flightsSub?.cancel();
     for (final entry in _pendingDeletions.entries) {
       entry.value.cancel();
       _firestoreService.deleteFlight(entry.key);
@@ -136,6 +116,15 @@ class _HomeScreenState extends State<HomeScreen> {
             final recentFlights = currentMonthFlights
                 .take(_recentFlightsLimit)
                 .toList();
+            final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _queueEcoTipNotification(
+                flightCount: totalFlights,
+                totalEmissionsKg: totalEmissionsKg,
+                recentTravelPattern: recentTravelPattern,
+              );
+            });
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
