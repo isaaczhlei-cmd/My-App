@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_inbox_service.dart';
 import '../home/widgets/flight_card.dart';
 
 class FlightHistoryScreen extends StatelessWidget {
@@ -46,7 +47,10 @@ class FlightHistoryScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       const Text(
                         'Your saved flights will appear here.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 15,
+                        ),
                       ),
                     ],
                   ),
@@ -57,7 +61,8 @@ class FlightHistoryScreen extends StatelessWidget {
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: flights.length,
-              itemBuilder: (context, index) => FlightCard(flight: flights[index]),
+              itemBuilder: (context, index) =>
+                  FlightCard(flight: flights[index]),
             );
           },
         ),
@@ -66,8 +71,30 @@ class FlightHistoryScreen extends StatelessWidget {
   }
 }
 
-class NotificationSettingsScreen extends StatelessWidget {
+class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
+
+  @override
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
+}
+
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
+  final _notificationInbox = NotificationInboxService.instance;
+  late final Future<void> _loadFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFuture = _notificationInbox.load().then((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _notificationInbox.markAllRead();
+        }
+      });
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,42 +102,224 @@ class NotificationSettingsScreen extends StatelessWidget {
       backgroundColor: AppColors.darkBackground,
       appBar: AppBar(title: const Text('Notifications')),
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
+        child: FutureBuilder<void>(
+          future: _loadFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(color: AppColors.primaryGreen),
+              );
+            }
+
+            return AnimatedBuilder(
+              animation: _notificationInbox,
+              builder: (context, _) {
+                final notifications = _notificationInbox.notifications;
+
+                if (notifications.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBackground,
+                              borderRadius: BorderRadius.circular(32),
+                            ),
+                            child: const Icon(
+                              Icons.notifications_outlined,
+                              color: AppColors.textSecondary,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No notifications yet',
+                            style: TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Missed eco tips will appear here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                  itemCount: notifications.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final notification = notifications[index];
+                    return Dismissible(
+                      key: ValueKey(
+                        'notification-${notification.id}-${notification.createdAt.microsecondsSinceEpoch}',
+                      ),
+                      direction: DismissDirection.horizontal,
+                      background: const _DeleteNotificationBackground(
+                        alignment: Alignment.centerLeft,
+                      ),
+                      secondaryBackground: const _DeleteNotificationBackground(
+                        alignment: Alignment.centerRight,
+                      ),
+                      onDismissed: (_) {
+                        _notificationInbox.deleteNotification(notification.id);
+                      },
+                      child: _NotificationTile(notification: notification),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteNotificationBackground extends StatelessWidget {
+  final Alignment alignment;
+
+  const _DeleteNotificationBackground({required this.alignment});
+
+  @override
+  Widget build(BuildContext context) {
+    final isLeft = alignment == Alignment.centerLeft;
+    return Container(
+      alignment: alignment,
+      padding: EdgeInsets.only(left: isLeft ? 22 : 0, right: isLeft ? 0 : 22),
+      decoration: BoxDecoration(
+        color: AppColors.errorRed,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: const Icon(Icons.delete_outline, color: Colors.white, size: 26),
+    );
+  }
+}
+
+class _NotificationTile extends StatelessWidget {
+  final AppNotification notification;
+
+  const _NotificationTile({required this.notification});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: notification.isRead
+            ? AppColors.cardBackground
+            : const Color(0xFFE8F5E9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: notification.isRead
+              ? Colors.white.withAlpha(18)
+              : AppColors.primaryGreen.withAlpha(110),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: notification.isRead
+                  ? Colors.white.withAlpha(16)
+                  : const Color(0xFFC8E6C9),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.eco,
+              color: notification.isRead
+                  ? AppColors.textSecondary
+                  : AppColors.primaryGreen,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
             child: Column(
-              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.cardBackground,
-                    borderRadius: BorderRadius.circular(32),
-                  ),
-                  child: const Icon(Icons.notifications_outlined, color: AppColors.textSecondary, size: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        notification.title,
+                        style: TextStyle(
+                          color: notification.isRead
+                              ? AppColors.textPrimary
+                              : const Color(0xFF2E7D32),
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _formatTimestamp(notification.createdAt),
+                      style: TextStyle(
+                        color: notification.isRead
+                            ? AppColors.textSecondary
+                            : const Color(0xFF2E7D32),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Coming Soon',
+                const SizedBox(height: 6),
+                Text(
+                  notification.message,
                   style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    color: notification.isRead
+                        ? AppColors.textSecondary
+                        : const Color(0xFF33691E),
+                    fontSize: 14,
+                    height: 1.35,
                   ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Notification preferences will be available in a future update.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final local = timestamp.toLocal();
+    if (now.year == local.year &&
+        now.month == local.month &&
+        now.day == local.day) {
+      final hour = local.hour == 0
+          ? 12
+          : local.hour > 12
+          ? local.hour - 12
+          : local.hour;
+      final minute = local.minute.toString().padLeft(2, '0');
+      final period = local.hour >= 12 ? 'PM' : 'AM';
+      return '$hour:$minute $period';
+    }
+    return '${local.month}/${local.day}/${local.year}';
   }
 }
 
@@ -136,7 +345,11 @@ class AppSettingsScreen extends StatelessWidget {
                     color: AppColors.cardBackground,
                     borderRadius: BorderRadius.circular(32),
                   ),
-                  child: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 32),
+                  child: const Icon(
+                    Icons.settings_outlined,
+                    color: AppColors.textSecondary,
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -151,7 +364,10 @@ class AppSettingsScreen extends StatelessWidget {
                 const Text(
                   'App settings will be available in a future update.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 15),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 15,
+                  ),
                 ),
               ],
             ),
@@ -196,10 +412,7 @@ class AboutScreen extends StatelessWidget {
               SizedBox(height: 24),
               Text(
                 'Powered by Google Travel Impact Model API',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ),

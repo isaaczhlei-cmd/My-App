@@ -4,8 +4,9 @@ import '../../../models/flight.dart';
 
 class FlightCard extends StatelessWidget {
   final Flight flight;
+  final bool compact;
 
-  const FlightCard({super.key, required this.flight});
+  const FlightCard({super.key, required this.flight, this.compact = false});
 
   String get _airlineCode => flight.AirlineCode.trim().toUpperCase();
 
@@ -21,10 +22,11 @@ class FlightCard extends StatelessWidget {
     final airlineInfo = _airlineCode.isNotEmpty
         ? '$_airlineCode ${flight.AirlineNumber}'
         : 'Unknown';
+    final logoSize = compact ? 40.0 : 44.0;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
+      margin: EdgeInsets.only(bottom: compact ? 10 : 12),
+      padding: EdgeInsets.all(compact ? 12 : 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
@@ -32,8 +34,8 @@ class FlightCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: logoSize,
+            height: logoSize,
             decoration: BoxDecoration(
               color: const Color(0xFFF5F5F5),
               borderRadius: BorderRadius.circular(10),
@@ -56,7 +58,7 @@ class FlightCard extends StatelessWidget {
                           child: Text(
                             _airlineCode,
                             style: const TextStyle(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.bold,
                               color: Color(0xFF616161),
                             ),
@@ -76,51 +78,63 @@ class FlightCard extends StatelessWidget {
                     ),
                   ),
           ),
-          const SizedBox(width: 12),
-          // Flight route info
+          SizedBox(width: compact ? 10 : 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   '${flight.originCode} \u2192 ${flight.destinationCode}',
-                  style: const TextStyle(
-                    fontSize: 16,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: compact ? 15 : 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: const Color(0xFF1A1A2E),
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   '$airlineInfo  \u2022  $dateStr',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF9E9E9E),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: compact ? 12 : 13,
+                    color: const Color(0xFF9E9E9E),
                   ),
                 ),
               ],
             ),
           ),
-          // Emissions
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${emissionsTons}t',
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+          SizedBox(width: compact ? 10 : 12),
+          Container(
+            constraints: BoxConstraints(minWidth: compact ? 66 : 0),
+            padding: compact
+                ? const EdgeInsets.symmetric(horizontal: 10, vertical: 7)
+                : EdgeInsets.zero,
+            decoration: compact
+                ? BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                  )
+                : null,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '${emissionsTons}t',
+                  style: TextStyle(
+                    fontSize: compact ? 14 : 17,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1A1A2E),
+                  ),
                 ),
-              ),
-              const Text(
-                'CO\u2082',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF9E9E9E),
+                const Text(
+                  'CO\u2082',
+                  style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
