@@ -19,7 +19,8 @@ class AddFlightScreen extends StatefulWidget {
   State<AddFlightScreen> createState() => _AddFlightScreenState();
 }
 
-class _AddFlightScreenState extends State<AddFlightScreen> {
+class _AddFlightScreenState extends State<AddFlightScreen>
+    with SingleTickerProviderStateMixin {
   static const _hiddenCatalogPrefsKey = 'debug_hidden_flight_catalog_entries';
 
   final _heroSearchController = TextEditingController();
@@ -30,6 +31,8 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   final _emissionsService = EmissionsService();
   final _firestoreService = FirestoreService();
   final _authService = AuthService();
+  late final AnimationController _swapAnimationController;
+  late final Animation<double> _swapRotationAnimation;
 
   DateTime _selectedDate = DateTime.now();
   bool _hasResult = false;
@@ -56,11 +59,20 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
   @override
   void initState() {
     super.initState();
+    _swapAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _swapRotationAnimation = CurvedAnimation(
+      parent: _swapAnimationController,
+      curve: Curves.easeInOut,
+    );
     _loadHiddenCatalogEntries();
   }
 
   @override
   void dispose() {
+    _swapAnimationController.dispose();
     _heroSearchController.dispose();
     _flightNumberController.dispose();
     _originController.dispose();
@@ -291,6 +303,7 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
     final origin = _originController.text;
     _originController.text = _destinationController.text;
     _destinationController.text = origin;
+    _swapAnimationController.forward(from: 0);
     setState(() {
       _errorMessage = null;
       _selectedCatalogEntry = null;
@@ -597,7 +610,10 @@ class _AddFlightScreenState extends State<AddFlightScreen> {
                 ),
               ),
               tooltip: 'Swap route',
-              icon: const Icon(Icons.swap_vert, size: 24),
+              icon: RotationTransition(
+                turns: _swapRotationAnimation,
+                child: const Icon(Icons.swap_vert, size: 24),
+              ),
             ),
           ),
           const SizedBox(height: 8),
