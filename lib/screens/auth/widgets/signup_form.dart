@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/theme.dart';
+
 /// A reusable signup form widget with comprehensive validation.
 ///
 /// Features:
@@ -51,11 +53,11 @@ class _SignupFormState extends State<SignupForm> {
   bool _confirmPasswordTouched = false;
 
   // Theme colors
-  static const Color _cardBackground = Color(0xFF1B2838);
-  static const Color _primaryGreen = Color(0xFF64B067);
-  static const Color _textPrimary = Color(0xFFFFFFFF);
-  static const Color _textSecondary = Color(0xFFB0BEC5);
-  static const Color _errorColor = Color(0xFFF44336);
+  static const Color _cardBackground = AppColors.cardBackground;
+  static const Color _primaryGreen = AppColors.primaryGreen;
+  static const Color _textPrimary = AppColors.textPrimary;
+  static const Color _textSecondary = AppColors.textSecondary;
+  static const Color _errorColor = AppColors.errorRed;
 
   @override
   void initState() {
@@ -362,7 +364,7 @@ class _SignupFormState extends State<SignupForm> {
         strengthValue = 0.33;
         break;
       case _PasswordStrength.medium:
-        strengthColor = Colors.orange;
+        strengthColor = AppColors.warningOrange;
         strengthText = 'Medium';
         strengthValue = 0.66;
         break;
