@@ -109,15 +109,7 @@ class FlightCard extends StatelessWidget {
           SizedBox(width: compact ? 10 : 12),
           Container(
             constraints: BoxConstraints(minWidth: compact ? 66 : 0),
-            padding: compact
-                ? const EdgeInsets.symmetric(horizontal: 10, vertical: 7)
-                : EdgeInsets.zero,
-            decoration: compact
-                ? BoxDecoration(
-                    color: const Color(0xFFE8F5E9),
-                    borderRadius: BorderRadius.circular(10),
-                  )
-                : null,
+            padding: EdgeInsets.zero,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
