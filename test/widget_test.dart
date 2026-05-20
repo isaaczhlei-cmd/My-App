@@ -65,10 +65,7 @@ void main() {
       await tester.tap(find.text('Send Reset Link'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Please enter your email'),
-        findsOneWidget,
-      );
+      expect(find.text('Please enter your email'), findsOneWidget);
       expect(fakeAuthService.resetEmails, isEmpty);
     });
 
@@ -242,8 +239,7 @@ class FakeAuthService implements AuthServiceLike {
   final List<({String email, String password})> emailSignIns =
       <({String email, String password})>[];
   final List<({String displayName, String email, String password})>
-      registrations =
-      <({String displayName, String email, String password})>[];
+  registrations = <({String displayName, String email, String password})>[];
   int googleSignInCount = 0;
 
   @override
@@ -300,6 +296,16 @@ class FakeAuthService implements AuthServiceLike {
   ) async {
     resetEmails.add(email);
     return passwordResetResult;
+  }
+
+  @override
+  Future<({bool success, String? error})> sendEmailVerification() async {
+    return (success: true, error: null);
+  }
+
+  @override
+  Future<({bool success, String? error})> reloadCurrentUser() async {
+    return (success: true, error: null);
   }
 
   @override
@@ -364,7 +370,9 @@ class _TestHttpClientResponse extends Stream<List<int>>
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    return Stream<List<int>>.fromIterable(<List<int>>[_transparentImage]).listen(
+    return Stream<List<int>>.fromIterable(<List<int>>[
+      _transparentImage,
+    ]).listen(
       onData,
       onError: onError,
       onDone: onDone,
