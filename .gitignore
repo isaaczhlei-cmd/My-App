@@ -33,9 +33,13 @@ pubspec.lock
 # Environment
 .env
 
-# Claude Code & local tooling
+# Claude Code & local tooling / skill scaffolding
 .claude/
 .codex/
+.agents/
+openspec/
+AGENTS.md
+CLAUDE.md
 
 # Firebase & Google Services secrets
 lib/firebase_options.dart
