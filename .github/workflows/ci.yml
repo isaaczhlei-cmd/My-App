@@ -1,0 +1,58 @@
+# CI creates local placeholder config files because real Firebase and dotenv
+# files are intentionally ignored; never commit or inject real runtime API keys.
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.38.x
+          channel: stable
+          cache: true
+
+      - name: Prepare CI config stubs
+        run: |
+          cat > .env <<'EOF'
+          GOOGLE_CLOUD_API_KEY=ci-placeholder
+          EOF
+          cat > lib/firebase_options.dart <<'EOF'
+          // CI-only placeholder. Real FlutterFire config is ignored locally.
+          import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+
+          class DefaultFirebaseOptions {
+            static const FirebaseOptions currentPlatform = FirebaseOptions(
+              apiKey: 'ci-placeholder',
+              appId: '1:1:web:ci-placeholder',
+              messagingSenderId: '1',
+              projectId: 'ci-placeholder',
+            );
+          }
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
