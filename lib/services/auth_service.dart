@@ -24,6 +24,10 @@ abstract class AuthServiceLike {
 
   Future<({bool success, String? error})> sendPasswordResetEmail(String email);
 
+  Future<({bool success, String? error})> sendEmailVerification();
+
+  Future<({bool success, String? error})> reloadCurrentUser();
+
   Future<({UserCredential? user, String? error})> signInWithGoogle();
 
   Future<({UserCredential? user, String? error})> signInAsGuest();
@@ -102,6 +106,8 @@ class AuthService implements AuthServiceLike {
           }
           return (user: null, error: profileError);
         }
+
+        await sendEmailVerification();
       }
 
       return (user: credential, error: null);
@@ -143,6 +149,48 @@ class AuthService implements AuthServiceLike {
       return (success: false, error: _getErrorMessage(e.code));
     } catch (e) {
       return (success: false, error: 'An unexpected error occurred');
+    }
+  }
+
+  /// Send a verification email to the current signed-in email user.
+  @override
+  Future<({bool success, String? error})> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous || user.email == null) {
+      return (
+        success: false,
+        error: 'Sign in with an email account to verify your email',
+      );
+    }
+    if (user.emailVerified) {
+      return (success: true, error: null);
+    }
+
+    try {
+      await user.sendEmailVerification();
+      return (success: true, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (success: false, error: _getErrorMessage(e.code));
+    } catch (_) {
+      return (success: false, error: 'Could not send verification email');
+    }
+  }
+
+  /// Reload the current Firebase user from the server.
+  @override
+  Future<({bool success, String? error})> reloadCurrentUser() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return (success: false, error: 'No signed-in user found');
+    }
+
+    try {
+      await user.reload();
+      return (success: true, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (success: false, error: _getErrorMessage(e.code));
+    } catch (_) {
+      return (success: false, error: 'Could not refresh your account status');
     }
   }
 
