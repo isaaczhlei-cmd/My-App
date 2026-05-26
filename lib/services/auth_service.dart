@@ -112,7 +112,7 @@ class AuthService implements AuthServiceLike {
 
       return (user: credential, error: null);
     } on FirebaseAuthException catch (e) {
-      return (user: null, error: _getErrorMessage(e.code));
+      return (user: null, error: getErrorMessage(e.code));
     } catch (e) {
       return (user: null, error: 'An unexpected error occurred');
     }
@@ -131,7 +131,7 @@ class AuthService implements AuthServiceLike {
       );
       return (user: credential, error: null);
     } on FirebaseAuthException catch (e) {
-      return (user: null, error: _getErrorMessage(e.code));
+      return (user: null, error: getErrorMessage(e.code));
     } catch (e) {
       return (user: null, error: 'An unexpected error occurred');
     }
@@ -146,7 +146,7 @@ class AuthService implements AuthServiceLike {
       await _auth.sendPasswordResetEmail(email: email);
       return (success: true, error: null);
     } on FirebaseAuthException catch (e) {
-      return (success: false, error: _getErrorMessage(e.code));
+      return (success: false, error: getErrorMessage(e.code));
     } catch (e) {
       return (success: false, error: 'An unexpected error occurred');
     }
@@ -170,7 +170,7 @@ class AuthService implements AuthServiceLike {
       await user.sendEmailVerification();
       return (success: true, error: null);
     } on FirebaseAuthException catch (e) {
-      return (success: false, error: _getErrorMessage(e.code));
+      return (success: false, error: getErrorMessage(e.code));
     } catch (_) {
       return (success: false, error: 'Could not send verification email');
     }
@@ -188,7 +188,7 @@ class AuthService implements AuthServiceLike {
       await user.reload();
       return (success: true, error: null);
     } on FirebaseAuthException catch (e) {
-      return (success: false, error: _getErrorMessage(e.code));
+      return (success: false, error: getErrorMessage(e.code));
     } catch (_) {
       return (success: false, error: 'Could not refresh your account status');
     }
@@ -246,7 +246,7 @@ class AuthService implements AuthServiceLike {
       final credential = await _auth.signInAnonymously();
       return (user: credential, error: null);
     } on FirebaseAuthException catch (e) {
-      return (user: null, error: _getErrorMessage(e.code));
+      return (user: null, error: getErrorMessage(e.code));
     } catch (e) {
       return (user: null, error: 'An unexpected error occurred');
     }
@@ -328,7 +328,8 @@ class AuthService implements AuthServiceLike {
   }
 
   /// Convert Firebase error codes to user-friendly messages
-  String _getErrorMessage(String code) {
+  @visibleForTesting
+  static String getErrorMessage(String code) {
     switch (code) {
       case 'weak-password':
         return 'Password should be at least 6 characters';
