@@ -9,6 +9,7 @@ class BookingHandoffScreen extends StatefulWidget {
     required this.destination,
     required this.outboundDate,
     required this.returnDate,
+    required this.providerName,
     required this.outboundUrl,
     required this.returnUrl,
     required this.onLaunchUrl,
@@ -18,6 +19,7 @@ class BookingHandoffScreen extends StatefulWidget {
   final String destination;
   final DateTime outboundDate;
   final DateTime returnDate;
+  final String providerName;
   final Uri outboundUrl;
   final Uri returnUrl;
   final Future<bool> Function(Uri url) onLaunchUrl;
@@ -35,9 +37,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
-      appBar: AppBar(
-        title: const Text('Round Trip Booking'),
-      ),
+      appBar: AppBar(title: const Text('Round Trip Booking')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -63,7 +63,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'We will open the outbound flight first, then the return flight back to your original airport.',
+                      'We will open ${widget.providerName} for the outbound flight first, then the return flight back to your original airport.',
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.5,
@@ -152,9 +152,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
         borderRadius: BorderRadius.circular(20),
         child: Container(
           padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -173,7 +171,9 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                     child: Text(
                       step,
                       style: TextStyle(
-                        color: isActive ? Colors.white : const Color(0xFF5F657A),
+                        color: isActive
+                            ? Colors.white
+                            : const Color(0xFF5F657A),
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -194,10 +194,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
               const SizedBox(height: 10),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF737896),
-                  fontSize: 14,
-                ),
+                style: const TextStyle(color: Color(0xFF737896), fontSize: 14),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -233,10 +230,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                 const SizedBox(height: 10),
                 const Text(
                   'You can tap the button or anywhere on this card.',
-                  style: TextStyle(
-                    color: Color(0xFF737896),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Color(0xFF737896), fontSize: 12),
                 ),
               ],
             ],

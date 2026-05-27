@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
+import '../../services/booking_link_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
@@ -18,7 +20,10 @@ class BookFlightScreen extends StatefulWidget {
 
 class _BookFlightScreenState extends State<BookFlightScreen>
     with SingleTickerProviderStateMixin {
+  static const _bookingProviderPreferenceKey = 'booking_provider';
+
   final _authService = AuthService();
+  final _bookingLinkService = const BookingLinkService();
   bool _isRoundTrip = true;
   AirportOption _fromAirport = AirportDirectory.airports.firstWhere(
     (airport) => airport.code == 'JFK',
@@ -38,6 +43,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   late DateTime _returnDate;
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
+  BookingProvider _selectedProvider = BookingProvider.skyscanner;
 
   @override
   void initState() {
@@ -58,6 +64,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
 
     _fromFocusNode.addListener(_handleFocusChange);
     _toFocusNode.addListener(_handleFocusChange);
+    _loadSelectedProvider();
   }
 
   @override
@@ -85,6 +92,25 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         _toMatches = const [];
       });
     }
+  }
+
+  Future<void> _loadSelectedProvider() async {
+    final prefs = SharedPreferencesAsync();
+    final storedProvider = await prefs.getString(_bookingProviderPreferenceKey);
+    if (!mounted) return;
+
+    setState(() {
+      _selectedProvider = BookingProvider.fromStorageValue(storedProvider);
+    });
+  }
+
+  Future<void> _selectProvider(BookingProvider provider) async {
+    setState(() {
+      _selectedProvider = provider;
+    });
+
+    final prefs = SharedPreferencesAsync();
+    await prefs.setString(_bookingProviderPreferenceKey, provider.storageValue);
   }
 
   Future<void> _selectDate({required bool isReturn}) async {
@@ -241,6 +267,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           destination: toMatch.shortLabel,
           outboundDate: _departDate,
           returnDate: _returnDate,
+          providerName: _selectedProvider.label,
           outboundUrl: outboundUrl,
           returnUrl: returnUrl,
           onLaunchUrl: _launchExternalSearch,
@@ -252,9 +279,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   void _openGuestPrompt() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const GuestSignInPromptScreen(
-          featureLabel: 'flight booking',
-        ),
+        builder: (_) =>
+            const GuestSignInPromptScreen(featureLabel: 'flight booking'),
       ),
     );
   }
@@ -312,10 +338,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           SizedBox(height: 6),
           Text(
             'Compare price and carbon before you book',
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFFDCE2FF),
-            ),
+            style: TextStyle(fontSize: 16, color: Color(0xFFDCE2FF)),
           ),
         ],
       ),
@@ -338,10 +361,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         children: [
           Row(
             children: [
-              Icon(
-                Icons.lock_outline,
-                color: AppColors.warningOrange,
-              ),
+              Icon(Icons.lock_outline, color: AppColors.warningOrange),
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
@@ -412,10 +432,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                 onPressed: _swapAirports,
                 icon: RotationTransition(
                   turns: _swapRotationAnimation,
-                  child: const Icon(
-                    Icons.swap_vert,
-                    color: Color(0xFF30324A),
-                  ),
+                  child: const Icon(Icons.swap_vert, color: Color(0xFF30324A)),
                 ),
               ),
             ),
@@ -462,6 +479,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           _buildFieldLabel(Icons.airline_seat_recline_normal, 'Cabin Class'),
           const SizedBox(height: 8),
           _buildCabinClassSelector(),
+          const SizedBox(height: 18),
+          _buildFieldLabel(Icons.travel_explore, 'Booking Provider'),
+          const SizedBox(height: 8),
+          _buildProviderSelector(),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -515,7 +536,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                     'Round Trip',
                     style: TextStyle(
                       color: const Color(0xFF30324A),
-                      fontWeight: _isRoundTrip ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: _isRoundTrip
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                     ),
                   ),
                 ),
@@ -540,7 +563,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                     'One Way',
                     style: TextStyle(
                       color: const Color(0xFF30324A),
-                      fontWeight: !_isRoundTrip ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight: !_isRoundTrip
+                          ? FontWeight.w700
+                          : FontWeight.w600,
                     ),
                   ),
                 ),
@@ -590,10 +615,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           ),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: const TextStyle(
-              color: Color(0xFF8A8FA7),
-              fontSize: 15,
-            ),
+            hintStyle: const TextStyle(color: Color(0xFF8A8FA7), fontSize: 15),
             filled: true,
             fillColor: const Color(0xFFF2F3F7),
             prefixIcon: const Icon(Icons.search, color: Color(0xFF737896)),
@@ -757,7 +779,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primaryGreen : const Color(0xFFF2F3F7),
+              color: isSelected
+                  ? AppColors.primaryGreen
+                  : const Color(0xFFF2F3F7),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
@@ -767,6 +791,35 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                 fontWeight: FontWeight.w700,
               ),
             ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildProviderSelector() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: BookingProvider.values.map((provider) {
+        final isSelected = provider == _selectedProvider;
+        return ChoiceChip(
+          label: Text(provider.label),
+          selected: isSelected,
+          onSelected: (_) => _selectProvider(provider),
+          selectedColor: AppColors.primaryGreen,
+          backgroundColor: const Color(0xFFF2F3F7),
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF30324A),
+            fontWeight: FontWeight.w700,
+          ),
+          side: BorderSide(
+            color: isSelected
+                ? AppColors.primaryGreen
+                : const Color(0xFFE2E5EE),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
           ),
         );
       }).toList(),
@@ -810,7 +863,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           ),
           const SizedBox(height: 16),
           const Text(
-            'This screen opens live airline schedules and pricing on the booking provider instead of showing generated sample fares inside the app.',
+            'This screen opens live airline schedules and pricing on the selected booking provider instead of showing generated sample fares inside the app.',
             style: TextStyle(
               color: AppColors.textPrimary,
               fontSize: 15,
@@ -822,8 +875,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             _authService.isGuest
                 ? 'Sign in to access real flight search results.'
                 : _isRoundTrip
-                    ? 'Round trips open the outbound search first, then a second step opens the return-leg search back to your original airport.'
-                    : 'One-way searches open directly to live results for your selected route, date, passenger count, and cabin class.',
+                ? 'Round trips open ${_selectedProvider.label} for the outbound search first, then a second step opens the return-leg search back to your original airport.'
+                : 'One-way searches open ${_selectedProvider.label} for your selected route, date, passenger count, and cabin class.',
             style: const TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
@@ -864,19 +917,15 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required String destination,
     required DateTime departureDate,
   }) {
-    return Uri.https(
-      'www.skyscanner.net',
-      '/g/referrals/v1/flights/day-view/',
-      <String, String>{
-        'origin': origin,
-        'destination': destination,
-        'outboundDate': _formatIsoDate(departureDate),
-        'adultsv2': '$_passengers',
-        'cabinclass': _skyscannerCabinClass(_selectedCabin),
-        'market': 'US',
-        'locale': 'en-US',
-        'currency': 'USD',
-      },
+    return _bookingLinkService.uriForProvider(
+      _selectedProvider,
+      BookingSearchRequest(
+        origin: origin,
+        destination: destination,
+        departureDate: departureDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
     );
   }
 
@@ -901,20 +950,5 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     }
 
     return success;
-  }
-
-  String _formatIsoDate(DateTime date) {
-    final month = date.month.toString().padLeft(2, '0');
-    final day = date.day.toString().padLeft(2, '0');
-    return '${date.year}-$month-$day';
-  }
-
-  String _skyscannerCabinClass(CabinClass cabinClass) {
-    return switch (cabinClass) {
-      CabinClass.economy => 'economy',
-      CabinClass.premiumEconomy => 'premiumeconomy',
-      CabinClass.business => 'business',
-      CabinClass.first => 'first',
-    };
   }
 }
