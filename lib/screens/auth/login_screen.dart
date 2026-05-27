@@ -594,7 +594,5 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  AuthServiceLike get _authService => widget.authService ?? _defaultAuthService;
+  AuthServiceLike get _authService => widget.authService ?? AuthService();
 }
-
-final AuthServiceLike _defaultAuthService = AuthService();

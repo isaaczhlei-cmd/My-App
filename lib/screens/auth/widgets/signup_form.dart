@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/theme.dart';
+
 /// A reusable signup form widget with comprehensive validation.
 ///
 /// Features:
@@ -51,11 +53,11 @@ class _SignupFormState extends State<SignupForm> {
   bool _confirmPasswordTouched = false;
 
   // Theme colors
-  static const Color _cardBackground = Color(0xFF1B2838);
-  static const Color _primaryGreen = Color(0xFF64B067);
-  static const Color _textPrimary = Color(0xFFFFFFFF);
-  static const Color _textSecondary = Color(0xFFB0BEC5);
-  static const Color _errorColor = Color(0xFFF44336);
+  static const Color _cardBackground = AppColors.cardBackground;
+  static const Color _primaryGreen = AppColors.primaryGreen;
+  static const Color _textPrimary = AppColors.textPrimary;
+  static const Color _textSecondary = AppColors.textSecondary;
+  static const Color _errorColor = AppColors.errorRed;
 
   @override
   void initState() {
@@ -83,41 +85,19 @@ class _SignupFormState extends State<SignupForm> {
   /// Validates name field (required, min 2 characters)
   String? _validateName(String? value) {
     if (!_nameTouched) return null;
-    if (value == null || value.isEmpty) {
-      return 'Name is required';
-    }
-    if (value.length < 2) {
-      return 'Name must be at least 2 characters';
-    }
-    return null;
+    return SignupFormValidator.validateName(value);
   }
 
   /// Validates email using regex pattern
   String? _validateEmail(String? value) {
     if (!_emailTouched) return null;
-    if (value == null || value.isEmpty) {
-      return 'Email is required';
-    }
-    // Comprehensive email regex pattern
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)*$',
-    );
-    if (!emailRegex.hasMatch(value)) {
-      return 'Please enter a valid email address';
-    }
-    return null;
+    return SignupFormValidator.validateEmail(value);
   }
 
   /// Validates password (min 8 characters)
   String? _validatePassword(String? value) {
     if (!_passwordTouched) return null;
-    if (value == null || value.isEmpty) {
-      return 'Password is required';
-    }
-    if (value.length < 8) {
-      return 'Password must be at least 8 characters';
-    }
-    return null;
+    return SignupFormValidator.validatePassword(value);
   }
 
   /// Validates confirm password matches password
@@ -161,27 +141,12 @@ class _SignupFormState extends State<SignupForm> {
 
   /// Checks if all fields are valid for enabling the submit button
   bool get _isFormValid {
-    final name = _nameController.text;
-    final email = _emailController.text;
-    final password = _passwordController.text;
-    final confirmPassword = _confirmPasswordController.text;
-
-    // Name validation
-    if (name.isEmpty || name.length < 2) return false;
-
-    // Email validation
-    final emailRegex = RegExp(
-      r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)*$',
+    return SignupFormValidator.isFormValid(
+      name: _nameController.text,
+      email: _emailController.text,
+      password: _passwordController.text,
+      confirmPassword: _confirmPasswordController.text,
     );
-    if (email.isEmpty || !emailRegex.hasMatch(email)) return false;
-
-    // Password validation
-    if (password.isEmpty || password.length < 8) return false;
-
-    // Confirm password validation
-    if (confirmPassword.isEmpty || confirmPassword != password) return false;
-
-    return true;
   }
 
   void _handleSubmit() {
@@ -362,7 +327,7 @@ class _SignupFormState extends State<SignupForm> {
         strengthValue = 0.33;
         break;
       case _PasswordStrength.medium:
-        strengthColor = Colors.orange;
+        strengthColor = AppColors.warningOrange;
         strengthText = 'Medium';
         strengthValue = 0.66;
         break;
@@ -627,3 +592,52 @@ class _SignupFormState extends State<SignupForm> {
 
 /// Enum representing password strength levels
 enum _PasswordStrength { none, weak, medium, strong }
+
+class SignupFormValidator {
+  static final RegExp _emailRegex = RegExp(
+    r'^[a-zA-Z0-9.!#$%&*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,253}[a-zA-Z0-9])?)*$',
+  );
+
+  static String? validateName(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Name is required';
+    }
+    if (value.length < 2) {
+      return 'Name must be at least 2 characters';
+    }
+    return null;
+  }
+
+  static String? validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Email is required';
+    }
+    if (!_emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  static String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    return null;
+  }
+
+  static bool isFormValid({
+    required String name,
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) {
+    return validateName(name) == null &&
+        validateEmail(email) == null &&
+        validatePassword(password) == null &&
+        confirmPassword.isNotEmpty &&
+        confirmPassword == password;
+  }
+}
