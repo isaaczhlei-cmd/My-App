@@ -71,6 +71,7 @@ class NotificationInboxService extends ChangeNotifier {
   final Set<String> _deliveredEcoTipKeys = <String>{};
   bool _isLoaded = false;
   Future<void>? _loadFuture;
+  SharedPreferences? _prefs;
 
   List<AppNotification> get notifications => List.unmodifiable(_notifications);
 
@@ -88,6 +89,7 @@ class NotificationInboxService extends ChangeNotifier {
 
   Future<void> _doLoad() async {
     final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
     final savedNotifications =
         prefs.getStringList(_notificationsPrefsKey) ?? const <String>[];
     _notifications
@@ -166,7 +168,7 @@ class NotificationInboxService extends ChangeNotifier {
   }
 
   Future<void> _save() async {
-    final prefs = await SharedPreferences.getInstance();
+    final prefs = _prefs ?? await SharedPreferences.getInstance();
     await prefs.setStringList(
       _notificationsPrefsKey,
       _notifications

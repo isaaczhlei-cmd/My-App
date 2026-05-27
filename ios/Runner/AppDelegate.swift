@@ -46,9 +46,13 @@ import UserNotifications
       case .enabled:
         self.applyBadge(count, result: result)
       case .notDetermined:
-        center.requestAuthorization(options: [.badge]) { _, error in
+        center.requestAuthorization(options: [.badge]) { granted, error in
           if let error = error {
             result(FlutterError(code: "BADGE_PERMISSION_ERROR", message: error.localizedDescription, details: nil))
+            return
+          }
+          guard granted else {
+            result(nil)
             return
           }
           self.applyBadge(count, result: result)
