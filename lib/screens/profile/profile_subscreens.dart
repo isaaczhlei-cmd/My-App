@@ -111,6 +111,15 @@ class _NotificationSettingsScreenState
               );
             }
 
+            if (snapshot.hasError) {
+              return const Center(
+                child: Text(
+                  'Failed to load notifications.',
+                  style: TextStyle(color: Colors.white70),
+                ),
+              );
+            }
+
             return AnimatedBuilder(
               animation: _notificationInbox,
               builder: (context, _) {

@@ -170,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
           recentTravelPattern: recentTravelPattern,
         )
         .then((tip) {
+          if (!mounted) return;
           _notificationInbox.addMissedEcoTip(
             deliveryKey: deliveryKey,
             tip: tip,
