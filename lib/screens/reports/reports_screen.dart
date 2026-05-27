@@ -69,6 +69,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 ),
               );
             }
+            final topRoutes = _topRoutes(flights);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -99,6 +100,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                   const SizedBox(height: 24),
                   _buildMonthlyChart(monthlyData),
+                  const SizedBox(height: 24),
+                  _buildTopRoutesCard(topRoutes),
                 ],
               ),
             );
@@ -107,6 +110,36 @@ class _ReportsScreenState extends State<ReportsScreen> {
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
+  }
+
+  List<_RouteData> _topRoutes(List<Flight> flights) {
+    final routes = <String, _RouteData>{};
+
+    for (final flight in flights) {
+      final originCode = flight.originCode.trim().toUpperCase();
+      final destinationCode = flight.destinationCode.trim().toUpperCase();
+      final key = '$originCode->$destinationCode';
+      final existing = routes[key];
+
+      if (existing == null) {
+        routes[key] = _RouteData(
+          originCode: originCode,
+          destinationCode: destinationCode,
+          flightCount: 1,
+          emissionsKg: flight.emissionsKg,
+        );
+      } else {
+        routes[key] = existing.copyWith(
+          flightCount: existing.flightCount + 1,
+          emissionsKg: existing.emissionsKg + flight.emissionsKg,
+        );
+      }
+    }
+
+    final sortedRoutes = routes.values.toList()
+      ..sort((a, b) => b.emissionsKg.compareTo(a.emissionsKg));
+
+    return sortedRoutes.take(3).toList();
   }
 
   Widget _buildSummaryCard({
@@ -174,6 +207,87 @@ class _ReportsScreenState extends State<ReportsScreen> {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopRoutesCard(List<_RouteData> routes) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Top Routes',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A2E),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (routes.isEmpty)
+            Text(
+              'Add flights to see your top routes.',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            )
+          else
+            ...routes.indexed.map((entry) {
+              final index = entry.$1;
+              final route = entry.$2;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: index == routes.length - 1 ? 0 : 14,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 24,
+                      child: Text(
+                        '${index + 1}.',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A2E),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${route.originCode} -> ${route.destinationCode}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF1A1A2E),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${route.flightCount} flight${route.flightCount == 1 ? '' : 's'} • ${(route.emissionsKg / 1000).toStringAsFixed(2)}t CO\u2082',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF9E9E9E),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -287,4 +401,27 @@ class _MonthData {
     required this.emissionsKg,
     required this.flightCount,
   });
+}
+
+class _RouteData {
+  final String originCode;
+  final String destinationCode;
+  final int flightCount;
+  final double emissionsKg;
+
+  _RouteData({
+    required this.originCode,
+    required this.destinationCode,
+    required this.flightCount,
+    required this.emissionsKg,
+  });
+
+  _RouteData copyWith({int? flightCount, double? emissionsKg}) {
+    return _RouteData(
+      originCode: originCode,
+      destinationCode: destinationCode,
+      flightCount: flightCount ?? this.flightCount,
+      emissionsKg: emissionsKg ?? this.emissionsKg,
+    );
+  }
 }
