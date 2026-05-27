@@ -5,11 +5,12 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/eco_tip_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/notification_inbox_service.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
-import 'widgets/eco_tip_card.dart';
 import 'widgets/flight_card.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../../widgets/notification_badge.dart';
 import '../profile/profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,12 +21,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const int _recentFlightsLimit = 5;
+  static const int _recentFlightsLimit = 4;
   final _authService = AuthService();
   final _firestoreService = FirestoreService();
   final _ecoTipService = EcoTipService();
-  final Map<String, Future<EcoTipSuggestion>> _ecoTipFutures = {};
-  int _ecoTipRefreshNonce = 0;
+  final _notificationInbox = NotificationInboxService.instance;
+  final Set<String> _queuedEcoTipDeliveryKeys = <String>{};
   bool _isSendingVerification = false;
   bool _isRefreshingVerification = false;
 
@@ -35,6 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final Map<String, Timer> _pendingDeletions = {};
   final Map<String, Flight> _pendingFlightData = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationInbox.load();
+  }
 
   @override
   void dispose() {
@@ -112,14 +119,15 @@ class _HomeScreenState extends State<HomeScreen> {
             final recentFlights = currentMonthFlights
                 .take(_recentFlightsLimit)
                 .toList();
-            final recentTravelPattern = _buildRecentTravelPattern(
-              recentFlights,
-            );
-            final ecoTipFuture = _getEcoTipFuture(
-              flightCount: totalFlights,
-              totalEmissionsKg: totalEmissionsKg,
-              recentTravelPattern: recentTravelPattern,
-            );
+            final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              _queueEcoTipNotification(
+                flightCount: totalFlights,
+                totalEmissionsKg: totalEmissionsKg,
+                recentTravelPattern: recentTravelPattern,
+              );
+            });
 
             return SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -135,8 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 24),
                   _buildRecentFlights(recentFlights),
                   const SizedBox(height: 20),
-                  _buildEcoTip(ecoTipFuture),
-                  const SizedBox(height: 20),
                 ],
               ),
             );
@@ -145,6 +151,36 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
     );
+  }
+
+  void _queueEcoTipNotification({
+    required int flightCount,
+    required double totalEmissionsKg,
+    required String recentTravelPattern,
+  }) {
+    final now = DateTime.now();
+    final deliveryKey =
+        'eco-tip-${now.year}-${now.month}-${now.day}|$flightCount|${totalEmissionsKg.toStringAsFixed(1)}|$recentTravelPattern';
+
+    if (!_queuedEcoTipDeliveryKeys.add(deliveryKey)) return;
+    if (_queuedEcoTipDeliveryKeys.length > 20) {
+      _queuedEcoTipDeliveryKeys.remove(_queuedEcoTipDeliveryKeys.first);
+    }
+
+    _ecoTipService
+        .fetchEcoTip(
+          flightCount: flightCount,
+          totalEmissionsKg: totalEmissionsKg,
+          recentTravelPattern: recentTravelPattern,
+        )
+        .then((tip) {
+          if (!mounted) return;
+          _notificationInbox.addMissedEcoTip(
+            deliveryKey: deliveryKey,
+            tip: tip,
+          );
+        })
+        .catchError((Object _) {});
   }
 
   String _welcomeGreeting() {
@@ -193,21 +229,44 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: AppColors.primaryGreen,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.person, color: Colors.white, size: 22),
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
-            },
-          ),
+        AnimatedBuilder(
+          animation: _notificationInbox,
+          builder: (context, _) {
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGreen,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  top: -6,
+                  right: -6,
+                  child: NotificationBadge(
+                    count: _notificationInbox.unreadCount,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -568,7 +627,7 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         else
           ...visibleFlights.map((flight) {
-            if (isGuest) return FlightCard(flight: flight);
+            if (isGuest) return FlightCard(flight: flight, compact: true);
             return Dismissible(
               key: Key(flight.id),
               direction: DismissDirection.endToStart,
@@ -583,51 +642,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: const Icon(Icons.delete, color: Colors.white),
               ),
-              child: FlightCard(flight: flight),
+              child: FlightCard(flight: flight, compact: true),
             );
           }),
       ],
-    );
-  }
-
-  Widget _buildEcoTip(Future<EcoTipSuggestion> ecoTipFuture) {
-    return FutureBuilder<EcoTipSuggestion>(
-      future: ecoTipFuture,
-      builder: (context, snapshot) {
-        final tip = snapshot.data?.tip ?? 'Finding a fresh eco tip...';
-        final isRefreshing =
-            snapshot.connectionState == ConnectionState.waiting;
-        return EcoTipCard(
-          tip: tip,
-          isRefreshing: isRefreshing,
-          onRefresh: isRefreshing
-              ? null
-              : () {
-                  if (!mounted) return;
-                  setState(() {
-                    _ecoTipRefreshNonce++;
-                  });
-                },
-        );
-      },
-    );
-  }
-
-  Future<EcoTipSuggestion> _getEcoTipFuture({
-    required int flightCount,
-    required double totalEmissionsKg,
-    required String recentTravelPattern,
-  }) {
-    final cacheKey =
-        '$flightCount|${totalEmissionsKg.toStringAsFixed(1)}|$recentTravelPattern|$_ecoTipRefreshNonce';
-    return _ecoTipFutures.putIfAbsent(
-      cacheKey,
-      () => _ecoTipService.fetchEcoTip(
-        flightCount: flightCount,
-        totalEmissionsKg: totalEmissionsKg,
-        recentTravelPattern: recentTravelPattern,
-        refreshToken: _ecoTipRefreshNonce,
-      ),
     );
   }
 
