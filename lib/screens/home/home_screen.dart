@@ -171,23 +171,27 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _welcomeGreeting(),
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _welcomeGreeting(),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Dashboard',
-              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-            ),
-          ],
+              const SizedBox(height: 4),
+              const Text(
+                'Dashboard',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
         ),
         Container(
           width: 44,
