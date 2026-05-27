@@ -9,7 +9,7 @@ import '../screens/book_flight/book_flight_screen.dart';
 /// Shared bottom navigation bar used across all main screens.
 /// Profile is accessed via the header icon button on the Home screen.
 ///
-/// Tabs: Home(0)  Add(1)  Compare(2)  Reports(3)  Book(4)
+/// Tabs: Home(0)  Add(1)  Compare(2)  Reports(3)  Search(4)
 class AppBottomNav extends StatelessWidget {
   final int currentIndex;
 
@@ -54,8 +54,8 @@ class AppBottomNav extends StatelessWidget {
         ),
         BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Reports'),
         BottomNavigationBarItem(
-          icon: Icon(Icons.airplane_ticket),
-          label: 'Book',
+          icon: Icon(Icons.travel_explore),
+          label: 'Search',
         ),
       ],
     );
