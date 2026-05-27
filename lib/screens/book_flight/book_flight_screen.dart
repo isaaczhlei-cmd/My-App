@@ -590,6 +590,11 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required ValueChanged<String> onChanged,
     required ValueChanged<AirportOption> onSelected,
   }) {
+    final showNoMatches =
+        focusNode.hasFocus &&
+        controller.text.trim().length >= 3 &&
+        matches.isEmpty;
+
     return Column(
       children: [
         TextField(
@@ -626,6 +631,28 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             ),
           ),
         ),
+        if (showNoMatches) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF6E5),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.warningOrange.withValues(alpha: 0.35),
+              ),
+            ),
+            child: const Text(
+              'No matches - try the IATA code',
+              style: TextStyle(
+                color: Color(0xFF7A4A00),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
         if (focusNode.hasFocus && matches.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
