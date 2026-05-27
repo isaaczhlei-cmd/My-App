@@ -23,6 +23,12 @@ void main() {
     HttpOverrides.global = previousHttpOverrides;
   });
 
+  group('AuthService', () {
+    test('reuses the same production instance', () {
+      expect(identical(AuthService(), AuthService()), isTrue);
+    });
+  });
+
   group('Forgot password', () {
     testWidgets('renders Forgot Password button', (WidgetTester tester) async {
       await tester.pumpWidget(
@@ -32,7 +38,7 @@ void main() {
       expect(find.text('Forgot Password?'), findsOneWidget);
     });
 
-    testWidgets('opens debug screen when forgot password is tapped', (
+    testWidgets('opens reset screen when forgot password is tapped', (
       WidgetTester tester,
     ) async {
       await tester.pumpWidget(
@@ -42,9 +48,9 @@ void main() {
       await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Forgot Password Debug'), findsOneWidget);
-      expect(find.text('Email under test'), findsOneWidget);
-      expect(find.text('(empty)'), findsOneWidget);
+      expect(find.text('Reset Password'), findsOneWidget);
+      expect(find.text('Send Reset Link'), findsOneWidget);
+      expect(find.widgetWithText(TextFormField, 'Email'), findsOneWidget);
     });
 
     testWidgets('shows error when email is empty', (WidgetTester tester) async {
@@ -56,13 +62,10 @@ void main() {
 
       await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Send Reset Email'));
+      await tester.tap(find.text('Send Reset Link'));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('Please enter your email address first'),
-        findsOneWidget,
-      );
+      expect(find.text('Please enter your email'), findsOneWidget);
       expect(fakeAuthService.resetEmails, isEmpty);
     });
 
@@ -84,12 +87,12 @@ void main() {
       await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
       expect(find.text('user@example.com'), findsOneWidget);
-      await tester.tap(find.text('Send Reset Email'));
+      await tester.tap(find.text('Send Reset Link'));
       await tester.pump();
       await tester.pump(const Duration(seconds: 1));
 
       expect(fakeAuthService.resetEmails, ['user@example.com']);
-      expect(find.text('Password reset email sent!'), findsOneWidget);
+      expect(find.text('Check Your Email'), findsOneWidget);
     });
 
     testWidgets('shows banner when reset fails', (WidgetTester tester) async {
@@ -107,11 +110,121 @@ void main() {
       );
       await tester.tap(find.text('Forgot Password?'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Send Reset Email'));
+      await tester.tap(find.text('Send Reset Link'));
       await tester.pumpAndSettle();
 
       expect(fakeAuthService.resetEmails, ['user@example.com']);
       expect(find.text('Some error'), findsOneWidget);
+    });
+  });
+
+  group('LoginScreen auth injection', () {
+    testWidgets('uses injected auth service for email login', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuthService = FakeAuthService();
+
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(authService: fakeAuthService)),
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Email'),
+        'user@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Password'),
+        'password123',
+      );
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Login'));
+      await tester.pumpAndSettle();
+
+      expect(fakeAuthService.emailSignIns, [
+        (email: 'user@example.com', password: 'password123'),
+      ]);
+    });
+
+    testWidgets('uses injected auth service for signup', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuthService = FakeAuthService();
+
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(authService: fakeAuthService)),
+      );
+
+      await tester.tap(find.text('Sign Up'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Name'),
+        'Test User',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Email'),
+        'new@example.com',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Password'),
+        'Password123',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Confirm Password'),
+        'Password123',
+      );
+      await tester.pump();
+      final createAccountButton = find.widgetWithText(
+        ElevatedButton,
+        'Create Account',
+      );
+      await tester.ensureVisible(createAccountButton);
+      await tester.tap(createAccountButton);
+      await tester.pumpAndSettle();
+
+      expect(fakeAuthService.registrations, [
+        (
+          displayName: 'Test User',
+          email: 'new@example.com',
+          password: 'Password123',
+        ),
+      ]);
+    });
+
+    testWidgets('uses injected auth service for Google sign-in', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuthService = FakeAuthService();
+
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(authService: fakeAuthService)),
+      );
+
+      final googleButton = find.text('Continue with Google');
+      await tester.ensureVisible(googleButton);
+      await tester.tap(googleButton);
+      await tester.pumpAndSettle();
+
+      expect(fakeAuthService.googleSignInCount, 1);
+    });
+
+    testWidgets('uses injected auth service for password reset', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuthService = FakeAuthService();
+
+      await tester.pumpWidget(
+        MaterialApp(home: LoginScreen(authService: fakeAuthService)),
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextFormField, 'Email'),
+        'reset@example.com',
+      );
+      await tester.tap(find.text('Forgot Password?'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Send Reset Link'));
+      await tester.pumpAndSettle();
+
+      expect(fakeAuthService.resetEmails, ['reset@example.com']);
     });
   });
 }
@@ -123,6 +236,11 @@ class FakeAuthService implements AuthServiceLike {
 
   final ({bool success, String? error}) passwordResetResult;
   final List<String> resetEmails = <String>[];
+  final List<({String email, String password})> emailSignIns =
+      <({String email, String password})>[];
+  final List<({String displayName, String email, String password})>
+  registrations = <({String displayName, String email, String password})>[];
+  int googleSignInCount = 0;
 
   @override
   Stream<User?> get authStateChanges => const Stream<User?>.empty();
@@ -139,7 +257,12 @@ class FakeAuthService implements AuthServiceLike {
     required String password,
     String? displayName,
   }) async {
-    throw UnimplementedError();
+    registrations.add((
+      displayName: displayName ?? '',
+      email: email,
+      password: password,
+    ));
+    return (user: null, error: null);
   }
 
   @override
@@ -152,12 +275,14 @@ class FakeAuthService implements AuthServiceLike {
     required String email,
     required String password,
   }) async {
-    throw UnimplementedError();
+    emailSignIns.add((email: email, password: password));
+    return (user: null, error: null);
   }
 
   @override
   Future<({UserCredential? user, String? error})> signInWithGoogle() async {
-    throw UnimplementedError();
+    googleSignInCount++;
+    return (user: null, error: null);
   }
 
   @override
@@ -171,6 +296,16 @@ class FakeAuthService implements AuthServiceLike {
   ) async {
     resetEmails.add(email);
     return passwordResetResult;
+  }
+
+  @override
+  Future<({bool success, String? error})> sendEmailVerification() async {
+    return (success: true, error: null);
+  }
+
+  @override
+  Future<({bool success, String? error})> reloadCurrentUser() async {
+    return (success: true, error: null);
   }
 
   @override
@@ -235,7 +370,9 @@ class _TestHttpClientResponse extends Stream<List<int>>
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    return Stream<List<int>>.fromIterable(<List<int>>[_transparentImage]).listen(
+    return Stream<List<int>>.fromIterable(<List<int>>[
+      _transparentImage,
+    ]).listen(
       onData,
       onError: onError,
       onDone: onDone,

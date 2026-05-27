@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/eco_tip_service.dart';
@@ -26,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final _ecoTipService = EcoTipService();
   final _notificationInbox = NotificationInboxService.instance;
   final Set<String> _queuedEcoTipDeliveryKeys = <String>{};
+  bool _isSendingVerification = false;
+  bool _isRefreshingVerification = false;
 
   bool _isInCurrentMonth(DateTime date, DateTime now) {
     return date.year == now.year && date.month == now.month;
@@ -132,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildHeader(),
+                  _buildEmailVerificationBanner(),
                   const SizedBox(height: 24),
                   _buildFootprintCard(totalCO2Tons),
                   const SizedBox(height: 20),
@@ -203,23 +207,27 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              _welcomeGreeting(),
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _welcomeGreeting(),
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Dashboard',
-              style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
-            ),
-          ],
+              const SizedBox(height: 4),
+              const Text(
+                'Dashboard',
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+              ),
+            ],
+          ),
         ),
         AnimatedBuilder(
           animation: _notificationInbox,
@@ -262,6 +270,147 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildEmailVerificationBanner() {
+    return StreamBuilder<User?>(
+      stream: _authService.userChanges,
+      initialData: _authService.currentUser,
+      builder: (context, snapshot) {
+        final user = _authService.currentUser ?? snapshot.data;
+        final shouldVerify =
+            user != null &&
+            !user.isAnonymous &&
+            user.email != null &&
+            !user.emailVerified;
+
+        if (!shouldVerify) {
+          return const SizedBox.shrink();
+        }
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.warningOrange.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.warningOrange.withValues(alpha: 0.45),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(
+                      Icons.mark_email_unread_outlined,
+                      color: AppColors.warningOrange,
+                      size: 20,
+                    ),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Verify your email',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Check ${user.email} for the verification link.',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _isSendingVerification
+                          ? null
+                          : _sendVerificationEmail,
+                      icon: _isSendingVerification
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.mail_outline, size: 18),
+                      label: const Text('Resend email'),
+                    ),
+                    TextButton.icon(
+                      onPressed: _isRefreshingVerification
+                          ? null
+                          : _refreshVerificationStatus,
+                      icon: _isRefreshingVerification
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.refresh, size: 18),
+                      label: const Text('I verified'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _sendVerificationEmail() async {
+    setState(() {
+      _isSendingVerification = true;
+    });
+
+    final result = await _authService.sendEmailVerification();
+
+    if (!mounted) return;
+    setState(() {
+      _isSendingVerification = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(result.error ?? 'Verification email sent')),
+    );
+  }
+
+  Future<void> _refreshVerificationStatus() async {
+    setState(() {
+      _isRefreshingVerification = true;
+    });
+
+    final result = await _authService.reloadCurrentUser();
+
+    if (!mounted) return;
+    setState(() {
+      _isRefreshingVerification = false;
+    });
+
+    final user = _authService.currentUser;
+    final message =
+        result.error ??
+        (user?.emailVerified == true
+            ? 'Email verified'
+            : 'Email is not verified yet');
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Widget _buildFootprintCard(double totalCO2Tons) {
