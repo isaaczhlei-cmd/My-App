@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
 import '../../services/booking_link_service.dart';
+import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
@@ -21,6 +22,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     with SingleTickerProviderStateMixin {
   final _authService = AuthService();
   bool _isRoundTrip = true;
+  BookingProvider _selectedProvider = BookingProvider.skyscanner;
   AirportOption _fromAirport = AirportDirectory.airports.firstWhere(
     (airport) => airport.code == 'JFK',
   );
@@ -59,6 +61,18 @@ class _BookFlightScreenState extends State<BookFlightScreen>
 
     _fromFocusNode.addListener(_handleFocusChange);
     _toFocusNode.addListener(_handleFocusChange);
+
+    // Load saved booking provider preference
+    _loadSavedProvider();
+  }
+
+  Future<void> _loadSavedProvider() async {
+    final savedProvider = await BookingProviderService.getSelectedProvider();
+    if (mounted) {
+      setState(() {
+        _selectedProvider = savedProvider;
+      });
+    }
   }
 
   @override
@@ -216,12 +230,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       _toMatches = const [];
     });
 
-    final outboundUrl = BookingLinkService.skyscannerUri(
+    final outboundUrl = _buildSearchUri(
       origin: fromMatch.code,
       destination: toMatch.code,
       departureDate: _departDate,
-      passengers: _passengers,
-      cabinClass: _selectedCabin,
     );
 
     if (!_isRoundTrip) {
@@ -229,12 +241,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       return;
     }
 
-    final returnUrl = BookingLinkService.skyscannerUri(
+    final returnUrl = _buildSearchUri(
       origin: toMatch.code,
       destination: fromMatch.code,
       departureDate: _returnDate,
-      passengers: _passengers,
-      cabinClass: _selectedCabin,
     );
 
     if (!mounted) return;
@@ -457,6 +467,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           _buildFieldLabel(Icons.airline_seat_recline_normal, 'Cabin Class'),
           const SizedBox(height: 8),
           _buildCabinClassSelector(),
+          const SizedBox(height: 18),
+          _buildFieldLabel(Icons.card_travel, 'Booking Provider'),
+          const SizedBox(height: 8),
+          _buildProviderSelector(),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -771,6 +785,42 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     );
   }
 
+  Widget _buildProviderSelector() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: BookingProvider.values.map((provider) {
+        final isSelected = provider == _selectedProvider;
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _selectedProvider = provider;
+            });
+            // Save the selected provider preference
+            BookingProviderService.setSelectedProvider(provider);
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primaryGreen
+                  : const Color(0xFFF2F3F7),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Text(
+              provider.displayName,
+              style: TextStyle(
+                color: isSelected ? Colors.white : const Color(0xFF30324A),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildLiveResultsCard() {
     return Container(
       width: double.infinity,
@@ -855,6 +905,36 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     final month = date.month.toString().padLeft(2, '0');
     final day = date.day.toString().padLeft(2, '0');
     return '$month/$day/${date.year}';
+  }
+
+  Uri _buildSearchUri({
+    required String origin,
+    required String destination,
+    required DateTime departureDate,
+  }) {
+    return switch (_selectedProvider) {
+      BookingProvider.skyscanner => BookingLinkService.skyscannerUri(
+        origin: origin,
+        destination: destination,
+        departureDate: departureDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+      BookingProvider.googleFlights => BookingLinkService.googleFlightsUri(
+        origin: origin,
+        destination: destination,
+        departureDate: departureDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+      BookingProvider.kayak => BookingLinkService.kayakUri(
+        origin: origin,
+        destination: destination,
+        departureDate: departureDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+    };
   }
 
   Future<bool> _launchExternalSearch(Uri url) async {
