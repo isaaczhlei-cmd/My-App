@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,6 +15,12 @@ class EcoTipSuggestion {
 }
 
 class EcoTipService {
+  @visibleForTesting
+  static String debugScrub(String input, String apiKey) {
+    if (apiKey.trim().isEmpty) return input;
+    return input.replaceAll(apiKey, '[REDACTED]');
+  }
+
   static const String _model = 'gpt-5-mini';
   static const String _baseUrl = 'https://api.openai.com/v1/responses';
   static const List<String> _categories = <String>[

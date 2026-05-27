@@ -1,8 +1,15 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class EmissionsService {
+  @visibleForTesting
+  static String debugScrub(String input, String apiKey) {
+    if (apiKey.trim().isEmpty) return input;
+    return input.replaceAll(apiKey, '[REDACTED]');
+  }
+
   EmissionsService({
     http.Client? client,
     String? apiKey,
