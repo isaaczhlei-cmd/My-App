@@ -378,6 +378,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
                               color: Color(0xFF9E9E9E),
                             ),
                           ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${data.flightCount} flight${data.flightCount == 1 ? '' : 's'}',
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Color(0xFFB0B0B0),
+                            ),
+                          ),
                         ],
                       ),
                     ),
