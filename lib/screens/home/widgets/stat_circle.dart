@@ -17,6 +17,8 @@ class StatCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Column(
       children: [
         // Circle with icon
@@ -24,8 +26,9 @@ class StatCircle extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: themeColors.card,
             shape: BoxShape.circle,
+            border: Border.all(color: themeColors.outlineSoft),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withAlpha(25),
@@ -41,8 +44,8 @@ class StatCircle extends StatelessWidget {
         // Value
         Text(
           value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
+          style: TextStyle(
+            color: themeColors.onCard,
             fontSize: 22,
             fontWeight: FontWeight.bold,
           ),
@@ -52,8 +55,8 @@ class StatCircle extends StatelessWidget {
         // Label
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.textSecondary,
+          style: TextStyle(
+            color: themeColors.onCardMuted,
             fontSize: 13,
           ),
         ),

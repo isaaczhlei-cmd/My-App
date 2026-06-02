@@ -21,8 +21,9 @@ class _CompareScreenState extends State<CompareScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
@@ -55,12 +56,12 @@ class _CompareScreenState extends State<CompareScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Compare',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: themeColors.onCard,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -93,30 +94,33 @@ class _CompareScreenState extends State<CompareScreen> {
   }
 
   Widget _buildEmptyState() {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         children: [
           Icon(Icons.compare_arrows, size: 48, color: Colors.grey[400]),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No flights this year',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Add flights from this year to see how your annual carbon footprint compares to the average.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
           ),
         ],
       ),
@@ -129,22 +133,25 @@ class _CompareScreenState extends State<CompareScreen> {
     int percentDiff,
     bool isBelow,
   ) {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Carbon Impact',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 24),
@@ -165,17 +172,17 @@ class _CompareScreenState extends State<CompareScreen> {
                       children: [
                         Text(
                           yourTons.toStringAsFixed(2),
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A2E),
+                            color: themeColors.onCard,
                           ),
                         ),
-                        const Text(
+                        Text(
                           'tons',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Color(0xFF9E9E9E),
+                            color: themeColors.onCardMuted,
                           ),
                         ),
                       ],
@@ -243,6 +250,8 @@ class _CompareScreenState extends State<CompareScreen> {
   }
 
   Widget _buildComparisonRow(String label, String value, Color dotColor) {
+    final themeColors = context.appColors;
+
     return Row(
       children: [
         Container(
@@ -256,14 +265,14 @@ class _CompareScreenState extends State<CompareScreen> {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+              style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
             ),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF1A1A2E),
+                color: themeColors.onCard,
               ),
             ),
           ],
@@ -278,22 +287,25 @@ class _CompareScreenState extends State<CompareScreen> {
     required int trees,
     required int burgers,
   }) {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Environmental Equivalents',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 20),
@@ -356,10 +368,12 @@ class _CompareScreenState extends State<CompareScreen> {
     Color iconColor,
     Color bgColor,
   ) {
+    final themeColors = context.appColors;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFAFAFA),
+        color: themeColors.cardMuted,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -376,17 +390,17 @@ class _CompareScreenState extends State<CompareScreen> {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 2),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+            style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
           ),
         ],
       ),

@@ -61,12 +61,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.darkBackground,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back, color: themeColors.onCard),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -80,6 +80,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _buildFormContent() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -89,24 +92,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           Icon(
             Icons.lock_reset,
             size: 64,
-            color: AppColors.primaryGreen,
+          color: primary,
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Reset Password',
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: AppColors.textPrimary,
+              color: themeColors.onCard,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Enter your email address and we\'ll send you a link to reset your password.',
             style: TextStyle(
               fontSize: 14,
-              color: AppColors.textSecondary,
+              color: themeColors.onCardMuted,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -144,16 +147,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            style: const TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: themeColors.onCard),
             decoration: InputDecoration(
               labelText: 'Email',
-              labelStyle: const TextStyle(color: AppColors.textSecondary),
-              prefixIcon: const Icon(
+              labelStyle: TextStyle(color: themeColors.onCardMuted),
+              prefixIcon: Icon(
                 Icons.email_outlined,
-                color: AppColors.textSecondary,
+                color: themeColors.onCardMuted,
               ),
               filled: true,
-              fillColor: AppColors.surface,
+              fillColor: themeColors.cardMuted,
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,
@@ -165,7 +168,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide:
-                    const BorderSide(color: AppColors.primaryGreen, width: 2),
+                    BorderSide(color: primary, width: 2),
               ),
               errorBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -194,13 +197,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _sendResetEmail,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 disabledBackgroundColor:
-                    AppColors.primaryGreen.withValues(alpha: 0.5),
+                    primary.withValues(alpha: 0.5),
               ),
               child: _isLoading
                   ? const SizedBox(
@@ -226,6 +229,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _buildSuccessContent() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -236,21 +242,21 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           color: AppColors.successGreen,
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Check Your Email',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: themeColors.onCard,
           ),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 8),
         Text(
           'We sent a password reset link to\n${_emailController.text.trim()}',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 14,
-            color: AppColors.textSecondary,
+            color: themeColors.onCardMuted,
             height: 1.5,
           ),
           textAlign: TextAlign.center,
@@ -270,7 +276,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           child: ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryGreen,
+              backgroundColor: primary,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -296,9 +302,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               });
             },
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.textPrimary,
+              foregroundColor: themeColors.onCard,
               side: BorderSide(
-                color: AppColors.surface.withValues(alpha: 0.8),
+                color: themeColors.outlineSoft,
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),

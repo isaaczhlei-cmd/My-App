@@ -21,10 +21,12 @@ class GuestSignInPromptScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return DefaultTabController(
       length: 1,
       child: Scaffold(
-        backgroundColor: AppColors.darkBackground,
         appBar: AppBar(
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
@@ -36,9 +38,9 @@ class GuestSignInPromptScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TabBar(
-              labelColor: AppColors.primaryGreen,
-              unselectedLabelColor: AppColors.textSecondary,
-              indicatorColor: AppColors.primaryGreen,
+              labelColor: primary,
+              unselectedLabelColor: themeColors.onCardMuted,
+              indicatorColor: primary,
               tabs: const [
                 Tab(text: 'Sign In'),
               ],
@@ -53,19 +55,19 @@ class GuestSignInPromptScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Sign in to use $featureLabel',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                            color: themeColors.onCard,
                           ),
                         ),
                         const SizedBox(height: 12),
-                        const Text(
+                        Text(
                           'Create an account or sign in with Google or email to unlock this feature and sync your data.',
                           style: TextStyle(
                             fontSize: 15,
                             height: 1.45,
-                            color: AppColors.textSecondary,
+                            color: themeColors.onCardMuted,
                           ),
                         ),
                         const Spacer(),

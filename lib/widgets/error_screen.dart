@@ -84,8 +84,9 @@ class ErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -107,8 +108,8 @@ class ErrorScreen extends StatelessWidget {
                       Text(
                         _title,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.textPrimary,
+                        style: TextStyle(
+                          color: themeColors.onCard,
                           fontSize: 22,
                           fontWeight: FontWeight.w600,
                         ),
@@ -117,8 +118,8 @@ class ErrorScreen extends StatelessWidget {
                       Text(
                         _body,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
+                        style: TextStyle(
+                          color: themeColors.onCardMuted,
                           fontSize: 15,
                           height: 1.4,
                         ),
@@ -128,24 +129,25 @@ class ErrorScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.cardBackground,
+                            color: themeColors.card,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: themeColors.outlineSoft),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
+                              Text(
                                 'Diagnostics (debug only)',
                                 style: TextStyle(
-                                  color: AppColors.textPrimary,
+                                  color: themeColors.onCard,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'stage: ${stage.name}',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
+                                style: TextStyle(
+                                  color: themeColors.onCardMuted,
                                   fontFamily: 'monospace',
                                   fontSize: 12,
                                 ),
@@ -162,8 +164,8 @@ class ErrorScreen extends StatelessWidget {
                               const SizedBox(height: 8),
                               Text(
                                 stack.toString(),
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
+                                style: TextStyle(
+                                  color: themeColors.onCardMuted,
                                   fontFamily: 'monospace',
                                   fontSize: 11,
                                 ),

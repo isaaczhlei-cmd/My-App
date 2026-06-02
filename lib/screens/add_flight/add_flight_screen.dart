@@ -333,11 +333,12 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
+        final scheme = Theme.of(context).colorScheme;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primaryGreen,
-              surface: AppColors.cardBackground,
+            colorScheme: scheme.copyWith(
+              primary: scheme.primary,
+              surface: scheme.surface,
             ),
           ),
           child: child!,
@@ -513,7 +514,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
@@ -545,7 +545,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildHeader() {
-    return const Column(
+    final themeColors = context.appColors;
+
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -553,13 +555,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: themeColors.onCard,
           ),
         ),
-        SizedBox(height: 6),
+        const SizedBox(height: 6),
         Text(
           'Search the catalog or enter route details manually.',
-          style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 15, color: themeColors.onCardMuted),
         ),
       ],
     );
@@ -568,23 +570,26 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   Widget _buildFindFlightCard() {
     final flights = _catalogFlights;
     final hasQuery = _heroSearchController.text.trim().isNotEmpty;
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Find your flight fast',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Colors.white,
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 18),
@@ -593,19 +598,19 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             controller: _originController,
             hintText: 'Departing airport',
             icon: Icons.radio_button_checked,
-            backgroundColor: AppColors.surface,
-            borderColor: const Color(0xFF3A4B5C),
-            labelColor: AppColors.textSecondary,
-            textColor: Colors.white,
-            hintColor: AppColors.textSecondary,
+            backgroundColor: themeColors.cardMuted,
+            borderColor: themeColors.outlineSoft,
+            labelColor: themeColors.onCardMuted,
+            textColor: themeColors.onCard,
+            hintColor: themeColors.onCardMuted,
           ),
           const SizedBox(height: 8),
           Center(
             child: IconButton.filled(
               onPressed: _swapRoute,
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.surface,
-                foregroundColor: AppColors.primaryGreen,
+                backgroundColor: themeColors.cardMuted,
+                foregroundColor: primary,
                 shape: const CircleBorder(
                   side: BorderSide(color: Color(0xFF3A4B5C)),
                 ),
@@ -623,28 +628,28 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             controller: _destinationController,
             hintText: 'Arriving airport',
             icon: Icons.location_on_outlined,
-            backgroundColor: AppColors.surface,
-            borderColor: const Color(0xFF3A4B5C),
-            labelColor: AppColors.textSecondary,
-            textColor: Colors.white,
-            hintColor: AppColors.textSecondary,
+            backgroundColor: themeColors.cardMuted,
+            borderColor: themeColors.outlineSoft,
+            labelColor: themeColors.onCardMuted,
+            textColor: themeColors.onCard,
+            hintColor: themeColors.onCardMuted,
           ),
           const SizedBox(height: 14),
           _buildDateField(
-            backgroundColor: AppColors.surface,
-            labelColor: AppColors.textSecondary,
-            borderColor: const Color(0xFF3A4B5C),
-            textColor: Colors.white,
+            backgroundColor: themeColors.cardMuted,
+            labelColor: themeColors.onCardMuted,
+            borderColor: themeColors.outlineSoft,
+            textColor: themeColors.onCard,
           ),
           const SizedBox(height: 14),
           _buildPassengerCountField(),
           const SizedBox(height: 14),
           _buildCabinClassSelector(
-            backgroundColor: AppColors.surface,
-            labelColor: AppColors.textSecondary,
+            backgroundColor: themeColors.cardMuted,
+            labelColor: themeColors.onCardMuted,
           ),
           const SizedBox(height: 20),
-          const Divider(height: 1, color: Color(0xFF3A4B5C)),
+          Divider(height: 1, color: themeColors.outlineSoft),
           const SizedBox(height: 18),
           _buildCatalogSearchField(),
           const SizedBox(height: 12),
@@ -654,10 +659,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             hasQuery
                 ? 'Tap a match to autofill the route and airline details.'
                 : 'Featured flights appear here. Search CX881, Cathay, or LAX to HKG.',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               height: 1.5,
-              color: AppColors.textSecondary,
+              color: themeColors.onCardMuted,
             ),
           ),
           const SizedBox(height: 14),
@@ -666,7 +671,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           else
             ...flights.map(_buildCatalogTile),
           const SizedBox(height: 18),
-          const Divider(height: 1, color: Color(0xFF3A4B5C)),
+          Divider(height: 1, color: themeColors.outlineSoft),
           const SizedBox(height: 18),
           _buildOptionalAirlineSection(),
           const SizedBox(height: 16),
@@ -677,6 +682,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildOptionalAirlineSection() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -686,17 +694,17 @@ class _AddFlightScreenState extends State<AddFlightScreen>
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: const Color(0x1A64B067),
+                color: primary.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.airlines,
-                color: AppColors.primaryGreen,
+                color: primary,
                 size: 21,
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -705,7 +713,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: themeColors.onCard,
                     ),
                   ),
                 ],
@@ -715,11 +723,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         ),
         const SizedBox(height: 16),
         _buildFlightNumberField(
-          labelColor: AppColors.textSecondary,
-          backgroundColor: AppColors.surface,
-          borderColor: const Color(0xFF3A4B5C),
-          textColor: Colors.white,
-          hintColor: AppColors.textSecondary,
+          labelColor: themeColors.onCardMuted,
+          backgroundColor: themeColors.cardMuted,
+          borderColor: themeColors.outlineSoft,
+          textColor: themeColors.onCard,
+          hintColor: themeColors.onCardMuted,
           hintText: 'Flight number',
         ),
       ],
@@ -746,6 +754,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildAirlineChip({required String label, required bool isSelected}) {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
@@ -756,14 +767,14 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         _verifyVisibleCatalogEntries();
       },
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.textSecondary,
+        color: isSelected ? Colors.white : themeColors.onCardMuted,
         fontWeight: FontWeight.w600,
       ),
-      backgroundColor: AppColors.surface,
-      selectedColor: Theme.of(context).colorScheme.primary,
+      backgroundColor: themeColors.cardMuted,
+      selectedColor: primary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       side: BorderSide(
-        color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+        color: isSelected ? primary : themeColors.outlineSoft,
       ),
     );
   }
@@ -1058,27 +1069,29 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildPassengerCountField() {
+    final themeColors = context.appColors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Passengers',
-          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            border: Border.all(color: const Color(0xFF3A4B5C)),
+            color: themeColors.cardMuted,
+            border: Border.all(color: themeColors.outlineSoft),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              const Icon(
+              Icon(
                 Icons.person_outline,
                 size: 22,
-                color: AppColors.textSecondary,
+                color: themeColors.onCardMuted,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1086,15 +1099,15 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                   controller: _passengerCountController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: themeColors.onCard,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     border: InputBorder.none,
                     hintText: 'How many people?',
-                    hintStyle: TextStyle(color: AppColors.textSecondary),
+                    hintStyle: TextStyle(color: themeColors.onCardMuted),
                   ),
                   onChanged: _onPassengerCountChanged,
                   onSubmitted: (_) => _lookupFlight(),
@@ -1118,6 +1131,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     Color textColor = const Color(0xFF1A1A2E),
     Color hintColor = const Color(0xFFBDBDBD),
   }) {
+    final themeColors = context.appColors;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1133,7 +1148,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           child: Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, size: 22, color: AppColors.textSecondary),
+                Icon(icon, size: 22, color: themeColors.onCardMuted),
                 const SizedBox(width: 12),
               ],
               Expanded(
@@ -1319,7 +1334,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       child: ElevatedButton.icon(
         onPressed: _isLoading ? null : _lookupFlight,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.cardBackground,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           shape: RoundedRectangleBorder(
