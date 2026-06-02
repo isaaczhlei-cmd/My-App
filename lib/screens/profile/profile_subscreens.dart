@@ -23,9 +23,7 @@ class FlightHistoryScreen extends StatelessWidget {
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
 
             final flights = snapshot.data ?? [];
@@ -92,9 +90,7 @@ class _NotificationSettingsScreenState
     super.initState();
     _loadFuture = _notificationInbox.load().then((_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _notificationInbox.markAllRead();
-        }
+        if (mounted) _notificationInbox.markAllRead();
       });
     });
   }
@@ -109,17 +105,12 @@ class _NotificationSettingsScreenState
           future: _loadFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
+              return const Center(child: CircularProgressIndicator());
             }
-
             if (snapshot.hasError) {
               return const Center(
-                child: Text(
-                  'Failed to load notifications.',
-                  style: TextStyle(color: Colors.white70),
-                ),
+                child: Text('Failed to load notifications.',
+                    style: TextStyle(color: Colors.white70)),
               );
             }
 
@@ -202,7 +193,6 @@ class _NotificationSettingsScreenState
 
 class _DeleteNotificationBackground extends StatelessWidget {
   final Alignment alignment;
-
   const _DeleteNotificationBackground({required this.alignment});
 
   @override
@@ -222,7 +212,6 @@ class _DeleteNotificationBackground extends StatelessWidget {
 
 class _NotificationTile extends StatelessWidget {
   final AppNotification notification;
-
   const _NotificationTile({required this.notification});
 
   @override
@@ -330,237 +319,377 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
-// ── Settings screen — ticket aesthetic ────────────────────────────────────
+// ── Settings screen ────────────────────────────────────────────────────────
 
 class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({super.key});
 
-  static const _bgGreen = Color(0xFF1B3120);
-  static const _cream = Color(0xFFEFE7CF);
-  static const _activeGreen = Color(0xFF2C5530);
-  static const _cardText = Color(0xFF1A1A1A);
+  static const _cardText = Color(0xFF1A1A2E);
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Scaffold(
-      backgroundColor: _bgGreen,
+      backgroundColor: AppColors.darkBackground,
+      appBar: AppBar(
+        backgroundColor: AppColors.darkBackground,
+        elevation: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: AppColors.textPrimary,
+            size: 20,
+          ),
+        ),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Icon(Icons.flight, color: AppColors.textPrimary, size: 16),
+            SizedBox(width: 8),
+            Text(
+              'Settings',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        centerTitle: true,
+      ),
       body: AnimatedBuilder(
         animation: UserPreferencesService.instance,
         builder: (context, _) {
           final prefs = UserPreferencesService.instance;
+
           return SafeArea(
             child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
               child: Column(
                 children: [
-                  // ── Header ───────────────────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
+                  // ── Section 1: Preferences ─────────────────────────────
+                  _TicketCard(
                     child: Column(
-                      children: const [
-                        Icon(Icons.flight, color: Colors.white, size: 26),
-                        SizedBox(height: 6),
-                        Text(
-                          'Settings',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w400,
-                            fontFamily: 'Georgia',
-                            letterSpacing: 0.4,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.airline_seat_recline_extra_outlined,
+                                color: _cardText,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Default cabin',
+                                style: TextStyle(
+                                  color: _cardText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              _InlineSegmented(
+                                options: const ['Economy', 'Premium', 'Business'],
+                                selected: switch (prefs.defaultCabinClass) {
+                                  CabinClass.premiumEconomy => 1,
+                                  CabinClass.business ||
+                                  CabinClass.first => 2,
+                                  _ => 0,
+                                },
+                                onSelect: (i) =>
+                                    prefs.setDefaultCabinClass(switch (i) {
+                                  1 => CabinClass.premiumEconomy,
+                                  2 => CabinClass.business,
+                                  _ => CabinClass.economy,
+                                }),
+                                activeColor: accent,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const _TicketDivider(),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.eco_outlined,
+                                color: _cardText,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'CO₂ unit',
+                                style: TextStyle(
+                                  color: _cardText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              _InlineSegmented(
+                                options: const ['kg', 'tons'],
+                                selected:
+                                    prefs.co2Unit == Co2Unit.kg ? 0 : 1,
+                                onSelect: (i) => prefs.setCo2Unit(
+                                    i == 0 ? Co2Unit.kg : Co2Unit.metricTons),
+                                activeColor: accent,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const _TicketDivider(),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.straighten_outlined,
+                                color: _cardText,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Distance',
+                                style: TextStyle(
+                                  color: _cardText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              _InlineSegmented(
+                                options: const ['Miles', 'km'],
+                                selected: prefs.distanceUnit ==
+                                        DistanceUnit.miles
+                                    ? 0
+                                    : 1,
+                                onSelect: (i) => prefs.setDistanceUnit(
+                                    i == 0
+                                        ? DistanceUnit.miles
+                                        : DistanceUnit.km),
+                                activeColor: accent,
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
 
-                  // ── Section 1: Preferences ───────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _TicketCard(
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.airline_seat_recline_extra_outlined,
-                                  color: _cardText,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Default cabin',
-                                  style: TextStyle(
-                                    color: _cardText,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const Spacer(),
-                                _InlineSegmented(
-                                  options: const ['Economy', 'Premium', 'Business'],
-                                  selected: switch (prefs.defaultCabinClass) {
-                                    CabinClass.premiumEconomy => 1,
-                                    CabinClass.business || CabinClass.first => 2,
-                                    _ => 0,
-                                  },
-                                  onSelect: (i) => prefs.setDefaultCabinClass(
-                                    switch (i) {
-                                      1 => CabinClass.premiumEconomy,
-                                      2 => CabinClass.business,
-                                      _ => CabinClass.economy,
-                                    },
-                                  ),
-                                  activeColor: _activeGreen,
-                                  cardColor: _cream,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const _TicketDivider(),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.eco_outlined,
-                                  color: _cardText,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                const Text(
-                                  'Units',
-                                  style: TextStyle(
-                                    color: _cardText,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const Spacer(),
-                                _InlineSegmented(
-                                  options: const ['kg', 'tons'],
-                                  selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
-                                  onSelect: (i) => prefs.setCo2Unit(
-                                    i == 0 ? Co2Unit.kg : Co2Unit.metricTons,
-                                  ),
-                                  activeColor: _activeGreen,
-                                  cardColor: _cream,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 12),
+
+                  // ── Section 2: Notifications ───────────────────────────
+                  _TicketCard(
+                    child: Column(
+                      children: [
+                        _ToggleRow(
+                          icon: Icons.notifications_outlined,
+                          label: 'Eco-tip notifications',
+                          value: prefs.ecoTipsEnabled,
+                          onChanged: prefs.setEcoTipsEnabled,
+                        ),
+                        const _TicketDivider(),
+                        _ToggleRow(
+                          icon: Icons.mail_outline_rounded,
+                          label: 'Weekly digest',
+                          value: prefs.weeklyDigestEnabled,
+                          onChanged: prefs.setWeeklyDigestEnabled,
+                        ),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ── Section 2: Notifications ─────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _TicketCard(
-                      child: Column(
-                        children: [
-                          _ToggleRow(
-                            icon: Icons.notifications_outlined,
-                            label: 'Eco-tip notifications',
-                            value: prefs.ecoTipsEnabled,
-                            onChanged: prefs.setEcoTipsEnabled,
-                          ),
-                          const _TicketDivider(),
-                          _ToggleRow(
-                            icon: Icons.mail_outline_rounded,
-                            label: 'Weekly digest',
-                            value: prefs.weeklyDigestEnabled,
-                            onChanged: prefs.setWeeklyDigestEnabled,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 12),
-
-                  // ── Section 3: Integrations ──────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _TicketCard(
-                      child: Stack(
-                        children: [
-                          Column(
-                            children: [
-                              _ChevronRow(
-                                icon: Icons.luggage_outlined,
-                                label: 'Booking provider',
-                                value: 'Automatic',
-                                onTap: () {},
+                  // ── Section 3: Integrations ────────────────────────────
+                  _TicketCard(
+                    child: Stack(
+                      children: [
+                        Column(
+                          children: [
+                            _ChevronRow(
+                              icon: Icons.luggage_outlined,
+                              label: 'Booking provider',
+                              value: 'Automatic',
+                              onTap: () {},
+                            ),
+                            const _TicketDivider(),
+                            _ChevronRow(
+                              icon: Icons.ios_share_outlined,
+                              label: 'Export flight history',
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => FlightHistoryScreen(),
+                                ),
                               ),
-                              const _TicketDivider(),
-                              _ChevronRow(
-                                icon: Icons.ios_share_outlined,
-                                label: 'Export flight history',
-                                onTap: () => Navigator.of(context).push(
-                                  MaterialPageRoute<void>(
-                                    builder: (_) => FlightHistoryScreen(),
-                                  ),
+                            ),
+                          ],
+                        ),
+                        Positioned(
+                          right: 10,
+                          bottom: 4,
+                          child: Opacity(
+                            opacity: 0.07,
+                            child: Icon(
+                              Icons.verified_outlined,
+                              size: 60,
+                              color: accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Section 4: Appearance ──────────────────────────────
+                  _TicketCard(
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.contrast_outlined,
+                                color: _cardText,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Theme',
+                                style: TextStyle(
+                                  color: _cardText,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
                                 ),
+                              ),
+                              const Spacer(),
+                              _InlineSegmented(
+                                options: const ['Dark', 'Light', 'Auto'],
+                                selected: switch (prefs.themeMode) {
+                                  ThemeMode.light => 1,
+                                  ThemeMode.system => 2,
+                                  _ => 0,
+                                },
+                                onSelect: (i) =>
+                                    prefs.setThemeMode(switch (i) {
+                                  1 => ThemeMode.light,
+                                  2 => ThemeMode.system,
+                                  _ => ThemeMode.dark,
+                                }),
+                                activeColor: accent,
                               ),
                             ],
                           ),
-                          // Passport stamp watermark
-                          Positioned(
-                            right: 10,
-                            bottom: 4,
-                            child: Opacity(
-                              opacity: 0.10,
-                              child: Icon(
-                                Icons.verified_outlined,
-                                size: 60,
-                                color: _activeGreen,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                        const _TicketDivider(),
+                        _AccentColorRow(prefs: prefs),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 12),
 
-                  // ── Section 4: Account ───────────────────────────────────
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _TicketCard(
-                      child: Column(
-                        children: [
-                          _ChevronRow(
-                            icon: Icons.person_outline_rounded,
-                            label: 'Account',
-                            onTap: () => Navigator.of(context).pop(),
-                          ),
-                          const _TicketDivider(),
-                          _ChevronRow(
-                            icon: Icons.language_outlined,
-                            label: 'About',
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const AboutScreen(),
-                              ),
-                            ),
-                          ),
-                        ],
+                  // ── Section 5: About ───────────────────────────────────
+                  _TicketCard(
+                    child: _ChevronRow(
+                      icon: Icons.info_outline_rounded,
+                      label: 'About',
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const AboutScreen(),
+                        ),
                       ),
                     ),
                   ),
-
-                  const SizedBox(height: 40),
                 ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+// ── Accent color row ───────────────────────────────────────────────────────
+
+class _AccentColorRow extends StatelessWidget {
+  const _AccentColorRow({required this.prefs});
+
+  final UserPreferencesService prefs;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      child: Row(
+        children: [
+          const Icon(Icons.palette_outlined,
+              color: Color(0xFF1A1A2E), size: 20),
+          const SizedBox(width: 12),
+          const Text(
+            'Accent',
+            style: TextStyle(
+              color: Color(0xFF1A1A2E),
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.1,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: UserPreferencesService.accentPresets.map((preset) {
+              final isSelected = prefs.accentColor == preset.color;
+              return Padding(
+                padding: const EdgeInsets.only(left: 10),
+                child: GestureDetector(
+                  onTap: () => prefs.setAccentColor(preset.color),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOutCubic,
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: preset.color,
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(
+                              color: Colors.white,
+                              width: 2.5,
+                            )
+                          : null,
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: preset.color,
+                                spreadRadius: 2.5,
+                                blurRadius: 0,
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withAlpha(40),
+                                blurRadius: 3,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -578,7 +707,7 @@ class _TicketCard extends StatelessWidget {
     return ClipPath(
       clipper: const _TicketEdgeClipper(),
       child: Container(
-        color: const Color(0xFFEFE7CF),
+        color: Colors.white,
         child: child,
       ),
     );
@@ -642,22 +771,20 @@ class _InlineSegmented extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     required this.activeColor,
-    required this.cardColor,
   });
 
   final List<String> options;
   final int selected;
   final void Function(int) onSelect;
   final Color activeColor;
-  final Color cardColor;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black.withAlpha(30)),
+        border: Border.all(color: Colors.black.withAlpha(28)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -669,7 +796,8 @@ class _InlineSegmented extends StatelessWidget {
             onTap: () => onSelect(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? activeColor : Colors.transparent,
                 borderRadius: BorderRadius.horizontal(
@@ -682,7 +810,9 @@ class _InlineSegmented extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : const Color(0xFF2A2A2A),
+                  color: isSelected
+                      ? Colors.white
+                      : const Color(0xFF1A1A2E),
                 ),
               ),
             ),
@@ -708,11 +838,11 @@ class _ToggleRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  static const _cardText = Color(0xFF1A1A1A);
-  static const _activeGreen = Color(0xFF2C5530);
+  static const _cardText = Color(0xFF1A1A2E);
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(
@@ -734,7 +864,7 @@ class _ToggleRow extends StatelessWidget {
             Switch.adaptive(
               value: value,
               onChanged: onChanged,
-              activeTrackColor: _activeGreen,
+              activeTrackColor: accent,
               activeThumbColor: Colors.white,
               inactiveTrackColor: Colors.black12,
               inactiveThumbColor: Colors.white,
@@ -761,7 +891,7 @@ class _ChevronRow extends StatelessWidget {
   final VoidCallback onTap;
   final String? value;
 
-  static const _cardText = Color(0xFF1A1A1A);
+  static const _cardText = Color(0xFF1A1A2E);
 
   @override
   Widget build(BuildContext context) {
@@ -812,10 +942,10 @@ class _TicketDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(
+    return const Divider(
       height: 1,
       indent: 48,
-      color: const Color(0xFF1A1A1A).withAlpha(20),
+      color: Color(0xFFEEEEEE),
     );
   }
 }
