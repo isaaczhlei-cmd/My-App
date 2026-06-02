@@ -23,6 +23,7 @@ class UserPreferencesService extends ChangeNotifier {
   static const _keyCo2Unit = 'co2_unit';
   static const _keyDistanceUnit = 'distance_unit';
   static const _keyEcoTipsEnabled = 'eco_tips_enabled';
+  static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
   static const _keyAnnualCo2GoalTons = 'annual_co2_goal_tons';
 
   static const List<AccentPreset> accentPresets = [
@@ -41,6 +42,7 @@ class UserPreferencesService extends ChangeNotifier {
   Co2Unit _co2Unit = Co2Unit.metricTons;
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
+  bool _weeklyDigestEnabled = true;
   double? _annualCo2GoalTons;
 
   ThemeMode get themeMode => _themeMode;
@@ -49,6 +51,7 @@ class UserPreferencesService extends ChangeNotifier {
   Co2Unit get co2Unit => _co2Unit;
   DistanceUnit get distanceUnit => _distanceUnit;
   bool get ecoTipsEnabled => _ecoTipsEnabled;
+  bool get weeklyDigestEnabled => _weeklyDigestEnabled;
   double? get annualCo2GoalTons => _annualCo2GoalTons;
 
   Future<void> load() async {
@@ -89,9 +92,10 @@ class UserPreferencesService extends ChangeNotifier {
     }
 
     final ecoTips = prefs.getBool(_keyEcoTipsEnabled);
-    if (ecoTips != null) {
-      _ecoTipsEnabled = ecoTips;
-    }
+    if (ecoTips != null) _ecoTipsEnabled = ecoTips;
+
+    final weeklyDigest = prefs.getBool(_keyWeeklyDigestEnabled);
+    if (weeklyDigest != null) _weeklyDigestEnabled = weeklyDigest;
 
     final goalTons = prefs.getDouble(_keyAnnualCo2GoalTons);
     _annualCo2GoalTons = goalTons;
@@ -148,6 +152,13 @@ class UserPreferencesService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyEcoTipsEnabled, enabled);
+  }
+
+  Future<void> setWeeklyDigestEnabled(bool enabled) async {
+    _weeklyDigestEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyWeeklyDigestEnabled, enabled);
   }
 
   Future<void> setAnnualCo2GoalTons(double? tons) async {

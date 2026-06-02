@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
 import '../../config/theme.dart';
 import '../../models/flight.dart';
 import '../../services/emissions_service.dart';
@@ -330,353 +330,232 @@ class _NotificationTile extends StatelessWidget {
   }
 }
 
+// ── Settings screen — ticket aesthetic ────────────────────────────────────
+
 class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({super.key});
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  String _co2UnitLabel(Co2Unit unit) =>
-      unit == Co2Unit.kg ? 'kg' : 'Metric tons';
-
-  String _distanceUnitLabel(DistanceUnit unit) =>
-      unit == DistanceUnit.km ? 'km' : 'Miles';
-
-  String _cabinLabel(CabinClass cabin) => cabin.displayName;
-
-  String _formatGoal(double? tons, Co2Unit unit) {
-    if (tons == null) return 'Not set';
-    if (unit == Co2Unit.kg) {
-      return '${(tons * 1000).toStringAsFixed(0)} kg';
-    }
-    return '${tons.toStringAsFixed(1)} tons';
-  }
-
-  // ── Goal dialog ────────────────────────────────────────────────────────────
-
-  Future<void> _showGoalDialog(BuildContext context, UserPreferencesService prefs) async {
-    final unit = prefs.co2Unit;
-    final existingTons = prefs.annualCo2GoalTons;
-    final existingDisplay = existingTons == null
-        ? ''
-        : unit == Co2Unit.kg
-            ? (existingTons * 1000).toStringAsFixed(0)
-            : existingTons.toStringAsFixed(1);
-
-    final controller = TextEditingController(text: existingDisplay);
-    String? errorText;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Theme.of(ctx).colorScheme.primary.withAlpha(20),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(Icons.track_changes_outlined,
-                      color: Theme.of(ctx).colorScheme.primary, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Annual CO₂ Goal',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Set your target in ${unit == Co2Unit.kg ? 'kg' : 'metric tons'}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: controller,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                  decoration: InputDecoration(
-                    hintText: unit == Co2Unit.kg ? 'e.g. 2000' : 'e.g. 2.0',
-                    errorText: errorText,
-                    suffixText: unit == Co2Unit.kg ? 'kg' : 'tons',
-                    filled: true,
-                    fillColor: Colors.grey[100],
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                          color: Theme.of(ctx).colorScheme.primary, width: 2),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                  autofocus: true,
-                ),
-              ],
-            ),
-            actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            actions: [
-              if (existingTons != null)
-                TextButton(
-                  onPressed: () {
-                    prefs.setAnnualCo2GoalTons(null);
-                    Navigator.of(ctx).pop();
-                  },
-                  style: TextButton.styleFrom(foregroundColor: AppColors.errorRed),
-                  child: const Text('Clear'),
-                ),
-              const Spacer(),
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  final text = controller.text.trim();
-                  if (text.isEmpty) {
-                    prefs.setAnnualCo2GoalTons(null);
-                    Navigator.of(ctx).pop();
-                    return;
-                  }
-                  final parsed = double.tryParse(text);
-                  if (parsed == null || parsed <= 0) {
-                    setDialogState(() => errorText = 'Enter a positive number');
-                    return;
-                  }
-                  final tons = unit == Co2Unit.kg ? parsed / 1000 : parsed;
-                  prefs.setAnnualCo2GoalTons(tons);
-                  Navigator.of(ctx).pop();
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: Theme.of(ctx).colorScheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('Save'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-    controller.dispose();
-  }
-
-  // ── Bottom sheet pickers ───────────────────────────────────────────────────
-
-  Future<void> _showCabinPicker(BuildContext context, UserPreferencesService prefs) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _PickerSheet(
-        title: 'Default Cabin Class',
-        subtitle: 'Pre-selected when you add a new flight',
-        options: CabinClass.values.map((c) => (c.displayName, c == prefs.defaultCabinClass)).toList(),
-        onSelected: (index) => prefs.setDefaultCabinClass(CabinClass.values[index]),
-      ),
-    );
-  }
-
-  Future<void> _showCo2UnitPicker(BuildContext context, UserPreferencesService prefs) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _PickerSheet(
-        title: 'CO₂ Display Unit',
-        subtitle: 'How emissions are shown throughout the app',
-        options: [
-          ('Metric tons', prefs.co2Unit == Co2Unit.metricTons),
-          ('kg', prefs.co2Unit == Co2Unit.kg),
-        ],
-        onSelected: (index) => prefs.setCo2Unit(index == 0 ? Co2Unit.metricTons : Co2Unit.kg),
-      ),
-    );
-  }
-
-  Future<void> _showDistancePicker(BuildContext context, UserPreferencesService prefs) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      useRootNavigator: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => _PickerSheet(
-        title: 'Distance Unit',
-        subtitle: 'Shown in your home dashboard stats',
-        options: [
-          ('Miles', prefs.distanceUnit == DistanceUnit.miles),
-          ('km', prefs.distanceUnit == DistanceUnit.km),
-        ],
-        onSelected: (index) => prefs.setDistanceUnit(index == 0 ? DistanceUnit.miles : DistanceUnit.km),
-      ),
-    );
-  }
-
-  // ── Build ──────────────────────────────────────────────────────────────────
+  static const _bgGreen = Color(0xFF1B3120);
+  static const _cream = Color(0xFFEFE7CF);
+  static const _activeGreen = Color(0xFF2C5530);
+  static const _cardText = Color(0xFF1A1A1A);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
-      appBar: AppBar(title: const Text('Settings')),
+      backgroundColor: _bgGreen,
       body: AnimatedBuilder(
         animation: UserPreferencesService.instance,
         builder: (context, _) {
           final prefs = UserPreferencesService.instance;
-          final accent = Theme.of(context).colorScheme.primary;
-
           return SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── APPEARANCE ───────────────────────────────────────────
-                  _SectionHeader(label: 'Appearance'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      // Theme mode row
-                      _IconSettingsRow(
-                        icon: Icons.contrast,
-                        iconColor: const Color(0xFF5C6BC0),
-                        iconBg: const Color(0xFFE8EAF6),
-                        label: 'Theme',
-                        child: SegmentedButton<ThemeMode>(
-                          segments: const [
-                            ButtonSegment(
-                              value: ThemeMode.dark,
-                              icon: Icon(Icons.dark_mode_outlined, size: 16),
-                              label: Text('Dark'),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.light,
-                              icon: Icon(Icons.light_mode_outlined, size: 16),
-                              label: Text('Light'),
-                            ),
-                            ButtonSegment(
-                              value: ThemeMode.system,
-                              icon: Icon(Icons.phone_android_outlined, size: 16),
-                              label: Text('System'),
-                            ),
-                          ],
-                          selected: {prefs.themeMode},
-                          onSelectionChanged: (modes) => prefs.setThemeMode(modes.first),
-                          style: SegmentedButton.styleFrom(
-                            selectedBackgroundColor: accent,
-                            selectedForegroundColor: Colors.white,
-                            side: BorderSide(color: Colors.grey[200]!),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                  // ── Header ───────────────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 28, 20, 22),
+                    child: Column(
+                      children: const [
+                        Icon(Icons.flight, color: Colors.white, size: 26),
+                        SizedBox(height: 6),
+                        Text(
+                          'Settings',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w400,
+                            fontFamily: 'Georgia',
+                            letterSpacing: 0.4,
                           ),
                         ),
-                      ),
-                      const _CardDivider(),
-                      // Accent color row
-                      _IconSettingsRow(
-                        icon: Icons.palette_outlined,
-                        iconColor: accent,
-                        iconBg: accent.withAlpha(24),
-                        label: 'Accent Color',
-                        child: _AccentColorPicker(prefs: prefs),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
 
-                  const SizedBox(height: 28),
-
-                  // ── GOALS ────────────────────────────────────────────────
-                  _SectionHeader(label: 'Goals'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SettingsTile(
-                        icon: Icons.track_changes_outlined,
-                        iconColor: const Color(0xFF26A69A),
-                        iconBg: const Color(0xFFE0F2F1),
-                        label: 'Annual CO₂ Goal',
-                        subtitle: 'Track progress on your home dashboard',
-                        value: _formatGoal(prefs.annualCo2GoalTons, prefs.co2Unit),
-                        valueHighlight: prefs.annualCo2GoalTons != null,
-                        trailingClear: prefs.annualCo2GoalTons != null
-                            ? () => prefs.setAnnualCo2GoalTons(null)
-                            : null,
-                        onTap: () => _showGoalDialog(context, prefs),
+                  // ── Section 1: Preferences ───────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _TicketCard(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.airline_seat_recline_extra_outlined,
+                                  color: _cardText,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Default cabin',
+                                  style: TextStyle(
+                                    color: _cardText,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const Spacer(),
+                                _InlineSegmented(
+                                  options: const ['Economy', 'Premium', 'Business'],
+                                  selected: switch (prefs.defaultCabinClass) {
+                                    CabinClass.premiumEconomy => 1,
+                                    CabinClass.business || CabinClass.first => 2,
+                                    _ => 0,
+                                  },
+                                  onSelect: (i) => prefs.setDefaultCabinClass(
+                                    switch (i) {
+                                      1 => CabinClass.premiumEconomy,
+                                      2 => CabinClass.business,
+                                      _ => CabinClass.economy,
+                                    },
+                                  ),
+                                  activeColor: _activeGreen,
+                                  cardColor: _cream,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const _TicketDivider(),
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.eco_outlined,
+                                  color: _cardText,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'Units',
+                                  style: TextStyle(
+                                    color: _cardText,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const Spacer(),
+                                _InlineSegmented(
+                                  options: const ['kg', 'tons'],
+                                  selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
+                                  onSelect: (i) => prefs.setCo2Unit(
+                                    i == 0 ? Co2Unit.kg : Co2Unit.metricTons,
+                                  ),
+                                  activeColor: _activeGreen,
+                                  cardColor: _cream,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ── FLIGHT TRACKING ──────────────────────────────────────
-                  _SectionHeader(label: 'Flight Tracking'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SettingsTile(
-                        icon: Icons.airline_seat_recline_extra_outlined,
-                        iconColor: const Color(0xFF7E57C2),
-                        iconBg: const Color(0xFFEDE7F6),
-                        label: 'Default Cabin Class',
-                        value: _cabinLabel(prefs.defaultCabinClass),
-                        onTap: () => _showCabinPicker(context, prefs),
-                      ),
-                      const _CardDivider(),
-                      _SettingsTile(
-                        icon: Icons.co2_outlined,
-                        iconColor: const Color(0xFF43A047),
-                        iconBg: const Color(0xFFE8F5E9),
-                        label: 'CO₂ Display Unit',
-                        value: _co2UnitLabel(prefs.co2Unit),
-                        onTap: () => _showCo2UnitPicker(context, prefs),
-                      ),
-                      const _CardDivider(),
-                      _SettingsTile(
-                        icon: Icons.straighten_outlined,
-                        iconColor: const Color(0xFFFF8F00),
-                        iconBg: const Color(0xFFFFF3E0),
-                        label: 'Distance Unit',
-                        value: _distanceUnitLabel(prefs.distanceUnit),
-                        onTap: () => _showDistancePicker(context, prefs),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ── ECO TIPS ─────────────────────────────────────────────
-                  _SectionHeader(label: 'Eco Tips'),
-                  const SizedBox(height: 10),
-                  _SettingsCard(
-                    children: [
-                      _SwitchTile(
-                        icon: Icons.eco_outlined,
-                        iconColor: const Color(0xFF43A047),
-                        iconBg: const Color(0xFFE8F5E9),
-                        label: 'Tip Notifications',
-                        subtitle: 'AI tips based on your flight patterns',
-                        value: prefs.ecoTipsEnabled,
-                        onChanged: prefs.setEcoTipsEnabled,
-                      ),
-                    ],
+                    ),
                   ),
 
                   const SizedBox(height: 12),
+
+                  // ── Section 2: Notifications ─────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _TicketCard(
+                      child: Column(
+                        children: [
+                          _ToggleRow(
+                            icon: Icons.notifications_outlined,
+                            label: 'Eco-tip notifications',
+                            value: prefs.ecoTipsEnabled,
+                            onChanged: prefs.setEcoTipsEnabled,
+                          ),
+                          const _TicketDivider(),
+                          _ToggleRow(
+                            icon: Icons.mail_outline_rounded,
+                            label: 'Weekly digest',
+                            value: prefs.weeklyDigestEnabled,
+                            onChanged: prefs.setWeeklyDigestEnabled,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Section 3: Integrations ──────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _TicketCard(
+                      child: Stack(
+                        children: [
+                          Column(
+                            children: [
+                              _ChevronRow(
+                                icon: Icons.luggage_outlined,
+                                label: 'Booking provider',
+                                value: 'Automatic',
+                                onTap: () {},
+                              ),
+                              const _TicketDivider(),
+                              _ChevronRow(
+                                icon: Icons.ios_share_outlined,
+                                label: 'Export flight history',
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => FlightHistoryScreen(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Passport stamp watermark
+                          Positioned(
+                            right: 10,
+                            bottom: 4,
+                            child: Opacity(
+                              opacity: 0.10,
+                              child: Icon(
+                                Icons.verified_outlined,
+                                size: 60,
+                                color: _activeGreen,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ── Section 4: Account ───────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: _TicketCard(
+                      child: Column(
+                        children: [
+                          _ChevronRow(
+                            icon: Icons.person_outline_rounded,
+                            label: 'Account',
+                            onTap: () => Navigator.of(context).pop(),
+                          ),
+                          const _TicketDivider(),
+                          _ChevronRow(
+                            icon: Icons.language_outlined,
+                            label: 'About',
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const AboutScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -687,339 +566,178 @@ class AppSettingsScreen extends StatelessWidget {
   }
 }
 
-// ── Accent color picker ────────────────────────────────────────────────────
+// ── Ticket card with perforated edges ─────────────────────────────────────
 
-class _AccentColorPicker extends StatelessWidget {
-  final UserPreferencesService prefs;
-  const _AccentColorPicker({required this.prefs});
+class _TicketCard extends StatelessWidget {
+  const _TicketCard({required this.child});
 
-  @override
-  Widget build(BuildContext context) {
-    final selectedPreset = UserPreferencesService.accentPresets
-        .firstWhere((p) => p.color == prefs.accentColor,
-            orElse: () => UserPreferencesService.accentPresets.first);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: UserPreferencesService.accentPresets.map((preset) {
-            final isSelected = prefs.accentColor == preset.color;
-            return Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: GestureDetector(
-                onTap: () => prefs.setAccentColor(preset.color),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  width: isSelected ? 44 : 38,
-                  height: isSelected ? 44 : 38,
-                  decoration: BoxDecoration(
-                    color: preset.color,
-                    shape: BoxShape.circle,
-                    border: isSelected
-                        ? Border.all(color: Colors.white, width: 3)
-                        : Border.all(color: Colors.transparent, width: 2),
-                    boxShadow: isSelected
-                        ? [
-                            BoxShadow(
-                              color: preset.color.withAlpha(120),
-                              blurRadius: 12,
-                              spreadRadius: 1,
-                            )
-                          ]
-                        : null,
-                  ),
-                  child: isSelected
-                      ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
-                      : null,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          selectedPreset.name,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: prefs.accentColor,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ── Shared sub-widgets ─────────────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  const _SectionHeader({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.2,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-}
-
-class _SettingsCard extends StatelessWidget {
-  final List<Widget> children;
-  const _SettingsCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Material(
-        color: Colors.white,
-        child: Column(children: children),
-      ),
-    );
-  }
-}
-
-class _CardDivider extends StatelessWidget {
-  const _CardDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(
-      height: 1,
-      indent: 68,
-      endIndent: 0,
-      color: Color(0xFFF2F2F2),
-    );
-  }
-}
-
-/// Row with an icon container + label + arbitrary child widget beneath it.
-/// Used for theme mode and accent color which have complex controls.
-class _IconSettingsRow extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
   final Widget child;
 
-  const _IconSettingsRow({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    required this.child,
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: const _TicketEdgeClipper(),
+      child: Container(
+        color: const Color(0xFFEFE7CF),
+        child: child,
+      ),
+    );
+  }
+}
+
+// ── Perforated edge clipper ────────────────────────────────────────────────
+
+class _TicketEdgeClipper extends CustomClipper<Path> {
+  const _TicketEdgeClipper();
+
+  static const double notchRadius = 5.5;
+
+  @override
+  Path getClip(Size size) {
+    const r = notchRadius;
+    final gap = r * 2.2;
+    final path = Path();
+
+    // Top edge — notches dip downward into card
+    path.moveTo(0, 0);
+    double x = gap + r;
+    while (x + r < size.width - gap) {
+      path.lineTo(x - r, 0);
+      path.arcToPoint(
+        Offset(x + r, 0),
+        radius: Radius.circular(r),
+        clockwise: true,
+      );
+      x += r * 2 + gap;
+    }
+    path.lineTo(size.width, 0);
+    path.lineTo(size.width, size.height);
+
+    // Bottom edge — notches dip upward into card (drawn right to left)
+    double bx = size.width - gap - r;
+    while (bx - r > gap) {
+      path.lineTo(bx + r, size.height);
+      path.arcToPoint(
+        Offset(bx - r, size.height),
+        radius: Radius.circular(r),
+        clockwise: true,
+      );
+      bx -= r * 2 + gap;
+    }
+    path.lineTo(0, size.height);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_TicketEdgeClipper old) => false;
+}
+
+// ── Inline segmented chip control ─────────────────────────────────────────
+
+class _InlineSegmented extends StatelessWidget {
+  const _InlineSegmented({
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+    required this.activeColor,
+    required this.cardColor,
   });
+
+  final List<String> options;
+  final int selected;
+  final void Function(int) onSelect;
+  final Color activeColor;
+  final Color cardColor;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+    return Container(
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.black.withAlpha(30)),
+      ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
-            child: Icon(icon, color: iconColor, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(options.length, (i) {
+          final isSelected = i == selected;
+          final isFirst = i == 0;
+          final isLast = i == options.length - 1;
+          return GestureDetector(
+            onTap: () => onSelect(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected ? activeColor : Colors.transparent,
+                borderRadius: BorderRadius.horizontal(
+                  left: isFirst ? const Radius.circular(7) : Radius.zero,
+                  right: isLast ? const Radius.circular(7) : Radius.zero,
                 ),
-                const SizedBox(height: 10),
-                child,
-              ],
+              ),
+              child: Text(
+                options[i],
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected ? Colors.white : const Color(0xFF2A2A2A),
+                ),
+              ),
             ),
-          ),
-        ],
+          );
+        }),
       ),
     );
   }
 }
 
-/// Standard settings row: icon + label/subtitle + value + chevron.
-class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final String? subtitle;
-  final String value;
-  final bool valueHighlight;
-  final VoidCallback? onTap;
-  final VoidCallback? trailingClear;
+// ── Toggle row ────────────────────────────────────────────────────────────
 
-  const _SettingsTile({
+class _ToggleRow extends StatelessWidget {
+  const _ToggleRow({
     required this.icon,
-    required this.iconColor,
-    required this.iconBg,
     required this.label,
-    this.subtitle,
-    required this.value,
-    this.valueHighlight = false,
-    this.onTap,
-    this.trailingClear,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: valueHighlight ? FontWeight.w600 : FontWeight.w400,
-                color: valueHighlight ? accent : const Color(0xFF9E9E9E),
-              ),
-            ),
-            if (trailingClear != null) ...[
-              const SizedBox(width: 4),
-              GestureDetector(
-                onTap: trailingClear,
-                child: Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFE0E0E0),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.close, size: 12, color: Color(0xFF757575)),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFFCCCCCC), size: 20),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Toggle row with icon, label, subtitle, and Switch.
-class _SwitchTile extends StatelessWidget {
-  final IconData icon;
-  final Color iconColor;
-  final Color iconBg;
-  final String label;
-  final String? subtitle;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _SwitchTile({
-    required this.icon,
-    required this.iconColor,
-    required this.iconBg,
-    required this.label,
-    this.subtitle,
     required this.value,
     required this.onChanged,
   });
+
+  final IconData icon;
+  final String label;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  static const _cardText = Color(0xFF1A1A1A);
+  static const _activeGreen = Color(0xFF2C5530);
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(10)),
-              child: Icon(icon, color: iconColor, size: 20),
-            ),
-            const SizedBox(width: 14),
+            Icon(icon, color: _cardText, size: 20),
+            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF1A1A2E),
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
-                    ),
-                  ],
-                ],
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _cardText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             Switch.adaptive(
               value: value,
               onChanged: onChanged,
+              activeTrackColor: _activeGreen,
               activeThumbColor: Colors.white,
-              activeTrackColor: Theme.of(context).colorScheme.primary,
+              inactiveTrackColor: Colors.black12,
+              inactiveThumbColor: Colors.white,
             ),
           ],
         ),
@@ -1028,107 +746,81 @@ class _SwitchTile extends StatelessWidget {
   }
 }
 
-class _PickerSheet extends StatelessWidget {
-  final String title;
-  final String? subtitle;
-  final List<(String, bool)> options;
-  final void Function(int index) onSelected;
+// ── Chevron row ───────────────────────────────────────────────────────────
 
-  const _PickerSheet({
-    required this.title,
-    this.subtitle,
-    required this.options,
-    required this.onSelected,
+class _ChevronRow extends StatelessWidget {
+  const _ChevronRow({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.value,
   });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final String? value;
+
+  static const _cardText = Color(0xFF1A1A1A);
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Drag handle
-          Padding(
-            padding: const EdgeInsets.only(top: 12, bottom: 4),
-            child: Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                ),
-                if (subtitle != null) ...[
-                  const SizedBox(height: 3),
-                  Text(
-                    subtitle!,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Divider(height: 1, color: Color(0xFFF0F0F0)),
-          ...options.asMap().entries.map((entry) {
-            final (label, isSelected) = entry.value;
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  onSelected(entry.key);
-                  Navigator.of(context).pop();
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                            color: isSelected ? accent : const Color(0xFF1A1A2E),
-                          ),
-                        ),
-                      ),
-                      if (isSelected)
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            color: accent,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.check_rounded,
-                              color: Colors.white, size: 14),
-                        )
-                      else
-                        const SizedBox(width: 22),
-                    ],
-                  ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        child: Row(
+          children: [
+            Icon(icon, color: _cardText, size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: _cardText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-            );
-          }),
-          const SizedBox(height: 8),
-        ],
+            ),
+            if (value != null) ...[
+              Text(
+                value!,
+                style: TextStyle(
+                  color: _cardText.withAlpha(130),
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(width: 4),
+            ],
+            Icon(
+              Icons.chevron_right_rounded,
+              color: _cardText.withAlpha(100),
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+// ── Divider for ticket cards ──────────────────────────────────────────────
+
+class _TicketDivider extends StatelessWidget {
+  const _TicketDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Divider(
+      height: 1,
+      indent: 48,
+      color: const Color(0xFF1A1A1A).withAlpha(20),
+    );
+  }
+}
+
+// ── About screen ──────────────────────────────────────────────────────────
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -1154,7 +846,7 @@ class AboutScreen extends StatelessWidget {
               ),
               SizedBox(height: 12),
               Text(
-                'Track your flights and estimate CO\u2082 impact to fly more consciously.',
+                'Track your flights and estimate CO₂ impact to fly more consciously.',
                 style: TextStyle(
                   color: AppColors.textSecondary,
                   fontSize: 15,
