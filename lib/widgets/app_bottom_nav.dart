@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/add_flight/add_flight_screen.dart';
 import '../screens/compare/compare_screen.dart';
@@ -19,9 +18,6 @@ class AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
-      backgroundColor: AppColors.cardBackground,
-      selectedItemColor: AppColors.primaryGreen,
-      unselectedItemColor: AppColors.textSecondary,
       currentIndex: currentIndex,
       onTap: (index) {
         if (index == currentIndex) return;

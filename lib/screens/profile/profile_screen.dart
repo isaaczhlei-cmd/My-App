@@ -112,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           width: 88,
                           height: 88,
                           decoration: BoxDecoration(
-                            color: AppColors.primaryGreen,
+                            color: Theme.of(context).colorScheme.primary,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           clipBehavior: Clip.antiAlias,
@@ -239,9 +239,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? OutlinedButton.icon(
                             onPressed: () => _openGuestPrompt('your account'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primaryGreen,
+                              foregroundColor: Theme.of(context).colorScheme.primary,
                               side: BorderSide(
-                                color: AppColors.primaryGreen.withAlpha(100),
+                                color: Theme.of(context).colorScheme.primary.withAlpha(100),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),

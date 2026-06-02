@@ -21,7 +21,7 @@ class FlightHistoryScreen extends StatelessWidget {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                child: const CircularProgressIndicator(),
               );
             }
 
@@ -107,7 +107,7 @@ class _NotificationSettingsScreenState
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: CircularProgressIndicator(color: AppColors.primaryGreen),
+                child: const CircularProgressIndicator(),
               );
             }
 
@@ -235,7 +235,7 @@ class _NotificationTile extends StatelessWidget {
         border: Border.all(
           color: notification.isRead
               ? Colors.white.withAlpha(18)
-              : AppColors.primaryGreen.withAlpha(110),
+              : Theme.of(context).colorScheme.primary.withAlpha(110),
         ),
       ),
       child: Row(
@@ -254,7 +254,7 @@ class _NotificationTile extends StatelessWidget {
               Icons.eco,
               color: notification.isRead
                   ? AppColors.textSecondary
-                  : AppColors.primaryGreen,
+                  : Theme.of(context).colorScheme.primary,
               size: 20,
             ),
           ),

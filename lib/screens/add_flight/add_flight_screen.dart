@@ -490,9 +490,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     setState(() => _isSaving = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Flight added to your log!'),
-        backgroundColor: AppColors.primaryGreen,
+      SnackBar(
+        content: const Text('Flight added to your log!'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
       ),
     );
 
@@ -759,10 +759,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         fontWeight: FontWeight.w600,
       ),
       backgroundColor: AppColors.surface,
-      selectedColor: AppColors.primaryGreen,
+      selectedColor: Theme.of(context).colorScheme.primary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
       side: BorderSide(
-        color: isSelected ? AppColors.primaryGreen : Colors.transparent,
+        color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
       ),
     );
   }
@@ -1247,7 +1247,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                       padding: const EdgeInsets.all(3),
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: AppColors.primaryGreen,
+                          color: Theme.of(context).colorScheme.primary,
                           borderRadius: BorderRadius.circular(10),
                           boxShadow: const [
                             BoxShadow(
@@ -1268,7 +1268,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            splashColor: AppColors.primaryGreen.withValues(
+                            splashColor: Theme.of(context).colorScheme.primary.withValues(
                               alpha: 0.14,
                             ),
                             highlightColor: Colors.transparent,
@@ -1573,7 +1573,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       child: ElevatedButton.icon(
         onPressed: _isSaving ? null : _addToFlightLog,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryGreen,
+          backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(14),

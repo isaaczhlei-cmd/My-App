@@ -164,7 +164,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               color: const Color(0xFFE8F5E9),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppColors.primaryGreen, size: 22),
+            child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -365,7 +365,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             height: barHeight.clamp(4.0, 120.0),
                             decoration: BoxDecoration(
                               color: data.emissionsKg > 0
-                                  ? AppColors.primaryGreen
+                                  ? Theme.of(context).colorScheme.primary
                                   : const Color(0xFFE0E0E0),
                               borderRadius: BorderRadius.circular(6),
                             ),

@@ -157,6 +157,7 @@ class _CompareScreenState extends State<CompareScreen> {
                   painter: _GaugePainter(
                     value: yourTons,
                     maxValue: max(avgTons * 1.3, yourTons * 1.1),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                   child: Center(
                     child: Column(
@@ -190,7 +191,7 @@ class _CompareScreenState extends State<CompareScreen> {
                     _buildComparisonRow(
                       'Your annual total',
                       '${yourTons.toStringAsFixed(2)}t CO\u2082',
-                      AppColors.primaryGreen,
+                      Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(height: 12),
                     _buildComparisonRow(
@@ -219,7 +220,7 @@ class _CompareScreenState extends State<CompareScreen> {
                   isBelow ? Icons.arrow_downward : Icons.arrow_upward,
                   size: 16,
                   color: isBelow
-                      ? AppColors.primaryGreen
+                      ? Theme.of(context).colorScheme.primary
                       : const Color(0xFFFF8F00),
                 ),
                 const SizedBox(width: 4),
@@ -327,7 +328,7 @@ class _CompareScreenState extends State<CompareScreen> {
                   Icons.park,
                   '$trees',
                   'Trees for 1 year',
-                  AppColors.primaryGreen,
+                  Theme.of(context).colorScheme.primary,
                   const Color(0xFFE8F5E9),
                 ),
               ),
@@ -396,8 +397,9 @@ class _CompareScreenState extends State<CompareScreen> {
 class _GaugePainter extends CustomPainter {
   final double value;
   final double maxValue;
+  final Color color;
 
-  _GaugePainter({required this.value, required this.maxValue});
+  _GaugePainter({required this.value, required this.maxValue, required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -419,7 +421,7 @@ class _GaugePainter extends CustomPainter {
     );
 
     final valuePaint = Paint()
-      ..color = AppColors.primaryGreen
+      ..color = color
       ..strokeWidth = 10
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;
@@ -436,6 +438,6 @@ class _GaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GaugePainter oldDelegate) {
-    return oldDelegate.value != value || oldDelegate.maxValue != maxValue;
+    return oldDelegate.value != value || oldDelegate.maxValue != maxValue || oldDelegate.color != color;
   }
 }
