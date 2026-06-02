@@ -24,7 +24,7 @@ class FlightHistoryScreen extends StatelessWidget {
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: const CircularProgressIndicator(),
+                child: CircularProgressIndicator(),
               );
             }
 
@@ -110,7 +110,7 @@ class _NotificationSettingsScreenState
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
-                child: const CircularProgressIndicator(),
+                child: CircularProgressIndicator(),
               );
             }
 
@@ -654,7 +654,7 @@ class AppSettingsScreen extends StatelessWidget {
                             Switch.adaptive(
                               value: prefs.ecoTipsEnabled,
                               onChanged: prefs.setEcoTipsEnabled,
-                              activeColor: Theme.of(context).colorScheme.primary,
+                              activeThumbColor: Theme.of(context).colorScheme.primary,
                             ),
                           ],
                         ),
