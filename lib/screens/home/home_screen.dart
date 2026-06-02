@@ -114,8 +114,12 @@ class _HomeScreenState extends State<HomeScreen> {
             final avgKgPerFlight = totalFlights > 0
                 ? (totalEmissionsKg / totalFlights).round()
                 : 0;
-            // Rough estimate: 1 kg CO2 ≈ 2.51 miles flown
-            final totalMilesK = (totalEmissionsKg * 2.51 / 1000);
+            // Rough estimate: 1 kg CO2 ≈ 2.51 miles; convert to km if needed
+            final _distKm = UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
+            final totalDistK = _distKm
+                ? (totalEmissionsKg * 2.51 * 1.60934 / 1000)
+                : (totalEmissionsKg * 2.51 / 1000);
+            final totalMilesK = totalDistK; // variable kept for call-site compat
 
             final recentFlights = currentMonthFlights
                 .take(_recentFlightsLimit)
@@ -159,6 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
     required double totalEmissionsKg,
     required String recentTravelPattern,
   }) {
+    if (!UserPreferencesService.instance.ecoTipsEnabled) return;
+
     final now = DateTime.now();
     final deliveryKey =
         'eco-tip-${now.year}-${now.month}-${now.day}|$flightCount|${totalEmissionsKg.toStringAsFixed(1)}|$recentTravelPattern';
@@ -613,7 +619,7 @@ class _HomeScreenState extends State<HomeScreen> {
             iconColor: const Color(0xFFFF8F00),
             iconBgColor: const Color(0xFFFFF3E0),
             value: '${totalMilesK.toStringAsFixed(1)}K',
-            label: 'Miles',
+            label: UserPreferencesService.instance.distanceUnit == DistanceUnit.km ? 'km' : 'Miles',
           ),
         ),
         const SizedBox(width: 12),
@@ -622,7 +628,9 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icons.speed,
             iconColor: Theme.of(context).colorScheme.primary,
             iconBgColor: const Color(0xFFE8F5E9),
-            value: '${avgKgPerFlight}kg',
+            value: UserPreferencesService.instance.co2Unit == Co2Unit.kg
+                ? '${avgKgPerFlight}kg'
+                : '${(avgKgPerFlight / 1000).toStringAsFixed(2)}t',
             label: 'Avg/Flight',
           ),
         ),

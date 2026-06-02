@@ -9,6 +9,7 @@ import '../../models/flight.dart';
 import '../../services/auth_service.dart';
 import '../../services/emissions_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import 'flight_catalog.dart';
 
@@ -50,7 +51,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   String _airlineCode = '';
   int _flightNum = 0;
   double _emissionsKg = 0;
-  CabinClass _selectedCabin = CabinClass.economy;
+  CabinClass _selectedCabin = UserPreferencesService.instance.defaultCabinClass;
 
   FlightEmission? _flightEmission;
   TypicalRouteEmission? _typicalEmission;
