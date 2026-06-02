@@ -139,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 24),
                   _buildFootprintCard(totalCO2Tons),
                   const SizedBox(height: 20),
-                  _buildStatsRow(totalFlights, totalMilesK, avgKgPerFlight),
+                  _buildStatsRow(context, totalFlights, totalMilesK, avgKgPerFlight),
                   const SizedBox(height: 24),
                   _buildRecentFlights(recentFlights),
                   const SizedBox(height: 20),
@@ -239,7 +239,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen,
+                    color: Theme.of(context).colorScheme.primary,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
@@ -496,6 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsRow(
+    BuildContext context,
     int totalFlights,
     double totalMilesK,
     int avgKgPerFlight,
@@ -525,7 +526,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: _buildStatItem(
             icon: Icons.speed,
-            iconColor: AppColors.primaryGreen,
+            iconColor: Theme.of(context).colorScheme.primary,
             iconBgColor: const Color(0xFFE8F5E9),
             value: '${avgKgPerFlight}kg',
             label: 'Avg/Flight',
