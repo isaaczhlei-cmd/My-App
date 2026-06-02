@@ -8,6 +8,18 @@ import 'package:my_app/services/eco_tip_service.dart';
 
 void main() {
   group('EcoTipService', () {
+    test('has a large unique fallback tip bank', () {
+      final normalizedTips = EcoTipService.fallbackTips
+          .map(
+            (tip) =>
+                tip.tip.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase(),
+          )
+          .toSet();
+
+      expect(EcoTipService.fallbackTips.length, greaterThanOrEqualTo(200));
+      expect(normalizedTips.length, EcoTipService.fallbackTips.length);
+    });
+
     test('parses a structured OpenAI response', () async {
       final client = MockClient((request) async {
         expect(request.url.toString(), 'https://api.openai.com/v1/responses');
@@ -48,9 +60,7 @@ void main() {
     test('falls back when the response is malformed', () async {
       final client = MockClient((request) async {
         return http.Response(
-          jsonEncode({
-            'output_text': 'not valid json',
-          }),
+          jsonEncode({'output_text': 'not valid json'}),
           200,
         );
       });

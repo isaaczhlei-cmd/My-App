@@ -33,6 +33,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   CabinClass _selectedCabin = CabinClass.economy;
   List<_FlightSearchResult> _results = const [];
   bool _hasSearched = false;
+  String? _emptyResultsMessage;
 
   @override
   void initState() {
@@ -163,30 +164,20 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
       return;
     }
 
-    final routeEntries = FlightCatalog.entries
-        .where(
-          (entry) =>
-              entry.originCode == fromMatch.code &&
-              entry.destinationCode == toMatch.code,
-        )
-        .toList();
-    final entries = routeEntries.isNotEmpty
-        ? routeEntries
-        : FlightCatalog.entries
-              .where(
-                (entry) =>
-                    entry.originCode == fromMatch.code ||
-                    entry.destinationCode == toMatch.code,
-              )
-              .take(8)
-              .toList();
+    final entries = _entriesForRoute(fromMatch, toMatch);
+    final maxPassengers = _maxPassengersForEntries(entries);
+    final passengers = maxPassengers == 0 ? 1 : min(_passengers, maxPassengers);
 
     final results = entries
+        .where((entry) {
+          final capacity = entry.capacityFor(_selectedCabin);
+          return capacity > 0 && passengers <= capacity;
+        })
         .map(
           (entry) => _FlightSearchResult.fromCatalog(
             entry,
             cabinClass: _selectedCabin,
-            passengers: _passengers,
+            passengers: passengers,
             departDate: _departDate,
           ),
         )
@@ -199,9 +190,62 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
       _toController.text = toMatch.shortLabel;
       _fromMatches = const [];
       _toMatches = const [];
+      _passengers = passengers;
       _results = results;
       _hasSearched = true;
+      _emptyResultsMessage = entries.isNotEmpty && results.isEmpty
+          ? 'No flights can carry this group in ${_selectedCabin.displayName}.'
+          : null;
     });
+  }
+
+  List<FlightCatalogEntry> _entriesForRoute(
+    AirportOption fromAirport,
+    AirportOption toAirport,
+  ) {
+    final routeEntries = FlightCatalog.entries
+        .where(
+          (entry) =>
+              entry.originCode == fromAirport.code &&
+              entry.destinationCode == toAirport.code,
+        )
+        .toList();
+    if (routeEntries.isNotEmpty) return routeEntries;
+
+    return FlightCatalog.entries
+        .where(
+          (entry) =>
+              entry.originCode == fromAirport.code ||
+              entry.destinationCode == toAirport.code,
+        )
+        .take(8)
+        .toList();
+  }
+
+  int get _maxPassengersForCurrentSearch {
+    final fromMatch =
+        AirportDirectory.findBestMatch(
+          _fromController.text,
+          excludeCode: _toAirport.code,
+        ) ??
+        _fromAirport;
+    final toMatch =
+        AirportDirectory.findBestMatch(
+          _toController.text,
+          excludeCode: _fromAirport.code,
+        ) ??
+        _toAirport;
+
+    if (fromMatch.code == toMatch.code) return 1;
+    return _maxPassengersForEntries(_entriesForRoute(fromMatch, toMatch));
+  }
+
+  int _maxPassengersForEntries(List<FlightCatalogEntry> entries) {
+    var maxPassengers = 0;
+    for (final entry in entries) {
+      maxPassengers = max(maxPassengers, entry.capacityFor(_selectedCabin));
+    }
+    return maxPassengers;
   }
 
   @override
@@ -524,42 +568,65 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   }
 
   Widget _buildPassengerStepper() {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFF586A7C)),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: _passengers > 1
-                ? () {
-                    setState(() => _passengers -= 1);
-                    _runSearch(showErrors: false);
-                  }
-                : null,
-            icon: const Icon(Icons.remove),
-            color: AppColors.textPrimary,
+    final maxPassengers = _maxPassengersForCurrentSearch;
+    final canAdd = maxPassengers > 0 && _passengers < maxPassengers;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF586A7C)),
           ),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: _passengers > 1
+                    ? () {
+                        setState(() => _passengers -= 1);
+                        _runSearch(showErrors: false);
+                      }
+                    : null,
+                icon: const Icon(Icons.remove),
+                color: AppColors.textPrimary,
+              ),
+              Text(
+                '$_passengers',
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              IconButton(
+                onPressed: canAdd
+                    ? () {
+                        setState(() {
+                          _passengers = min(_passengers + 1, maxPassengers);
+                        });
+                        _runSearch(showErrors: false);
+                      }
+                    : null,
+                icon: const Icon(Icons.add),
+                color: AppColors.textPrimary,
+              ),
+            ],
+          ),
+        ),
+        if (maxPassengers > 0 && _passengers >= maxPassengers) ...[
+          const SizedBox(height: 6),
           Text(
-            '$_passengers',
+            'Max $maxPassengers for ${_selectedCabin.displayName}',
+            textAlign: TextAlign.right,
             style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w800,
+              color: AppColors.textSecondary,
+              fontSize: 12,
             ),
           ),
-          IconButton(
-            onPressed: () {
-              setState(() => _passengers += 1);
-              _runSearch(showErrors: false);
-            },
-            icon: const Icon(Icons.add),
-            color: AppColors.textPrimary,
-          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -773,7 +840,8 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
           const SizedBox(height: 12),
           Text(
             _hasSearched
-                ? 'No catalog flights found for this search.'
+                ? _emptyResultsMessage ??
+                      'No catalog flights found for this search.'
                 : 'Search to compare cleaner and cheaper flights.',
             textAlign: TextAlign.center,
             style: const TextStyle(

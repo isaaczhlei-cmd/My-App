@@ -177,8 +177,11 @@ class _NotificationSettingsScreenState
                     final notification = notifications[index];
                     return Dismissible(
                       key: ValueKey('notification-${notification.id}'),
-                      direction: DismissDirection.endToStart,
+                      direction: DismissDirection.horizontal,
                       background: const _DeleteNotificationBackground(
+                        alignment: Alignment.centerLeft,
+                      ),
+                      secondaryBackground: const _DeleteNotificationBackground(
                         alignment: Alignment.centerRight,
                       ),
                       onDismissed: (_) {

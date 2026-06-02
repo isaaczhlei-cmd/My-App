@@ -66,9 +66,11 @@ class NotificationInboxService extends ChangeNotifier {
 
   static const _notificationsPrefsKey = 'app_notifications';
   static const _deliveredEcoTipKeysPrefsKey = 'delivered_eco_tip_keys';
+  static const _deliveredEcoTipTextsPrefsKey = 'delivered_eco_tip_texts';
 
   final List<AppNotification> _notifications = <AppNotification>[];
   final Set<String> _deliveredEcoTipKeys = <String>{};
+  final Set<String> _deliveredEcoTipTexts = <String>{};
   bool _isLoaded = false;
   Future<void>? _loadFuture;
   SharedPreferences? _prefs;
@@ -103,6 +105,18 @@ class NotificationInboxService extends ChangeNotifier {
         prefs.getStringList(_deliveredEcoTipKeysPrefsKey) ?? const <String>[],
       );
 
+    _deliveredEcoTipTexts
+      ..clear()
+      ..addAll(
+        prefs.getStringList(_deliveredEcoTipTextsPrefsKey) ?? const <String>[],
+      )
+      ..addAll(
+        _notifications
+            .where((notification) => notification.title == 'Eco Tip')
+            .map((notification) => _normalizeEcoTipText(notification.message))
+            .where((tip) => tip.isNotEmpty),
+      );
+
     _isLoaded = true;
     await _syncAppIconBadge();
     notifyListeners();
@@ -115,7 +129,16 @@ class NotificationInboxService extends ChangeNotifier {
     await load();
     if (_deliveredEcoTipKeys.contains(deliveryKey)) return;
 
+    final normalizedTip = _normalizeEcoTipText(tip.tip);
+    if (normalizedTip.isEmpty ||
+        _deliveredEcoTipTexts.contains(normalizedTip)) {
+      _deliveredEcoTipKeys.add(deliveryKey);
+      await _save();
+      return;
+    }
+
     _deliveredEcoTipKeys.add(deliveryKey);
+    _deliveredEcoTipTexts.add(normalizedTip);
     _notifications.insert(
       0,
       AppNotification(
@@ -179,6 +202,14 @@ class NotificationInboxService extends ChangeNotifier {
       _deliveredEcoTipKeysPrefsKey,
       _deliveredEcoTipKeys.toList(),
     );
+    await prefs.setStringList(
+      _deliveredEcoTipTextsPrefsKey,
+      _deliveredEcoTipTexts.toList(),
+    );
+  }
+
+  String _normalizeEcoTipText(String tip) {
+    return tip.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
   Future<void> _syncAppIconBadge() {

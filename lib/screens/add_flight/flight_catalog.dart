@@ -1,3 +1,5 @@
+import '../../services/emissions_service.dart';
+
 class FlightCatalogEntry {
   const FlightCatalogEntry({
     required this.airlineName,
@@ -7,6 +9,13 @@ class FlightCatalogEntry {
     required this.destinationCode,
     required this.originCity,
     required this.destinationCity,
+    this.aircraftType = 'Airbus A320 family',
+    this.cabinCapacities = const {
+      CabinClass.economy: 150,
+      CabinClass.premiumEconomy: 24,
+      CabinClass.business: 16,
+      CabinClass.first: 0,
+    },
     this.isFeatured = false,
   });
 
@@ -17,6 +26,8 @@ class FlightCatalogEntry {
   final String destinationCode;
   final String originCity;
   final String destinationCity;
+  final String aircraftType;
+  final Map<CabinClass, int> cabinCapacities;
   final bool isFeatured;
 
   String get id =>
@@ -25,6 +36,8 @@ class FlightCatalogEntry {
   String get compactFlightCode => '$carrierCode$flightNumber';
   String get routeCodeLabel => '$originCode -> $destinationCode';
   String get routeCityLabel => '$originCity to $destinationCity';
+
+  int capacityFor(CabinClass cabinClass) => cabinCapacities[cabinClass] ?? 0;
 }
 
 class FlightCatalog {
@@ -84,6 +97,13 @@ class FlightCatalog {
       destinationCode: 'LAX',
       originCity: 'New York',
       destinationCity: 'Los Angeles',
+      aircraftType: 'Airbus A321neo',
+      cabinCapacities: {
+        CabinClass.economy: 114,
+        CabinClass.premiumEconomy: 60,
+        CabinClass.business: 0,
+        CabinClass.first: 20,
+      },
       isFeatured: true,
     ),
     FlightCatalogEntry(
@@ -130,6 +150,13 @@ class FlightCatalog {
       destinationCode: 'LAX',
       originCity: 'New York',
       destinationCity: 'Los Angeles',
+      aircraftType: 'Airbus A321T',
+      cabinCapacities: {
+        CabinClass.economy: 72,
+        CabinClass.premiumEconomy: 36,
+        CabinClass.business: 20,
+        CabinClass.first: 10,
+      },
       isFeatured: true,
     ),
     FlightCatalogEntry(
@@ -241,6 +268,13 @@ class FlightCatalog {
       destinationCode: 'LAX',
       originCity: 'New York',
       destinationCity: 'Los Angeles',
+      aircraftType: 'Airbus A321neo',
+      cabinCapacities: {
+        CabinClass.economy: 200,
+        CabinClass.premiumEconomy: 0,
+        CabinClass.business: 0,
+        CabinClass.first: 0,
+      },
       isFeatured: true,
     ),
     FlightCatalogEntry(
