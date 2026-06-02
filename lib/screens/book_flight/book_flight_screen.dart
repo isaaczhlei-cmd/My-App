@@ -1,15 +1,20 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/theme.dart';
+import '../../services/booking_link_service.dart';
+import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../add_flight/flight_catalog.dart';
 import 'airport_directory.dart';
 
 class BookFlightScreen extends StatefulWidget {
-  const BookFlightScreen({super.key});
+  const BookFlightScreen({super.key, this.onLaunchUrl});
+
+  final Future<bool> Function(Uri url)? onLaunchUrl;
 
   @override
   State<BookFlightScreen> createState() => _BookFlightScreenState();
@@ -140,7 +145,14 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     setState(() => _departDate = selected);
   }
 
-  void _runSearch({bool showErrors = true}) {
+  Future<bool> _launchExternally(Uri url) async {
+    if (await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      return true;
+    }
+    return launchUrl(url, mode: LaunchMode.platformDefault);
+  }
+
+  bool _runSearch({bool showErrors = true}) {
     final fromMatch = AirportDirectory.findBestMatch(
       _fromController.text,
       excludeCode: _toAirport.code,
@@ -161,7 +173,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
           ),
         );
       }
-      return;
+      return false;
     }
 
     final entries = _entriesForRoute(fromMatch, toMatch);
@@ -197,6 +209,41 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
           ? 'No flights can carry this group in ${_selectedCabin.displayName}.'
           : null;
     });
+    return true;
+  }
+
+  Future<void> _handleSearchFlights() async {
+    if (!_runSearch()) return;
+    if (!mounted) return;
+    // Provider selection moved to each result card. No modal popup.
+  }
+
+  // Provider picker removed; selection is now shown on each result card.
+
+  Uri _bookingUriFor(BookingProvider provider) {
+    return switch (provider) {
+      BookingProvider.kayak => BookingLinkService.kayakUri(
+        origin: _fromAirport.code,
+        destination: _toAirport.code,
+        departureDate: _departDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+      BookingProvider.googleFlights => BookingLinkService.googleFlightsUri(
+        origin: _fromAirport.code,
+        destination: _toAirport.code,
+        departureDate: _departDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+      BookingProvider.skyscanner => BookingLinkService.skyscannerUri(
+        origin: _fromAirport.code,
+        destination: _toAirport.code,
+        departureDate: _departDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+    };
   }
 
   List<FlightCatalogEntry> _entriesForRoute(
@@ -265,8 +312,10 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
               const SizedBox(height: 18),
               _buildSearchPanel(),
               const SizedBox(height: 18),
-              if (lowestCarbon != null && cheapest != null)
-                _buildRecommendationPair(lowestCarbon, cheapest)
+              if (_results.isNotEmpty &&
+                  lowestCarbon != null &&
+                  cheapest != null)
+                _buildResultsSection(lowestCarbon, cheapest)
               else
                 _buildEmptyResultsCard(),
             ],
@@ -370,12 +419,16 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
           const SizedBox(height: 18),
           SizedBox(
             width: double.infinity,
-            height: 50,
+            height: 54,
             child: ElevatedButton.icon(
-              onPressed: _runSearch,
+              onPressed: _handleSearchFlights,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGreen,
                 foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -383,7 +436,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
               ),
               icon: const Icon(Icons.search),
               label: const Text(
-                'Compare Flights',
+                'Search Flights',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
               ),
             ),
@@ -630,11 +683,16 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     );
   }
 
-  Widget _buildRecommendationPair(
+  Widget _buildResultsSection(
     _FlightSearchResult lowestCarbon,
     _FlightSearchResult cheapest,
   ) {
-    final sameFlight = lowestCarbon.entry.id == cheapest.entry.id;
+    final sortedResults = [..._results]
+      ..sort((a, b) {
+        final priceCompare = a.price.compareTo(b.price);
+        if (priceCompare != 0) return priceCompare;
+        return a.emissionsKg.compareTo(b.emissionsKg);
+      });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -643,7 +701,7 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
           children: [
             const Expanded(
               child: Text(
-                'Best Matches',
+                'Available Flights',
                 style: TextStyle(
                   color: AppColors.textPrimary,
                   fontSize: 22,
@@ -652,27 +710,43 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
               ),
             ),
             Text(
-              '${_results.length} checked',
+              '${sortedResults.length} checked',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _buildResultCard(
-          title: sameFlight ? 'Best Overall' : 'Lowest CO\u2082',
-          result: lowestCarbon,
-          accent: AppColors.primaryGreen,
-          icon: Icons.eco_outlined,
-        ),
-        if (!sameFlight) ...[
-          const SizedBox(height: 12),
-          _buildResultCard(
-            title: 'Cheapest',
-            result: cheapest,
-            accent: AppColors.warningOrange,
-            icon: Icons.payments_outlined,
-          ),
-        ],
+        ...sortedResults.map((result) {
+          final isLowestCarbon = result.entry.id == lowestCarbon.entry.id;
+          final isCheapest = result.entry.id == cheapest.entry.id;
+          final title = isLowestCarbon && isCheapest
+              ? 'Best Overall'
+              : isLowestCarbon
+              ? 'Lowest CO\u2082'
+              : isCheapest
+              ? 'Cheapest'
+              : 'Flight Option';
+          final accent = isLowestCarbon
+              ? AppColors.primaryGreen
+              : isCheapest
+              ? AppColors.warningOrange
+              : AppColors.textSecondary;
+          final icon = isLowestCarbon
+              ? Icons.eco_outlined
+              : isCheapest
+              ? Icons.payments_outlined
+              : Icons.flight_outlined;
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildResultCard(
+              title: title,
+              result: result,
+              accent: accent,
+              icon: icon,
+            ),
+          );
+        }),
       ],
     );
   }
@@ -781,6 +855,64 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 14),
+          FutureBuilder<BookingProvider>(
+            future: BookingProviderService.getSelectedProvider(),
+            builder: (context, snapshot) {
+              final provider = snapshot.data ?? BookingProvider.skyscanner;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Provider: ${provider.displayName}',
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final url = _bookingUriFor(provider);
+                        final launcher =
+                            widget.onLaunchUrl ?? _launchExternally;
+                        final scaffold = ScaffoldMessenger.of(context);
+                        final opened = await launcher(url);
+                        if (!opened && mounted) {
+                          scaffold.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Could not open ${provider.displayName}.',
+                              ),
+                              backgroundColor: AppColors.errorRed,
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGreen,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 14),
+                        child: Text(
+                          'Book',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
