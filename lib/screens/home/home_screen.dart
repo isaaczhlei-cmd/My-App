@@ -6,6 +6,7 @@ import '../../services/auth_service.dart';
 import '../../services/eco_tip_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_inbox_service.dart';
+import '../../services/user_preferences_service.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
 import 'widgets/flight_card.dart';
@@ -414,84 +415,177 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFootprintCard(double totalCO2Tons) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color.fromARGB(177, 76, 175, 79), Color(0xFF66BB6A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return ListenableBuilder(
+      listenable: UserPreferencesService.instance,
+      builder: (context, _) {
+        final prefs = UserPreferencesService.instance;
+        final goalTons = prefs.annualCo2GoalTons;
+        final co2Unit = prefs.co2Unit;
+
+        // Format display value respecting unit setting
+        final String displayValue;
+        final String displayUnit;
+        if (co2Unit == Co2Unit.kg) {
+          displayValue = (totalCO2Tons * 1000).toStringAsFixed(0);
+          displayUnit = 'kg CO';
+        } else {
+          displayValue = totalCO2Tons.toStringAsFixed(1);
+          displayUnit = 'tons CO';
+        }
+
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Theme.of(context).colorScheme.primary.withAlpha(177),
+                Theme.of(context).colorScheme.primary,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.calendar_today, color: Colors.white, size: 18),
-              const SizedBox(width: 8),
-              Text(
-                '${DateTime.now().year} Carbon Footprint',
-                style: const TextStyle(fontSize: 14, color: Colors.white70),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${DateTime.now().year} Carbon Footprint',
+                    style: const TextStyle(fontSize: 14, color: Colors.white70),
+                  ),
+                ],
               ),
+              const SizedBox(height: 16),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: displayValue,
+                      style: const TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '  $displayUnit',
+                      style: const TextStyle(fontSize: 18, color: Colors.white),
+                    ),
+                    const TextSpan(
+                      text: '2',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontFeatures: [FontFeature.subscripts()],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              if (goalTons == null) ...[
+                // No goal: original badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(40),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.eco, size: 14, color: Colors.white),
+                      const SizedBox(width: 4),
+                      Text(
+                        totalCO2Tons == 0
+                            ? 'Start tracking your flights!'
+                            : 'Track & reduce your impact',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                // Goal set: progress bar
+                _buildGoalProgress(
+                  context: context,
+                  currentTons: totalCO2Tons,
+                  goalTons: goalTons,
+                  co2Unit: co2Unit,
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 16),
-          RichText(
-            text: TextSpan(
-              children: [
-                TextSpan(
-                  text: totalCO2Tons.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontSize: 40,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                const TextSpan(
-                  text: '  tons CO',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
-                ),
-                const TextSpan(
-                  text: '2',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white,
-                    fontFeatures: [FontFeature.subscripts()],
-                  ),
-                ),
-              ],
+        );
+      },
+    );
+  }
+
+  Widget _buildGoalProgress({
+    required BuildContext context,
+    required double currentTons,
+    required double goalTons,
+    required Co2Unit co2Unit,
+  }) {
+    final isOver = currentTons >= goalTons;
+    final progress = goalTons > 0 ? (currentTons / goalTons).clamp(0.0, 1.0) : 0.0;
+    final barColor = isOver ? AppColors.errorRed : Colors.white;
+
+    String fmt(double tons) {
+      if (co2Unit == Co2Unit.kg) {
+        return '${(tons * 1000).toStringAsFixed(0)} kg';
+      }
+      return '${tons.toStringAsFixed(1)} t';
+    }
+
+    final statusText = isOver
+        ? '${fmt(currentTons - goalTons)} over goal'
+        : '${fmt(goalTons - currentTons)} remaining';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              '${fmt(currentTons)} / ${fmt(goalTons)}',
+              style: const TextStyle(
+                fontSize: 13,
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
+            const Spacer(),
+            Text(
+              statusText,
+              style: TextStyle(
+                fontSize: 12,
+                color: isOver ? AppColors.errorRed : Colors.white70,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: progress,
+            minHeight: 8,
+            backgroundColor: Colors.white.withAlpha(60),
+            valueColor: AlwaysStoppedAnimation<Color>(barColor),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(40),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.eco, size: 14, color: Colors.white),
-                const SizedBox(width: 4),
-                Text(
-                  totalCO2Tons == 0
-                      ? 'Start tracking your flights!'
-                      : 'Track & reduce your impact',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
