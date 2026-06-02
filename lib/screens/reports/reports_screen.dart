@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/flight.dart';
 import '../../services/firestore_service.dart';
+import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 
 class ReportsScreen extends StatefulWidget {
@@ -194,7 +195,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${emissions.toStringAsFixed(2)}t',
+                UserPreferencesService.instance.co2Unit == Co2Unit.kg
+                    ? '${(emissions * 1000).toStringAsFixed(0)} kg'
+                    : '${emissions.toStringAsFixed(2)}t',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
