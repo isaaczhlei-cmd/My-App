@@ -45,11 +45,10 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
     super.initState();
     final today = DateUtils.dateOnly(DateTime.now());
     _departDate = today.add(const Duration(days: 14));
-    _fromController = TextEditingController(text: _fromAirport.shortLabel);
-    _toController = TextEditingController(text: _toAirport.shortLabel);
+    _fromController = TextEditingController();
+    _toController = TextEditingController();
     _fromFocusNode.addListener(_handleFocusChange);
     _toFocusNode.addListener(_handleFocusChange);
-    _runSearch(showErrors: false);
   }
 
   @override
@@ -587,6 +586,9 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
   }
 
   Widget _buildDateField() {
+    final today = DateUtils.dateOnly(DateTime.now());
+    final isDefaultDate = _departDate == today.add(const Duration(days: 14));
+
     return InkWell(
       onTap: _selectDate,
       borderRadius: BorderRadius.circular(12),
@@ -599,18 +601,21 @@ class _BookFlightScreenState extends State<BookFlightScreen> {
         ),
         child: Row(
           children: [
-            const Icon(
-              Icons.calendar_today_outlined,
+            Icon(
+              Icons.arrow_drop_down,
               color: AppColors.textSecondary,
-              size: 20,
+              size: 24,
             ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                _formatDate(_departDate),
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
+                isDefaultDate ? 'Select' : _formatDate(_departDate),
+                style: TextStyle(
+                  color: isDefaultDate
+                      ? AppColors.textSecondary
+                      : AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
+                  fontSize: isDefaultDate ? 14 : 16,
                 ),
               ),
             ),
