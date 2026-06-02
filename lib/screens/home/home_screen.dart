@@ -115,8 +115,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? (totalEmissionsKg / totalFlights).round()
                 : 0;
             // Rough estimate: 1 kg CO2 ≈ 2.51 miles; convert to km if needed
-            final _distKm = UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
-            final totalDistK = _distKm
+            final distKm = UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
+            final totalDistK = distKm
                 ? (totalEmissionsKg * 2.51 * 1.60934 / 1000)
                 : (totalEmissionsKg * 2.51 / 1000);
             final totalMilesK = totalDistK; // variable kept for call-site compat
