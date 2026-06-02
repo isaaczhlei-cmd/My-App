@@ -33,8 +33,9 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
         title: const Text('Round Trip Booking'),
       ),
@@ -47,18 +48,19 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: AppColors.cardBackground,
+                  color: themeColors.card,
                   borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: themeColors.outlineSoft),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Book each leg in order',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
+                        color: themeColors.onCard,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -67,7 +69,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                       style: TextStyle(
                         fontSize: 14,
                         height: 1.5,
-                        color: AppColors.textSecondary.withValues(alpha: 0.95),
+                        color: themeColors.onCardMuted,
                       ),
                     ),
                   ],
@@ -123,8 +125,8 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                 _outboundOpened
                     ? 'After you pick the outbound option, tap the return button to search flights back home.'
                     : 'Start with the outbound search. Once it opens, the return search becomes available.',
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
+                style: TextStyle(
+                  color: themeColors.onCardMuted,
                   fontSize: 13,
                 ),
               ),
@@ -144,8 +146,11 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
     required bool isActive,
     bool isLoading = false,
   }) {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Material(
-      color: Colors.white,
+      color: themeColors.card,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onPressed,
@@ -165,15 +170,15 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                     height: 34,
                     decoration: BoxDecoration(
                       color: isActive
-                          ? AppColors.primaryGreen
-                          : const Color(0xFFE3E6EF),
+                          ? primary
+                          : themeColors.cardMuted,
                       borderRadius: BorderRadius.circular(17),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       step,
                       style: TextStyle(
-                        color: isActive ? Colors.white : const Color(0xFF5F657A),
+                        color: isActive ? Colors.white : themeColors.onCardMuted,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -182,8 +187,8 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                   Expanded(
                     child: Text(
                       title,
-                      style: const TextStyle(
-                        color: Color(0xFF10131E),
+                      style: TextStyle(
+                        color: themeColors.onCard,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
@@ -194,8 +199,8 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
               const SizedBox(height: 10),
               Text(
                 subtitle,
-                style: const TextStyle(
-                  color: Color(0xFF737896),
+                style: TextStyle(
+                  color: themeColors.onCardMuted,
                   fontSize: 14,
                 ),
               ),
@@ -207,7 +212,7 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
                   onPressed: onPressed,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: isActive
-                        ? const Color(0xFF0A0B1C)
+                        ? primary
                         : const Color(0xFFC2C7D6),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
@@ -231,10 +236,10 @@ class _BookingHandoffScreenState extends State<BookingHandoffScreen> {
               ),
               if (isActive && onPressed != null) ...[
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'You can tap the button or anywhere on this card.',
                   style: TextStyle(
-                    color: Color(0xFF737896),
+                    color: themeColors.onCardMuted,
                     fontSize: 12,
                   ),
                 ),

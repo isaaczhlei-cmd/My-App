@@ -86,9 +86,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final displayName = dn != null && dn.isNotEmpty ? dn : 'Traveler';
         final email = user?.email ?? 'Guest';
         final photoUrl = user?.photoURL;
+        final themeColors = context.appColors;
 
         return Scaffold(
-          backgroundColor: AppColors.darkBackground,
           appBar: AppBar(
             leading: IconButton(
               onPressed: () => Navigator.of(context).pop(),
@@ -160,18 +160,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   Text(
                     displayName,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: themeColors.onCard,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     email,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
-                      color: AppColors.textSecondary,
+                      color: themeColors.onCardMuted,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -299,12 +299,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final providers =
         user?.providerData.map((u) => u.providerId).toList() ?? <String>[];
     final providerStr = providers.isEmpty ? '(none)' : providers.join(', ');
+    final themeColors = context.appColors;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: const Color(0xFFFFB74D).withValues(alpha: 0.6),
@@ -365,6 +366,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _debugRow(String label, String value) {
+    final themeColors = context.appColors;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
@@ -374,9 +377,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 108,
             child: Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.textSecondary,
+                color: themeColors.onCardMuted,
                 height: 1.35,
               ),
             ),
@@ -384,10 +387,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Expanded(
             child: SelectableText(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontFamily: 'monospace',
-                color: AppColors.textPrimary,
+                color: themeColors.onCard,
                 height: 1.35,
               ),
             ),
@@ -403,13 +406,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required VoidCallback onTap,
     int badgeCount = 0,
   }) {
+    final themeColors = context.appColors;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
           Material(
-            color: Colors.white,
+            color: themeColors.card,
             borderRadius: BorderRadius.circular(14),
             child: InkWell(
               onTap: onTap,
@@ -425,12 +430,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5F5),
+                        color: themeColors.cardMuted,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         icon,
-                        color: const Color(0xFF616161),
+                        color: themeColors.onCardMuted,
                         size: 20,
                       ),
                     ),
@@ -438,16 +443,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Expanded(
                       child: Text(
                         label,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF1A1A2E),
+                          color: themeColors.onCard,
                         ),
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.chevron_right,
-                      color: Color(0xFFBDBDBD),
+                      color: themeColors.onCardMuted,
                       size: 22,
                     ),
                   ],

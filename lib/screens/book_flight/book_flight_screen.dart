@@ -112,16 +112,14 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       firstDate: firstDate,
       lastDate: DateTime(2030),
       builder: (context, child) {
+        final scheme = Theme.of(context).colorScheme;
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: AppColors.primaryGreen,
-              secondary: AppColors.primaryGreen,
-              surface: AppColors.cardBackground,
+            colorScheme: scheme.copyWith(
+              primary: scheme.primary,
+              secondary: scheme.secondary,
+              surface: scheme.surface,
               error: AppColors.errorRed,
-            ),
-            dialogTheme: const DialogThemeData(
-              backgroundColor: AppColors.darkBackground,
             ),
           ),
           child: child!,
@@ -276,7 +274,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
@@ -334,11 +331,13 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildGuestAccessCard() {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.warningOrange.withValues(alpha: 0.6),
@@ -351,11 +350,11 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             children: [
               Icon(Icons.lock_outline, color: AppColors.warningOrange),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Sign in required',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: themeColors.onCard,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
@@ -364,10 +363,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             'Guests can explore the form, but you need to sign in before opening live flight results.',
             style: TextStyle(
-              color: AppColors.textSecondary,
+              color: themeColors.onCardMuted,
               fontSize: 14,
               height: 1.5,
             ),
@@ -378,12 +377,15 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildBookingCard() {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: themeColors.outlineSoft),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.16),
@@ -478,7 +480,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             child: ElevatedButton(
               onPressed: _runSearch,
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0A0B1C),
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -849,12 +851,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildLiveResultsCard() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -864,30 +870,30 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGreen.withValues(alpha: 0.18),
+                  color: primary.withValues(alpha: 0.18),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.public, color: AppColors.primaryGreen),
+                child: Icon(Icons.public, color: primary),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Live Flight Results',
                   style: TextStyle(
-                    color: AppColors.textPrimary,
+                    color: themeColors.onCard,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-              _buildBadge('Real search', AppColors.primaryGreen),
+              _buildBadge('Real search', primary),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'This screen opens live airline schedules and pricing on the booking provider instead of showing generated sample fares inside the app.',
             style: TextStyle(
-              color: AppColors.textPrimary,
+              color: themeColors.onCard,
               fontSize: 15,
               height: 1.5,
             ),
@@ -899,8 +905,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                 : _isRoundTrip
                 ? 'Round trips open the outbound search first, then a second step opens the return-leg search back to your original airport.'
                 : 'One-way searches open directly to live results for your selected route, date, passenger count, and cabin class.',
-            style: const TextStyle(
-              color: AppColors.textSecondary,
+            style: TextStyle(
+              color: themeColors.onCardMuted,
               fontSize: 14,
               height: 1.5,
             ),

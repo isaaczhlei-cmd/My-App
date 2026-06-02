@@ -52,11 +52,10 @@ class _SignupFormState extends State<SignupForm> {
   bool _passwordTouched = false;
   bool _confirmPasswordTouched = false;
 
-  // Theme colors
-  static const Color _cardBackground = AppColors.cardBackground;
-  static const Color _primaryGreen = AppColors.primaryGreen;
-  static const Color _textPrimary = AppColors.textPrimary;
-  static const Color _textSecondary = AppColors.textSecondary;
+  Color get _cardBackground => context.appColors.cardMuted;
+  Color get _primaryGreen => Theme.of(context).colorScheme.primary;
+  Color get _textPrimary => context.appColors.onCard;
+  Color get _textSecondary => context.appColors.onCardMuted;
   static const Color _errorColor = AppColors.errorRed;
 
   @override
@@ -211,7 +210,7 @@ class _SignupFormState extends State<SignupForm> {
         TextFormField(
           controller: _nameController,
           enabled: !widget.isLoading,
-          style: const TextStyle(color: _textPrimary),
+          style: TextStyle(color: _textPrimary),
           decoration: _inputDecoration(
             label: 'Name',
             icon: Icons.person_outline,
@@ -242,7 +241,7 @@ class _SignupFormState extends State<SignupForm> {
         TextFormField(
           controller: _emailController,
           enabled: !widget.isLoading,
-          style: const TextStyle(color: _textPrimary),
+          style: TextStyle(color: _textPrimary),
           decoration: _inputDecoration(
             label: 'Email',
             icon: Icons.email_outlined,
@@ -275,7 +274,7 @@ class _SignupFormState extends State<SignupForm> {
         TextFormField(
           controller: _passwordController,
           enabled: !widget.isLoading,
-          style: const TextStyle(color: _textPrimary),
+          style: TextStyle(color: _textPrimary),
           decoration: _inputDecoration(
             label: 'Password',
             icon: Icons.lock_outline,
@@ -382,7 +381,7 @@ class _SignupFormState extends State<SignupForm> {
         TextFormField(
           controller: _confirmPasswordController,
           enabled: !widget.isLoading,
-          style: const TextStyle(color: _textPrimary),
+          style: TextStyle(color: _textPrimary),
           decoration: _inputDecoration(
             label: 'Confirm Password',
             icon: Icons.lock_outline,
@@ -440,7 +439,7 @@ class _SignupFormState extends State<SignupForm> {
           elevation: 0,
         ),
         child: widget.isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 height: 24,
                 width: 24,
                 child: CircularProgressIndicator(
@@ -465,8 +464,8 @@ class _SignupFormState extends State<SignupForm> {
             color: _textSecondary.withValues(alpha: 0.3),
           ),
         ),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'OR',
             style: TextStyle(
@@ -507,7 +506,7 @@ class _SignupFormState extends State<SignupForm> {
           height: 20,
           width: 20,
           errorBuilder: (context, error, stackTrace) =>
-              const Icon(Icons.g_mobiledata, size: 24, color: _textPrimary),
+              Icon(Icons.g_mobiledata, size: 24, color: _textPrimary),
         ),
         label: const Text(
           'Continue with Google',
@@ -521,7 +520,7 @@ class _SignupFormState extends State<SignupForm> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Text(
+        Text(
           'Already have an account? ',
           style: TextStyle(color: _textSecondary, fontSize: 14),
         ),
@@ -560,7 +559,7 @@ class _SignupFormState extends State<SignupForm> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: const TextStyle(color: _textSecondary),
+      labelStyle: TextStyle(color: _textSecondary),
       prefixIcon: Icon(icon, color: _textSecondary),
       suffixIcon: suffixIcon,
       filled: true,

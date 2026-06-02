@@ -93,7 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
@@ -210,6 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeader() {
+    final themeColors = context.appColors;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,18 +221,18 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Text(
                 _welcomeGreeting(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
+                  color: themeColors.onCard,
                 ),
                 overflow: TextOverflow.ellipsis,
                 maxLines: 1,
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'Dashboard',
-                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 16, color: themeColors.onCardMuted),
               ),
             ],
           ),
@@ -280,6 +281,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmailVerificationBanner() {
+    final themeColors = context.appColors;
+
     return StreamBuilder<User?>(
       stream: _authService.userChanges,
       initialData: _authService.currentUser,
@@ -310,19 +313,19 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.mark_email_unread_outlined,
                       color: AppColors.warningOrange,
                       size: 20,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Verify your email',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: themeColors.onCard,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -333,8 +336,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 6),
                 Text(
                   'Check ${user.email} for the verification link.',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
+                  style: TextStyle(
+                    color: themeColors.onCardMuted,
                     fontSize: 13,
                   ),
                 ),
@@ -645,11 +648,14 @@ class _HomeScreenState extends State<HomeScreen> {
     required String value,
     required String label,
   }) {
+    final themeColors = context.appColors;
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         children: [
@@ -665,17 +671,17 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+            style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
           ),
         ],
       ),
@@ -683,6 +689,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentFlights(List<Flight> recentFlights) {
+    final themeColors = context.appColors;
     final visibleFlights = recentFlights
         .where((f) => !_pendingDeletions.containsKey(f.id))
         .toList();
@@ -691,12 +698,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Recent Flights',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: themeColors.onCard,
           ),
         ),
         const SizedBox(height: 8),
@@ -705,25 +712,26 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: themeColors.card,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: themeColors.outlineSoft),
             ),
             child: Column(
               children: [
                 Icon(Icons.flight_takeoff, size: 40, color: Colors.grey[400]),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'No flights this month',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: themeColors.onCard,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Add a flight dated this month to start tracking',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
                 ),
               ],
             ),

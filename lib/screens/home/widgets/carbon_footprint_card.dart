@@ -15,14 +15,15 @@ class CarbonFootprintCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDown = percentChange <= 0;
+    final primary = Theme.of(context).colorScheme.primary;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF43A047), Color(0xFF66BB6A)],
+        gradient: LinearGradient(
+          colors: [primary.withValues(alpha: 0.92), primary.withValues(alpha: 0.72)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),

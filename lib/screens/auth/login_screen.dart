@@ -134,7 +134,6 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -191,15 +190,18 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildHeader() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.cardBackground,
+            color: themeColors.card,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.flight, size: 60, color: AppColors.primaryGreen),
+          child: Icon(Icons.flight, size: 60, color: primary),
         ),
         const SizedBox(height: 16),
         Text(
@@ -207,25 +209,29 @@ class _LoginScreenState extends State<LoginScreen> {
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: themeColors.onCard,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Track your flight emissions',
-          style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 16, color: themeColors.onCardMuted),
         ),
       ],
     );
   }
 
   Widget _buildAuthToggle() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Container(
       height: 52,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -242,11 +248,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: toggleWidth,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: AppColors.primaryGreen,
+                    color: primary,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryGreen.withValues(alpha: 0.3),
+                        color: primary.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -276,7 +282,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.w600,
                             color: _isLoginMode
                                 ? Colors.white
-                                : AppColors.textSecondary,
+                                : themeColors.onCardMuted,
                           ),
                           child: const Text('Login'),
                         ),
@@ -302,7 +308,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             fontWeight: FontWeight.w600,
                             color: !_isLoginMode
                                 ? Colors.white
-                                : AppColors.textSecondary,
+                                : themeColors.onCardMuted,
                           ),
                           child: const Text('Sign Up'),
                         ),
@@ -319,6 +325,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginForm() {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -359,7 +368,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: themeColors.onCard),
             decoration: _buildInputDecoration(
               label: 'Email',
               icon: Icons.email_outlined,
@@ -380,7 +389,7 @@ class _LoginScreenState extends State<LoginScreen> {
           TextFormField(
             controller: _passwordController,
             obscureText: _obscurePassword,
-            style: TextStyle(color: AppColors.textPrimary),
+            style: TextStyle(color: themeColors.onCard),
             decoration: _buildInputDecoration(
               label: 'Password',
               icon: Icons.lock_outlined,
@@ -392,7 +401,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off : Icons.visibility,
-                  color: AppColors.textSecondary,
+                  color: themeColors.onCardMuted,
                 ),
               ),
             ),
@@ -412,7 +421,7 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: _isLoading ? null : _handleForgotPasswordTap,
               child: Text(
                 'Forgot Password?',
-                style: TextStyle(color: AppColors.primaryGreen, fontSize: 14),
+                style: TextStyle(color: primary, fontSize: 14),
               ),
             ),
           ),
@@ -424,12 +433,12 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _signInWithEmail,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGreen,
+                backgroundColor: primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                disabledBackgroundColor: AppColors.primaryGreen.withValues(
+                disabledBackgroundColor: primary.withValues(
                   alpha: 0.5,
                 ),
               ),
@@ -458,7 +467,7 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               Expanded(
                 child: Divider(
-                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                  color: themeColors.onCardMuted.withValues(alpha: 0.3),
                 ),
               ),
               Padding(
@@ -466,14 +475,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text(
                   'OR',
                   style: TextStyle(
-                    color: AppColors.textSecondary,
+                    color: themeColors.onCardMuted,
                     fontSize: 14,
                   ),
                 ),
               ),
               Expanded(
                 child: Divider(
-                  color: AppColors.textSecondary.withValues(alpha: 0.3),
+                  color: themeColors.onCardMuted.withValues(alpha: 0.3),
                 ),
               ),
             ],
@@ -486,9 +495,9 @@ class _LoginScreenState extends State<LoginScreen> {
             child: OutlinedButton.icon(
               onPressed: _isLoading ? null : _signInWithGoogle,
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                side: BorderSide(color: AppColors.surface),
-                backgroundColor: AppColors.cardBackground,
+                foregroundColor: themeColors.onCard,
+                side: BorderSide(color: themeColors.outlineSoft),
+                backgroundColor: themeColors.card,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -500,7 +509,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 errorBuilder: (context, error, stackTrace) => Icon(
                   Icons.g_mobiledata,
                   size: 24,
-                  color: AppColors.textPrimary,
+                  color: themeColors.onCard,
                 ),
               ),
               label: const Text(
@@ -563,13 +572,16 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icon,
     Widget? suffixIcon,
   }) {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: AppColors.textSecondary),
-      prefixIcon: Icon(icon, color: AppColors.textSecondary),
+      labelStyle: TextStyle(color: themeColors.onCardMuted),
+      prefixIcon: Icon(icon, color: themeColors.onCardMuted),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: AppColors.surface,
+      fillColor: themeColors.cardMuted,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide.none,
@@ -580,7 +592,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
+        borderSide: BorderSide(color: primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

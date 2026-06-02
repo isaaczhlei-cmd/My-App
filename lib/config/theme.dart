@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 /// Centralized color constants for the Flight Carbon Tracker app.
-/// Non-accent colors (backgrounds, text, status) remain static constants.
 /// Accent color is runtime-dynamic via UserPreferencesService + buildTheme().
 class AppColors {
   // Primary brand color — kept as const fallback for const-constructor contexts.
@@ -33,6 +32,79 @@ class AppColors {
   static const Color errorRed = Color(0xFFF44336);
 }
 
+class AppThemeColors extends ThemeExtension<AppThemeColors> {
+  const AppThemeColors({
+    required this.card,
+    required this.cardMuted,
+    required this.elevatedSurface,
+    required this.onCard,
+    required this.onCardMuted,
+    required this.outlineSoft,
+    required this.logoPlate,
+    required this.successContainer,
+    required this.onSuccessContainer,
+  });
+
+  final Color card;
+  final Color cardMuted;
+  final Color elevatedSurface;
+  final Color onCard;
+  final Color onCardMuted;
+  final Color outlineSoft;
+  final Color logoPlate;
+  final Color successContainer;
+  final Color onSuccessContainer;
+
+  @override
+  AppThemeColors copyWith({
+    Color? card,
+    Color? cardMuted,
+    Color? elevatedSurface,
+    Color? onCard,
+    Color? onCardMuted,
+    Color? outlineSoft,
+    Color? logoPlate,
+    Color? successContainer,
+    Color? onSuccessContainer,
+  }) {
+    return AppThemeColors(
+      card: card ?? this.card,
+      cardMuted: cardMuted ?? this.cardMuted,
+      elevatedSurface: elevatedSurface ?? this.elevatedSurface,
+      onCard: onCard ?? this.onCard,
+      onCardMuted: onCardMuted ?? this.onCardMuted,
+      outlineSoft: outlineSoft ?? this.outlineSoft,
+      logoPlate: logoPlate ?? this.logoPlate,
+      successContainer: successContainer ?? this.successContainer,
+      onSuccessContainer: onSuccessContainer ?? this.onSuccessContainer,
+    );
+  }
+
+  @override
+  AppThemeColors lerp(ThemeExtension<AppThemeColors>? other, double t) {
+    if (other is! AppThemeColors) return this;
+    return AppThemeColors(
+      card: Color.lerp(card, other.card, t)!,
+      cardMuted: Color.lerp(cardMuted, other.cardMuted, t)!,
+      elevatedSurface: Color.lerp(elevatedSurface, other.elevatedSurface, t)!,
+      onCard: Color.lerp(onCard, other.onCard, t)!,
+      onCardMuted: Color.lerp(onCardMuted, other.onCardMuted, t)!,
+      outlineSoft: Color.lerp(outlineSoft, other.outlineSoft, t)!,
+      logoPlate: Color.lerp(logoPlate, other.logoPlate, t)!,
+      successContainer: Color.lerp(successContainer, other.successContainer, t)!,
+      onSuccessContainer: Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
+    );
+  }
+}
+
+extension AppThemeLookup on BuildContext {
+  AppThemeColors get appColors {
+    final theme = Theme.of(this);
+    return theme.extension<AppThemeColors>() ??
+        AppTheme.colorsFor(theme.brightness);
+  }
+}
+
 class AppTheme {
   // Legacy color references — use AppColors directly for new code
   static const Color primaryGreen = AppColors.primaryGreen;
@@ -46,27 +118,77 @@ class AppTheme {
   /// Call twice in MyApp: once for Brightness.light (theme:) and once for
   /// Brightness.dark (darkTheme:). Pass themeMode separately to MaterialApp.
   static ThemeData buildTheme(Color accent, Brightness brightness) {
+    final themeColors = colorsFor(brightness);
+    final isDark = brightness == Brightness.dark;
+    final scaffoldBg = isDark ? AppColors.darkBackground : const Color(0xFFF4F7F3);
+    final card = themeColors.card;
+    final cardMuted = themeColors.cardMuted;
+    final elevatedSurface = themeColors.elevatedSurface;
+    final onCard = themeColors.onCard;
+    final onCardMuted = themeColors.onCardMuted;
+    final outlineSoft = themeColors.outlineSoft;
+
     final colorScheme = ColorScheme.fromSeed(
       seedColor: accent,
       brightness: brightness,
     ).copyWith(
-      // Preserve exact non-seed backgrounds to maintain design intent
-      surface: brightness == Brightness.dark ? AppColors.cardBackground : null,
+      surface: card,
+      onSurface: onCard,
+      surfaceContainerHighest: cardMuted,
+      onSurfaceVariant: onCardMuted,
+      outlineVariant: outlineSoft,
+      error: AppColors.errorRed,
     );
 
-    final scaffoldBg = brightness == Brightness.dark
-        ? AppColors.darkBackground
-        : const Color(0xFFF5F5F5);
-
-    return ThemeData(
+    final base = ThemeData.from(
+      colorScheme: colorScheme,
       useMaterial3: true,
+    );
+
+    return base.copyWith(
       brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBg,
+      extensions: [
+        themeColors,
+      ],
+      dividerTheme: DividerThemeData(color: outlineSoft, thickness: 1),
+      textTheme: base.textTheme.apply(
+        bodyColor: onCard,
+        displayColor: onCard,
+      ),
       cardTheme: CardThemeData(
-        color: brightness == Brightness.dark ? AppColors.cardBackground : Colors.white,
+        color: card,
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: elevatedSurface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: base.textTheme.titleLarge?.copyWith(
+          color: onCard,
+          fontWeight: FontWeight.w700,
+        ),
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(color: onCardMuted),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: cardMuted,
+        labelStyle: TextStyle(color: onCardMuted),
+        hintStyle: TextStyle(color: onCardMuted),
+        prefixIconColor: onCardMuted,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: outlineSoft),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: outlineSoft),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accent, width: 2),
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -77,23 +199,40 @@ class AppTheme {
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: brightness == Brightness.dark ? AppColors.cardBackground : Colors.white,
+        backgroundColor: card,
         selectedItemColor: accent,
-        unselectedItemColor: brightness == Brightness.dark
-            ? AppColors.textSecondary
-            : const Color(0xFF9E9E9E),
+        unselectedItemColor: onCardMuted,
         type: BottomNavigationBarType.fixed,
       ),
       appBarTheme: AppBarTheme(
         backgroundColor: scaffoldBg,
         elevation: 0,
-        foregroundColor: brightness == Brightness.dark
-            ? AppColors.textPrimary
-            : const Color(0xFF1A1A2E),
+        foregroundColor: onCard,
+        surfaceTintColor: Colors.transparent,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: isDark ? AppColors.surface : const Color(0xFF26352A),
+        contentTextStyle: const TextStyle(color: Colors.white),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
 
   // Keep darkTheme getter for any legacy call sites during migration
   static ThemeData get darkTheme => buildTheme(AppColors.primaryGreen, Brightness.dark);
+
+  static AppThemeColors colorsFor(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    return AppThemeColors(
+      card: isDark ? AppColors.cardBackground : Colors.white,
+      cardMuted: isDark ? AppColors.surface : const Color(0xFFEAF0EA),
+      elevatedSurface: isDark ? const Color(0xFF223145) : const Color(0xFFFDFDF8),
+      onCard: isDark ? AppColors.textPrimary : const Color(0xFF18251C),
+      onCardMuted: isDark ? AppColors.textSecondary : const Color(0xFF66736A),
+      outlineSoft: isDark ? const Color(0xFF34465D) : const Color(0xFFD8E0D7),
+      logoPlate: isDark ? const Color(0xFFEFF3F0) : const Color(0xFFF1F5F1),
+      successContainer: isDark ? AppColors.primaryGreen : const Color(0xFFE3F3E4),
+      onSuccessContainer: isDark ? Colors.white : const Color(0xFF17391C),
+    );
+  }
 }

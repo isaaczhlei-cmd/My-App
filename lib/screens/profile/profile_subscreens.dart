@@ -15,8 +15,9 @@ class FlightHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(title: const Text('Flight History')),
       body: SafeArea(
         child: StreamBuilder<List<Flight>>(
@@ -37,19 +38,19 @@ class FlightHistoryScreen extends StatelessWidget {
                     children: [
                       Icon(Icons.flight, size: 48, color: Colors.grey[600]),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'No flights yet',
                         style: TextStyle(
-                          color: AppColors.textPrimary,
+                          color: themeColors.onCard,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Your saved flights will appear here.',
                         style: TextStyle(
-                          color: AppColors.textSecondary,
+                          color: themeColors.onCardMuted,
                           fontSize: 15,
                         ),
                       ),
@@ -97,8 +98,9 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(title: const Text('Notifications')),
       body: SafeArea(
         child: FutureBuilder<void>(
@@ -108,9 +110,9 @@ class _NotificationSettingsScreenState
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return const Center(
+              return Center(
                 child: Text('Failed to load notifications.',
-                    style: TextStyle(color: Colors.white70)),
+                    style: TextStyle(color: themeColors.onCardMuted)),
               );
             }
 
@@ -130,30 +132,31 @@ class _NotificationSettingsScreenState
                             width: 64,
                             height: 64,
                             decoration: BoxDecoration(
-                              color: AppColors.cardBackground,
+                              color: themeColors.card,
                               borderRadius: BorderRadius.circular(32),
+                              border: Border.all(color: themeColors.outlineSoft),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.notifications_outlined,
-                              color: AppColors.textSecondary,
+                              color: themeColors.onCardMuted,
                               size: 32,
                             ),
                           ),
                           const SizedBox(height: 16),
-                          const Text(
+                          Text(
                             'No notifications yet',
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: themeColors.onCard,
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           const SizedBox(height: 8),
-                          const Text(
+                          Text(
                             'Missed eco tips will appear here.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: AppColors.textSecondary,
+                              color: themeColors.onCardMuted,
                               fontSize: 15,
                             ),
                           ),
@@ -216,18 +219,21 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final primary = Theme.of(context).colorScheme.primary;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: notification.isRead
-            ? AppColors.cardBackground
-            : const Color(0xFFE8F5E9),
+            ? themeColors.card
+            : themeColors.successContainer,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: notification.isRead
-              ? Colors.white.withAlpha(18)
-              : Theme.of(context).colorScheme.primary.withAlpha(110),
+              ? themeColors.outlineSoft
+              : primary.withAlpha(110),
         ),
       ),
       child: Row(
@@ -238,15 +244,15 @@ class _NotificationTile extends StatelessWidget {
             height: 38,
             decoration: BoxDecoration(
               color: notification.isRead
-                  ? Colors.white.withAlpha(16)
-                  : const Color(0xFFC8E6C9),
+                  ? themeColors.cardMuted
+                  : primary.withValues(alpha: 0.16),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.eco,
               color: notification.isRead
-                  ? AppColors.textSecondary
-                  : Theme.of(context).colorScheme.primary,
+                  ? themeColors.onCardMuted
+                  : primary,
               size: 20,
             ),
           ),
@@ -262,8 +268,8 @@ class _NotificationTile extends StatelessWidget {
                         notification.title,
                         style: TextStyle(
                           color: notification.isRead
-                              ? AppColors.textPrimary
-                              : const Color(0xFF2E7D32),
+                              ? themeColors.onCard
+                              : themeColors.onSuccessContainer,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -274,8 +280,8 @@ class _NotificationTile extends StatelessWidget {
                       _formatTimestamp(notification.createdAt),
                       style: TextStyle(
                         color: notification.isRead
-                            ? AppColors.textSecondary
-                            : const Color(0xFF2E7D32),
+                            ? themeColors.onCardMuted
+                            : themeColors.onSuccessContainer,
                         fontSize: 12,
                       ),
                     ),
@@ -286,8 +292,8 @@ class _NotificationTile extends StatelessWidget {
                   notification.message,
                   style: TextStyle(
                     color: notification.isRead
-                        ? AppColors.textSecondary
-                        : const Color(0xFF33691E),
+                        ? themeColors.onCardMuted
+                        : themeColors.onSuccessContainer,
                     fontSize: 14,
                     height: 1.35,
                   ),
@@ -324,34 +330,31 @@ class _NotificationTile extends StatelessWidget {
 class AppSettingsScreen extends StatelessWidget {
   const AppSettingsScreen({super.key});
 
-  static const _cardText = Color(0xFF1A1A2E);
-
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final themeColors = context.appColors;
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
-        backgroundColor: AppColors.darkBackground,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: AppColors.textPrimary,
+            color: themeColors.onCard,
             size: 20,
           ),
         ),
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            Icon(Icons.flight, color: AppColors.textPrimary, size: 16),
-            SizedBox(width: 8),
+          children: [
+            Icon(Icons.flight, color: themeColors.onCard, size: 16),
+            const SizedBox(width: 8),
             Text(
               'Settings',
               style: TextStyle(
-                color: AppColors.textPrimary,
+                color: themeColors.onCard,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -378,16 +381,16 @@ class AppSettingsScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.airline_seat_recline_extra_outlined,
-                                color: _cardText,
+                                color: themeColors.onCard,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
+                              Text(
                                 'Default cabin',
                                 style: TextStyle(
-                                  color: _cardText,
+                                  color: themeColors.onCard,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -417,16 +420,16 @@ class AppSettingsScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.eco_outlined,
-                                color: _cardText,
+                                color: themeColors.onCard,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
+                              Text(
                                 'CO₂ unit',
                                 style: TextStyle(
-                                  color: _cardText,
+                                  color: themeColors.onCard,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -448,16 +451,16 @@ class AppSettingsScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.straighten_outlined,
-                                color: _cardText,
+                                color: themeColors.onCard,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
+                              Text(
                                 'Distance',
                                 style: TextStyle(
-                                  color: _cardText,
+                                  color: themeColors.onCard,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -557,16 +560,16 @@ class AppSettingsScreen extends StatelessWidget {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           child: Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.contrast_outlined,
-                                color: _cardText,
+                                color: themeColors.onCard,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
-                              const Text(
+                              Text(
                                 'Theme',
                                 style: TextStyle(
-                                  color: _cardText,
+                                  color: themeColors.onCard,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -629,17 +632,18 @@ class _AccentColorRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       child: Row(
         children: [
-          const Icon(Icons.palette_outlined,
-              color: Color(0xFF1A1A2E), size: 20),
+          Icon(Icons.palette_outlined, color: themeColors.onCard, size: 20),
           const SizedBox(width: 12),
-          const Text(
+          Text(
             'Accent',
             style: TextStyle(
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
               fontSize: 15,
               fontWeight: FontWeight.w500,
               letterSpacing: 0.1,
@@ -704,10 +708,12 @@ class _TicketCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return ClipPath(
       clipper: const _TicketEdgeClipper(),
       child: Container(
-        color: Colors.white,
+        color: themeColors.card,
         child: child,
       ),
     );
@@ -780,11 +786,13 @@ class _InlineSegmented extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.cardMuted,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.black.withAlpha(28)),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -812,7 +820,7 @@ class _InlineSegmented extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   color: isSelected
                       ? Colors.white
-                      : const Color(0xFF1A1A2E),
+                      : themeColors.onCard,
                 ),
               ),
             ),
@@ -838,24 +846,23 @@ class _ToggleRow extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
-  static const _cardText = Color(0xFF1A1A2E);
-
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final themeColors = context.appColors;
     return InkWell(
       onTap: () => onChanged(!value),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: _cardText, size: 20),
+            Icon(icon, color: themeColors.onCard, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: _cardText,
+                style: TextStyle(
+                  color: themeColors.onCard,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
@@ -891,23 +898,23 @@ class _ChevronRow extends StatelessWidget {
   final VoidCallback onTap;
   final String? value;
 
-  static const _cardText = Color(0xFF1A1A2E);
-
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return InkWell(
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         child: Row(
           children: [
-            Icon(icon, color: _cardText, size: 20),
+            Icon(icon, color: themeColors.onCard, size: 20),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: _cardText,
+                style: TextStyle(
+                  color: themeColors.onCard,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
@@ -917,7 +924,7 @@ class _ChevronRow extends StatelessWidget {
               Text(
                 value!,
                 style: TextStyle(
-                  color: _cardText.withAlpha(130),
+                  color: themeColors.onCardMuted,
                   fontSize: 14,
                 ),
               ),
@@ -925,7 +932,7 @@ class _ChevronRow extends StatelessWidget {
             ],
             Icon(
               Icons.chevron_right_rounded,
-              color: _cardText.withAlpha(100),
+              color: themeColors.onCardMuted,
               size: 20,
             ),
           ],
@@ -942,10 +949,10 @@ class _TicketDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Divider(
+    return Divider(
       height: 1,
       indent: 48,
-      color: Color(0xFFEEEEEE),
+      color: context.appColors.outlineSoft,
     );
   }
 }
@@ -957,36 +964,37 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(title: const Text('About')),
-      body: const SafeArea(
+      body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Flight Carbon Tracker',
                 style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: themeColors.onCard,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
                 'Track your flights and estimate CO₂ impact to fly more consciously.',
                 style: TextStyle(
-                  color: AppColors.textSecondary,
+                  color: themeColors.onCardMuted,
                   fontSize: 15,
                   height: 1.45,
                 ),
               ),
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
               Text(
                 'Powered by Google Travel Impact Model API',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                style: TextStyle(color: themeColors.onCardMuted, fontSize: 13),
               ),
             ],
           ),

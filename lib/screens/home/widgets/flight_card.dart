@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../config/theme.dart';
 import '../../../models/flight.dart';
 
 class FlightCard extends StatelessWidget {
@@ -23,13 +24,15 @@ class FlightCard extends StatelessWidget {
         ? '$_airlineCode ${flight.AirlineNumber}'
         : 'Unknown';
     final logoSize = compact ? 40.0 : 44.0;
+    final themeColors = context.appColors;
 
     return Container(
       margin: EdgeInsets.only(bottom: compact ? 10 : 12),
       padding: EdgeInsets.all(compact ? 12 : 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Row(
         children: [
@@ -37,7 +40,7 @@ class FlightCard extends StatelessWidget {
             width: logoSize,
             height: logoSize,
             decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
+              color: themeColors.logoPlate,
               borderRadius: BorderRadius.circular(10),
             ),
             child: _airlineCode.isEmpty
@@ -60,7 +63,7 @@ class FlightCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                              color: Color(0xFF616161),
+                          color: Color(0xFF616161),
                             ),
                           ),
                         );
@@ -90,7 +93,7 @@ class FlightCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: compact ? 15 : 16,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A1A2E),
+                    color: themeColors.onCard,
                   ),
                 ),
                 const SizedBox(height: 3),
@@ -100,7 +103,7 @@ class FlightCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: compact ? 12 : 13,
-                    color: const Color(0xFF9E9E9E),
+                    color: themeColors.onCardMuted,
                   ),
                 ),
               ],
@@ -118,12 +121,12 @@ class FlightCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: compact ? 14 : 17,
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF1A1A2E),
+                    color: themeColors.onCard,
                   ),
                 ),
-                const Text(
+                Text(
                   'CO\u2082',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                  style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
                 ),
               ],
             ),

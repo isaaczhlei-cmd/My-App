@@ -18,8 +18,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       body: SafeArea(
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
@@ -77,12 +78,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Reports',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textPrimary,
+                      color: themeColors.onCard,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -149,12 +150,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     required double emissions,
     required IconData icon,
   }) {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Row(
         children: [
@@ -162,7 +166,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: const Color(0xFFE8F5E9),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
@@ -174,18 +178,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A2E),
+                    color: themeColors.onCard,
                   ),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '$flights flight${flights == 1 ? '' : 's'}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF9E9E9E),
+                    color: themeColors.onCardMuted,
                   ),
                 ),
               ],
@@ -198,15 +202,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 UserPreferencesService.instance.co2Unit == Co2Unit.kg
                     ? '${(emissions * 1000).toStringAsFixed(0)} kg'
                     : '${emissions.toStringAsFixed(2)}t',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A2E),
+                  color: themeColors.onCard,
                 ),
               ),
-              const Text(
+              Text(
                 'CO\u2082',
-                style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+                style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
               ),
             ],
           ),
@@ -216,29 +220,32 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildTopRoutesCard(List<_RouteData> routes) {
+    final themeColors = context.appColors;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Top Routes',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 16),
           if (routes.isEmpty)
             Text(
               'Add flights to see your top routes.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
             )
           else
             ...routes.indexed.map((entry) {
@@ -256,10 +263,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       width: 24,
                       child: Text(
                         '${index + 1}.',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A2E),
+                          color: themeColors.onCard,
                         ),
                       ),
                     ),
@@ -270,18 +277,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           Text(
                             '${route.originCode} -> ${route.destinationCode}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF1A1A2E),
+                              color: themeColors.onCard,
                             ),
                           ),
                           const SizedBox(height: 3),
                           Text(
                             '${route.flightCount} flight${route.flightCount == 1 ? '' : 's'} • ${(route.emissionsKg / 1000).toStringAsFixed(2)}t CO\u2082',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 13,
-                              color: Color(0xFF9E9E9E),
+                              color: themeColors.onCardMuted,
                             ),
                           ),
                         ],
@@ -297,6 +304,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   Widget _buildMonthlyChart(List<_MonthData> monthlyData) {
+    final themeColors = context.appColors;
     final maxKg = monthlyData.fold<double>(
       0,
       (m, d) => d.emissionsKg > m ? d.emissionsKg : m,
@@ -307,18 +315,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: themeColors.card,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Monthly Emissions',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Color(0xFF1A1A2E),
+              color: themeColors.onCard,
             ),
           ),
           const SizedBox(height: 20),
@@ -333,7 +342,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Add flights to see your monthly breakdown',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
                     ),
                   ],
                 ),
@@ -357,10 +366,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           if (data.emissionsKg > 0)
                             Text(
                               '${(data.emissionsKg / 1000).toStringAsFixed(1)}t',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: Color(0xFF1A1A2E),
+                                color: themeColors.onCard,
                               ),
                             ),
                           const SizedBox(height: 4),
@@ -369,16 +378,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             decoration: BoxDecoration(
                               color: data.emissionsKg > 0
                                   ? Theme.of(context).colorScheme.primary
-                                  : const Color(0xFFE0E0E0),
+                                  : themeColors.cardMuted,
                               borderRadius: BorderRadius.circular(6),
                             ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             data.label,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Color(0xFF9E9E9E),
+                              color: themeColors.onCardMuted,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -387,9 +396,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             textAlign: TextAlign.center,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 10,
-                              color: Color(0xFFB0B0B0),
+                              color: themeColors.onCardMuted,
                             ),
                           ),
                         ],
