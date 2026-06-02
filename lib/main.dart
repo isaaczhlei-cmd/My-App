@@ -8,6 +8,7 @@ import 'config/theme.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
+import 'services/user_preferences_service.dart';
 import 'widgets/error_screen.dart';
 
 /// Thrown by [_bootstrap] to annotate a stage failure.
@@ -47,6 +48,7 @@ Future<void> _bootstrap() async {
 Future<void> _retryBootstrap() async {
   try {
     await _bootstrap();
+    await UserPreferencesService.instance.load();
     runApp(const MyApp());
   } on _BootstrapException catch (be) {
     runApp(
@@ -85,6 +87,7 @@ void main() {
   runZonedGuarded<Future<void>>(() async {
     try {
       await _bootstrap();
+      await UserPreferencesService.instance.load();
       runApp(const MyApp());
     } on _BootstrapException catch (be) {
       runApp(
@@ -116,11 +119,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flight Carbon Tracker',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.darkTheme,
-      home: const AuthWrapper(),
+    return ListenableBuilder(
+      listenable: UserPreferencesService.instance,
+      builder: (context, _) {
+        final prefs = UserPreferencesService.instance;
+        return MaterialApp(
+          title: 'Flight Carbon Tracker',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.buildTheme(prefs.accentColor, Brightness.light),
+          darkTheme: AppTheme.buildTheme(prefs.accentColor, Brightness.dark),
+          themeMode: prefs.themeMode,
+          home: const AuthWrapper(),
+        );
+      },
     );
   }
 }
