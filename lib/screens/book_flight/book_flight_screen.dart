@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -7,6 +9,7 @@ import '../../services/booking_link_service.dart';
 import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../add_flight/flight_catalog.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
 import 'airport_directory.dart';
 import 'booking_handoff_screen.dart';
@@ -41,6 +44,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   late DateTime _returnDate;
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
+  List<_FlightSearchResult> _results = const [];
+  bool _hasSearchedCatalog = false;
+  String? _emptyResultsMessage;
 
   @override
   void initState() {
@@ -64,6 +70,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
 
     // Load saved booking provider preference
     _loadSavedProvider();
+    _refreshCatalogResults();
   }
 
   Future<void> _loadSavedProvider() async {
@@ -139,6 +146,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         }
       }
     });
+    _refreshCatalogResults();
   }
 
   void _updateAirportMatches(String query, {required bool isFrom}) {
@@ -169,6 +177,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         _toFocusNode.unfocus();
       }
     });
+    _refreshCatalogResults();
   }
 
   void _swapAirports() {
@@ -182,10 +191,11 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       _toMatches = const [];
     });
     _swapAnimationController.forward(from: 0);
+    _refreshCatalogResults();
   }
 
   Future<void> _runSearch() async {
-    if (_authService.isGuest) {
+    if (_isGuest) {
       _openGuestPrompt();
       return;
     }
@@ -227,6 +237,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       _fromMatches = const [];
       _toMatches = const [];
     });
+    _refreshCatalogResults();
 
     final outboundUrl = _buildSearchUri(
       origin: fromMatch.code,
@@ -271,6 +282,125 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     );
   }
 
+  void _refreshCatalogResults() {
+    final fromMatch = AirportDirectory.findBestMatch(
+      _fromController.text,
+      excludeCode: _toAirport.code,
+    );
+    final toMatch = AirportDirectory.findBestMatch(
+      _toController.text,
+      excludeCode: _fromAirport.code,
+    );
+
+    if (fromMatch == null ||
+        toMatch == null ||
+        fromMatch.code == toMatch.code) {
+      setState(() {
+        _results = const [];
+        _hasSearchedCatalog = true;
+        _emptyResultsMessage = 'Choose two different valid airports.';
+      });
+      return;
+    }
+
+    final entries = _entriesForRoute(fromMatch, toMatch);
+    final maxPassengers = _maxPassengersForEntries(entries);
+    final passengers = maxPassengers == 0 ? 1 : min(_passengers, maxPassengers);
+    final results = entries
+        .where((entry) {
+          final capacity = entry.capacityFor(_selectedCabin);
+          return capacity > 0 && passengers <= capacity;
+        })
+        .map(
+          (entry) => _FlightSearchResult.fromCatalog(
+            entry,
+            cabinClass: _selectedCabin,
+            passengers: passengers,
+            departDate: _departDate,
+          ),
+        )
+        .toList();
+
+    setState(() {
+      _passengers = passengers;
+      _results = results;
+      _hasSearchedCatalog = true;
+      _emptyResultsMessage = entries.isNotEmpty && results.isEmpty
+          ? 'No flights can carry this group in ${_selectedCabin.displayName}.'
+          : null;
+    });
+  }
+
+  List<FlightCatalogEntry> _entriesForRoute(
+    AirportOption fromAirport,
+    AirportOption toAirport,
+  ) {
+    final routeEntries = FlightCatalog.entries
+        .where(
+          (entry) =>
+              entry.originCode == fromAirport.code &&
+              entry.destinationCode == toAirport.code,
+        )
+        .toList();
+    if (routeEntries.isNotEmpty) return routeEntries;
+
+    return FlightCatalog.entries
+        .where(
+          (entry) =>
+              entry.originCode == fromAirport.code ||
+              entry.destinationCode == toAirport.code,
+        )
+        .take(8)
+        .toList();
+  }
+
+  int get _maxPassengersForCurrentSearch {
+    final fromMatch =
+        AirportDirectory.findBestMatch(
+          _fromController.text,
+          excludeCode: _toAirport.code,
+        ) ??
+        _fromAirport;
+    final toMatch =
+        AirportDirectory.findBestMatch(
+          _toController.text,
+          excludeCode: _fromAirport.code,
+        ) ??
+        _toAirport;
+
+    if (fromMatch.code == toMatch.code) return 1;
+    return _maxPassengersForEntries(_entriesForRoute(fromMatch, toMatch));
+  }
+
+  int _maxPassengersForEntries(List<FlightCatalogEntry> entries) {
+    var maxPassengers = 0;
+    for (final entry in entries) {
+      maxPassengers = max(maxPassengers, entry.capacityFor(_selectedCabin));
+    }
+    return maxPassengers;
+  }
+
+  _FlightSearchResult? get _lowestCarbonResult {
+    if (_results.isEmpty) return null;
+    final sorted = [..._results]
+      ..sort((a, b) => a.emissionsKg.compareTo(b.emissionsKg));
+    return sorted.first;
+  }
+
+  _FlightSearchResult? get _cheapestResult {
+    if (_results.isEmpty) return null;
+    final sorted = [..._results]..sort((a, b) => a.price.compareTo(b.price));
+    return sorted.first;
+  }
+
+  bool get _isGuest {
+    try {
+      return _authService.isGuest;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -282,13 +412,13 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             children: [
               _buildHeader(),
               const SizedBox(height: 24),
-              if (_authService.isGuest) ...[
+              if (_isGuest) ...[
                 _buildGuestAccessCard(),
                 const SizedBox(height: 20),
               ],
               _buildBookingCard(),
               const SizedBox(height: 20),
-              _buildLiveResultsCard(),
+              _buildFlightResultsSection(),
             ],
           ),
         ),
@@ -736,45 +866,72 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildPassengerField() {
+    final maxPassengers = _maxPassengersForCurrentSearch;
+    final canAdd = maxPassengers == 0 || _passengers < maxPassengers;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: const Color(0xFFF2F3F7),
         borderRadius: BorderRadius.circular(14),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          IconButton(
-            onPressed: _passengers > 1
-                ? () {
-                    setState(() {
-                      _passengers -= 1;
-                    });
-                  }
-                : null,
-            icon: const Icon(Icons.remove_circle_outline),
-            color: const Color(0xFF30324A),
+          Row(
+            children: [
+              IconButton(
+                key: const ValueKey('decrement-passengers'),
+                onPressed: _passengers > 1
+                    ? () {
+                        setState(() {
+                          _passengers -= 1;
+                        });
+                        _refreshCatalogResults();
+                      }
+                    : null,
+                icon: const Icon(Icons.remove_circle_outline),
+                color: const Color(0xFF30324A),
+              ),
+              Expanded(
+                child: Text(
+                  '$_passengers',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFF30324A),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              IconButton(
+                key: const ValueKey('increment-passengers'),
+                onPressed: canAdd
+                    ? () {
+                        setState(() {
+                          _passengers = maxPassengers == 0
+                              ? _passengers + 1
+                              : min(_passengers + 1, maxPassengers);
+                        });
+                        _refreshCatalogResults();
+                      }
+                    : null,
+                icon: const Icon(Icons.add_circle_outline),
+                color: const Color(0xFF30324A),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(
-              '$_passengers',
-              textAlign: TextAlign.center,
+          if (maxPassengers > 0 && _passengers >= maxPassengers) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Max $maxPassengers for ${_selectedCabin.displayName}',
               style: const TextStyle(
-                color: Color(0xFF30324A),
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
+                color: Color(0xFF737896),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                _passengers += 1;
-              });
-            },
-            icon: const Icon(Icons.add_circle_outline),
-            color: const Color(0xFF30324A),
-          ),
+          ],
         ],
       ),
     );
@@ -791,6 +948,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             setState(() {
               _selectedCabin = cabin;
             });
+            _refreshCatalogResults();
           },
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
@@ -850,17 +1008,73 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     );
   }
 
-  Widget _buildLiveResultsCard() {
+  Widget _buildFlightResultsSection() {
+    final lowestCarbon = _lowestCarbonResult;
+    final cheapest = _cheapestResult;
+
+    if (lowestCarbon == null || cheapest == null) {
+      return _buildEmptyResultsCard();
+    }
+
     final themeColors = context.appColors;
-    final primary = Theme.of(context).colorScheme.primary;
+    final sameFlight = lowestCarbon.entry.id == cheapest.entry.id;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Best Matches',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            Text(
+              '${_results.length} checked',
+              style: TextStyle(color: themeColors.onCardMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _buildResultCard(
+          title: sameFlight ? 'Best Overall' : 'Lowest CO₂',
+          result: lowestCarbon,
+          accent: Theme.of(context).colorScheme.primary,
+          icon: Icons.eco_outlined,
+        ),
+        if (!sameFlight) ...[
+          const SizedBox(height: 12),
+          _buildResultCard(
+            title: 'Cheapest',
+            result: cheapest,
+            accent: AppColors.warningOrange,
+            icon: Icons.payments_outlined,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildResultCard({
+    required String title,
+    required _FlightSearchResult result,
+    required Color accent,
+    required IconData icon,
+  }) {
+    final themeColors = context.appColors;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: themeColors.card,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: themeColors.outlineSoft),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.55)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,47 +1082,126 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: primary.withValues(alpha: 0.18),
-                  borderRadius: BorderRadius.circular(14),
+                  color: accent.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(Icons.public, color: primary),
+                child: Icon(icon, color: accent),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Live Flight Results',
-                  style: TextStyle(
-                    color: themeColors.onCard,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${result.entry.airlineName} ${result.entry.compactFlightCode}',
+                      style: TextStyle(
+                        color: themeColors.onCard,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              _buildBadge('Real search', primary),
+              Text(
+                '\$${result.price}',
+                style: TextStyle(
+                  color: themeColors.onCard,
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'This screen opens live airline schedules and pricing on the booking provider instead of showing generated sample fares inside the app.',
-            style: TextStyle(
-              color: themeColors.onCard,
-              fontSize: 15,
-              height: 1.5,
-            ),
           ),
           const SizedBox(height: 14),
           Text(
-            _authService.isGuest
-                ? 'Sign in to access real flight search results.'
-                : _isRoundTrip
-                ? 'Round trips open the outbound search first, then a second step opens the return-leg search back to your original airport.'
-                : 'One-way searches open directly to live results for your selected route, date, passenger count, and cabin class.',
+            result.entry.routeCodeLabel,
             style: TextStyle(
-              color: themeColors.onCardMuted,
-              fontSize: 14,
-              height: 1.5,
+              color: themeColors.onCard,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            result.entry.routeCityLabel,
+            style: TextStyle(color: themeColors.onCardMuted),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _buildMetric(
+                  'CO₂',
+                  '${result.emissionsKg.round()} kg',
+                  Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetric(
+                  'Distance',
+                  '${result.distanceMiles.round()} mi',
+                  const Color(0xFF3954D9),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildMetric(
+                  'Cabin',
+                  _selectedCabin.displayName,
+                  themeColors.onCardMuted,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMetric(String label, String value, Color color) {
+    final themeColors = context.appColors;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: themeColors.cardMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: themeColors.onCard,
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
@@ -916,20 +1209,44 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     );
   }
 
-  Widget _buildBadge(String label, Color color) {
+  Widget _buildEmptyResultsCard() {
+    final themeColors = context.appColors;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(999),
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-        ),
+      child: Column(
+        children: [
+          Icon(
+            _hasSearchedCatalog ? Icons.search_off : Icons.travel_explore,
+            color: themeColors.onCardMuted,
+            size: 40,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _hasSearchedCatalog
+                ? _emptyResultsMessage ??
+                      'No catalog flights found for this search.'
+                : 'Search to compare cleaner and cheaper flights.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: themeColors.onCard,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Try JFK to LAX, SFO to SEA, or LAX to NRT.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: themeColors.onCardMuted),
+          ),
+        ],
       ),
     );
   }
@@ -991,5 +1308,116 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     }
 
     return success;
+  }
+}
+
+class _FlightSearchResult {
+  final FlightCatalogEntry entry;
+  final double emissionsKg;
+  final int price;
+  final double distanceMiles;
+
+  _FlightSearchResult({
+    required this.entry,
+    required this.emissionsKg,
+    required this.price,
+    required this.distanceMiles,
+  });
+
+  factory _FlightSearchResult.fromCatalog(
+    FlightCatalogEntry entry, {
+    required CabinClass cabinClass,
+    required int passengers,
+    required DateTime departDate,
+  }) {
+    final origin = AirportDirectory.airports.firstWhere(
+      (airport) => airport.code == entry.originCode,
+    );
+    final destination = AirportDirectory.airports.firstWhere(
+      (airport) => airport.code == entry.destinationCode,
+    );
+    final distanceMiles = _distanceMiles(origin, destination);
+    final emissionsKg =
+        distanceMiles *
+        _emissionsRateFor(entry.carrierCode) *
+        _cabinEmissionMultiplier(cabinClass) *
+        passengers;
+    final price =
+        (distanceMiles * _priceRateFor(entry.carrierCode) * passengers)
+            .round() +
+        _cabinPricePremium(cabinClass) +
+        _dateDemandPremium(departDate);
+
+    return _FlightSearchResult(
+      entry: entry,
+      emissionsKg: emissionsKg,
+      price: max(price, 79),
+      distanceMiles: distanceMiles,
+    );
+  }
+
+  static double _distanceMiles(
+    AirportOption origin,
+    AirportOption destination,
+  ) {
+    const earthRadiusMiles = 3958.8;
+    final lat1 = _toRadians(origin.latitude);
+    final lat2 = _toRadians(destination.latitude);
+    final deltaLat = _toRadians(destination.latitude - origin.latitude);
+    final deltaLon = _toRadians(destination.longitude - origin.longitude);
+    final a =
+        sin(deltaLat / 2) * sin(deltaLat / 2) +
+        cos(lat1) * cos(lat2) * sin(deltaLon / 2) * sin(deltaLon / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return earthRadiusMiles * c;
+  }
+
+  static double _toRadians(double degrees) => degrees * pi / 180;
+
+  static double _emissionsRateFor(String carrierCode) {
+    return switch (carrierCode) {
+      'B6' || 'AS' || 'WN' => 0.135,
+      'DL' || 'UA' => 0.148,
+      'AA' => 0.156,
+      'NH' || 'SQ' => 0.162,
+      _ => 0.172,
+    };
+  }
+
+  static double _priceRateFor(String carrierCode) {
+    return switch (carrierCode) {
+      'WN' || 'AS' => 0.115,
+      'B6' => 0.13,
+      'AA' => 0.142,
+      'DL' => 0.151,
+      'UA' => 0.158,
+      _ => 0.18,
+    };
+  }
+
+  static double _cabinEmissionMultiplier(CabinClass cabinClass) {
+    return switch (cabinClass) {
+      CabinClass.economy => 1,
+      CabinClass.premiumEconomy => 1.6,
+      CabinClass.business => 2.8,
+      CabinClass.first => 4,
+    };
+  }
+
+  static int _cabinPricePremium(CabinClass cabinClass) {
+    return switch (cabinClass) {
+      CabinClass.economy => 0,
+      CabinClass.premiumEconomy => 180,
+      CabinClass.business => 780,
+      CabinClass.first => 1450,
+    };
+  }
+
+  static int _dateDemandPremium(DateTime date) {
+    return switch (date.weekday) {
+      DateTime.friday || DateTime.sunday => 46,
+      DateTime.saturday => 28,
+      _ => 12,
+    };
   }
 }
