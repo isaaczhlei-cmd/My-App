@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 abstract class AuthServiceLike {
@@ -59,6 +60,7 @@ class AuthService implements AuthServiceLike {
   static final AuthService _instance = AuthService._();
 
   final UserProfileDocumentCoordinator _profileDocumentCoordinator;
+  Future<void>? _googleSignInInitialization;
 
   FirebaseAuth get _auth => FirebaseAuth.instance;
 
@@ -200,6 +202,12 @@ class AuthService implements AuthServiceLike {
     try {
       // Trigger Google Sign-In flow using the new API (google_sign_in 7.x)
       final googleSignIn = GoogleSignIn.instance;
+      final googleSignInConfigError = _ensureGoogleSignInConfigured();
+      if (googleSignInConfigError != null) {
+        return (user: null, error: googleSignInConfigError);
+      }
+
+      await _initializeGoogleSignIn(googleSignIn);
       final account = await googleSignIn.authenticate();
 
       // Get authentication tokens (idToken)
@@ -237,6 +245,28 @@ class AuthService implements AuthServiceLike {
     } catch (e) {
       return (user: null, error: 'Error signing in with Google: $e');
     }
+  }
+
+  String? _ensureGoogleSignInConfigured() {
+    final serverClientId = dotenv.env['GOOGLE_SIGN_IN_SERVER_CLIENT_ID'];
+    if (serverClientId == null ||
+        serverClientId.trim().isEmpty ||
+        serverClientId == 'local-placeholder') {
+      return 'Google sign-in is not configured. Add GOOGLE_SIGN_IN_SERVER_CLIENT_ID from Firebase web client settings.';
+    }
+
+    return null;
+  }
+
+  Future<void> _initializeGoogleSignIn(GoogleSignIn googleSignIn) {
+    final initialization = _googleSignInInitialization;
+    if (initialization != null) {
+      return initialization;
+    }
+
+    return _googleSignInInitialization = googleSignIn.initialize(
+      serverClientId: dotenv.env['GOOGLE_SIGN_IN_SERVER_CLIENT_ID'],
+    );
   }
 
   /// Sign in anonymously (guest mode)
