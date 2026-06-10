@@ -20,9 +20,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget build(BuildContext context) {
     final themeColors = context.appColors;
 
-    return Scaffold(
-      body: SafeArea(
-        child: StreamBuilder<List<Flight>>(
+    return SafeArea(
+      child: Scaffold(
+        body: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
             final flights = snapshot.data ?? [];
@@ -73,14 +73,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             }
             final topRoutes = _topRoutes(flights);
 
-            // Add bottom padding equal to the bottom nav height and
-            // any system bottom inset so content isn't overlapped.
-            final bottomInset = MediaQuery.of(context).padding.bottom;
-            final scrollBottom =
-                20.0 + kBottomNavigationBarHeight + bottomInset + 24.0;
-
             return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(20, 16, 20, scrollBottom),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -115,8 +109,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             );
           },
         ),
+        bottomNavigationBar: const AppBottomNav(currentIndex: 3),
       ),
-      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 
