@@ -9407,7 +9407,15 @@ class AirportDirectory {
       }
     }
     final matches = search(query, excludeCode: excludeCode);
-    return matches.isEmpty ? null : matches.first;
+    if (matches.isNotEmpty) return matches.first;
+
+    // No direct matches — try a close-code suggestion (strict).
+    final close = findClosestCode(
+      query,
+      excludeCode: excludeCode,
+      maxDistance: 1,
+    );
+    return close;
   }
 
   // Try to find a nearby airport when the user likely typed a typo.
