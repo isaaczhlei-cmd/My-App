@@ -224,6 +224,44 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     );
 
     if (fromMatch == null || toMatch == null) {
+      // If one or both fields didn't match, try to suggest a close code
+      // (helpful for small typos like SZH -> SZX). If we find a suggestion
+      // present it as an action the user can accept.
+      final fromSuggestion = fromMatch == null
+          ? AirportDirectory.findClosestCode(_fromController.text)
+          : null;
+      final toSuggestion = toMatch == null
+          ? AirportDirectory.findClosestCode(_toController.text)
+          : null;
+
+      if (fromSuggestion != null || toSuggestion != null) {
+        final suggestion = fromSuggestion ?? toSuggestion!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'No exact airport match. Did you mean ${suggestion.code} (${suggestion.city})?',
+            ),
+            action: SnackBarAction(
+              label: 'Use ${suggestion.code}',
+              onPressed: () {
+                setState(() {
+                  if (fromSuggestion != null) {
+                    _fromController.text = fromSuggestion.shortLabel;
+                  }
+                  if (toSuggestion != null) {
+                    _toController.text = toSuggestion.shortLabel;
+                  }
+                });
+                // Try the search again with the suggested values.
+                _runSearch();
+              },
+            ),
+            backgroundColor: AppColors.warningOrange,
+          ),
+        );
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Choose valid departure and arrival airports.'),

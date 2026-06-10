@@ -9396,4 +9396,65 @@ class AirportDirectory {
     final matches = search(query, excludeCode: excludeCode);
     return matches.isEmpty ? null : matches.first;
   }
+
+  // Try to find a nearby airport when the user likely typed a typo.
+  // For short queries (3-letter codes) we use Hamming distance; for
+  // longer queries we fall back to a simple Levenshtein distance on
+  // city/name/code fields. Returns the best candidate if within
+  // `maxDistance`, otherwise null.
+  static AirportOption? findClosestCode(String query, {int maxDistance = 2}) {
+    final normalized = query.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+
+    int levenshtein(String a, String b) {
+      final la = a.length;
+      final lb = b.length;
+      final dp = List.generate(la + 1, (_) => List<int>.filled(lb + 1, 0));
+      for (var i = 0; i <= la; i++) dp[i][0] = i;
+      for (var j = 0; j <= lb; j++) dp[0][j] = j;
+      for (var i = 1; i <= la; i++) {
+        for (var j = 1; j <= lb; j++) {
+          final cost = a[i - 1] == b[j - 1] ? 0 : 1;
+          dp[i][j] = [
+            dp[i - 1][j] + 1,
+            dp[i][j - 1] + 1,
+            dp[i - 1][j - 1] + cost,
+          ].reduce((v, e) => v < e ? v : e);
+        }
+      }
+      return dp[la][lb];
+    }
+
+    AirportOption? best;
+    var bestScore = 9999;
+
+    for (final airport in airports) {
+      final code = airport.code.toLowerCase();
+      if (normalized.length == code.length) {
+        // Hamming-like distance for equal-length strings.
+        var d = 0;
+        for (var i = 0; i < code.length; i++) {
+          if (i >= normalized.length) break;
+          if (code[i] != normalized[i]) d++;
+          if (d > bestScore) break;
+        }
+        if (d < bestScore) {
+          bestScore = d;
+          best = airport;
+        }
+      } else {
+        // Compare against city and name and code with levenshtein.
+        final hay = '${airport.city} ${airport.name} ${airport.code}'
+            .toLowerCase();
+        final score = levenshtein(normalized, hay);
+        if (score < bestScore) {
+          bestScore = score;
+          best = airport;
+        }
+      }
+    }
+
+    if (best == null) return null;
+    return bestScore <= maxDistance ? best : null;
+  }
 }
