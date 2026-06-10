@@ -748,6 +748,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required String label,
     required DateTime date,
     required VoidCallback onTap,
+    required bool selected,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,18 +768,20 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               children: [
                 Expanded(
                   child: Text(
-                    _formatDate(date),
-                    style: const TextStyle(
-                      color: Color(0xFF30324A),
-                      fontSize: 15,
+                    selected ? _formatDate(date) : 'Select',
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF30324A)
+                          : const Color(0xFF9AA0B3),
+                      fontSize: selected ? 15 : 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                const Icon(
-                  Icons.calendar_month_outlined,
-                  size: 18,
-                  color: Color(0xFFB3B7C7),
+                Icon(
+                  Icons.arrow_drop_down,
+                  size: 20,
+                  color: const Color(0xFFB3B7C7),
                 ),
               ],
             ),
