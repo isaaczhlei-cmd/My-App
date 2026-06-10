@@ -9354,6 +9354,24 @@ class AirportDirectory {
       return a.code.compareTo(b.code);
     });
 
+    // If the user hasn't typed anything (empty query), return the
+    // full airport list (excluding any excluded code), sorted by city
+    // then code so users can browse all available airports.
+    if (normalized.isEmpty) {
+      final full =
+          airports
+              .where(
+                (airport) => excludeCode == null || airport.code != excludeCode,
+              )
+              .toList()
+            ..sort((a, b) {
+              final cityCompare = a.city.compareTo(b.city);
+              if (cityCompare != 0) return cityCompare;
+              return a.code.compareTo(b.code);
+            });
+      return full;
+    }
+
     return results.take(8).toList();
   }
 
