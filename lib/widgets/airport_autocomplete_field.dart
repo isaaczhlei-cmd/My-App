@@ -100,48 +100,97 @@ class AirportAutocompleteField extends StatelessWidget {
             contentPadding: contentPadding,
           ),
         ),
-        if (focusNode.hasFocus && controller.text.trim().isNotEmpty) ...[
+        if (focusNode.hasFocus) ...[
           const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 320),
-            decoration: BoxDecoration(
-              color: dropdownColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: dropdownBorderColor),
-            ),
-            child: matches.isNotEmpty
-                ? SingleChildScrollView(
-                    child: Column(
-                      children: matches.map((airport) {
-                        return ListTile(
-                          leading: const Icon(
-                            Icons.flight,
-                            color: AppColors.primaryGreen,
+          // If the user hasn't typed yet, show an A-Z quick index so they can
+          // pick a letter to browse that section without loading the whole
+          // airport list.
+          if (controller.text.trim().isEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+              decoration: BoxDecoration(
+                color: dropdownColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: dropdownBorderColor),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: List.generate(26, (i) {
+                    final letter = String.fromCharCode(65 + i);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                      child: GestureDetector(
+                        onTap: () {
+                          // Update the controller and notify parent to trigger
+                          // a search for the selected letter.
+                          controller.text = letter;
+                          onChanged(letter);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
                           ),
-                          title: Text(
-                            airport.shortLabel,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF2F3F7),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            letter,
                             style: const TextStyle(
+                              fontWeight: FontWeight.w700,
                               color: Color(0xFF30324A),
-                              fontWeight: FontWeight.w600,
                             ),
                           ),
-                          subtitle: Text(
-                            '${airport.name} • ${airport.country}',
-                            style: const TextStyle(color: Color(0xFF737896)),
-                          ),
-                          onTap: () => onSelected(airport),
-                        );
-                      }).toList(),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+            )
+          else
+            Container(
+              constraints: const BoxConstraints(maxHeight: 320),
+              decoration: BoxDecoration(
+                color: dropdownColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: dropdownBorderColor),
+              ),
+              child: matches.isNotEmpty
+                  ? SingleChildScrollView(
+                      child: Column(
+                        children: matches.map((airport) {
+                          return ListTile(
+                            leading: const Icon(
+                              Icons.flight,
+                              color: AppColors.primaryGreen,
+                            ),
+                            title: Text(
+                              airport.shortLabel,
+                              style: const TextStyle(
+                                color: Color(0xFF30324A),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${airport.name} • ${airport.country}',
+                              style: const TextStyle(color: Color(0xFF737896)),
+                            ),
+                            onTap: () => onSelected(airport),
+                          );
+                        }).toList(),
+                      ),
+                    )
+                  : Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        showNoMatches ? noMatchesText : '',
+                        style: const TextStyle(color: Color(0xFF8A8FA7)),
+                      ),
                     ),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      showNoMatches ? noMatchesText : '',
-                      style: const TextStyle(color: Color(0xFF8A8FA7)),
-                    ),
-                  ),
-          ),
+            ),
         ],
       ],
     );
