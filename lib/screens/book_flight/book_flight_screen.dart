@@ -111,6 +111,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Future<void> _selectDate({required bool isReturn}) async {
+    FocusScope.of(context).unfocus();
+
     final initialDate = isReturn ? _returnDate : _departDate;
     final firstDate = isReturn ? _departDate : DateTime(2025);
 
