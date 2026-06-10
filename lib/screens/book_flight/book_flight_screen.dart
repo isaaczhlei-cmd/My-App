@@ -545,7 +545,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           _buildAirportInput(
             controller: _fromController,
             focusNode: _fromFocusNode,
-            hintText: 'Type city, airport name, or code',
+            hintText: 'Type in the airport',
             matches: _fromMatches,
             onChanged: (value) => _updateAirportMatches(value, isFrom: true),
             onSelected: (airport) => _selectAirport(airport, isFrom: true),
@@ -574,7 +574,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           _buildAirportInput(
             controller: _toController,
             focusNode: _toFocusNode,
-            hintText: 'Type city, airport name, or code',
+            hintText: 'Type in the airport',
             matches: _toMatches,
             onChanged: (value) => _updateAirportMatches(value, isFrom: false),
             onSelected: (airport) => _selectAirport(airport, isFrom: false),
