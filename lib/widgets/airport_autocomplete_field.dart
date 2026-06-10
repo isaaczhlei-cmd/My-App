@@ -52,12 +52,6 @@ class AirportAutocompleteField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shouldShowNoMatches =
-        showNoMatches &&
-        focusNode.hasFocus &&
-        controller.text.trim().length >= 3 &&
-        matches.isEmpty;
-
     return Column(
       children: [
         TextField(
@@ -106,45 +100,7 @@ class AirportAutocompleteField extends StatelessWidget {
             contentPadding: contentPadding,
           ),
         ),
-          final showFocusedList = focusNode.hasFocus;
-          if (showFocusedList) ...[
-            const SizedBox(height: 8),
-            Container(
-              decoration: BoxDecoration(
-                color: dropdownColor,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: dropdownBorderColor),
-              ),
-              child: Column(
-                children: (matches.isNotEmpty
-                        ? matches
-                        : // If no matches for the typed query, show a browsable
-                        // slice of the full airport list so the user can pick.
-                        AirportDirectory.search(''))
-                    .map((airport) {
-                  return ListTile(
-                    leading: const Icon(
-                      Icons.flight,
-                      color: AppColors.primaryGreen,
-                    ),
-                    title: Text(
-                      airport.shortLabel,
-                      style: const TextStyle(
-                        color: Color(0xFF30324A),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${airport.name} • ${airport.country}',
-                      style: const TextStyle(color: Color(0xFF737896)),
-                    ),
-                    onTap: () => onSelected(airport),
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        if (focusNode.hasFocus && matches.isNotEmpty) ...[
+        if (focusNode.hasFocus) ...[
           const SizedBox(height: 8),
           Container(
             decoration: BoxDecoration(
@@ -153,7 +109,8 @@ class AirportAutocompleteField extends StatelessWidget {
               border: Border.all(color: dropdownBorderColor),
             ),
             child: Column(
-              children: matches.map((airport) {
+              children: (matches.isNotEmpty ? matches : AirportDirectory.search(''))
+                  .map((airport) {
                 return ListTile(
                   leading: const Icon(
                     Icons.flight,
