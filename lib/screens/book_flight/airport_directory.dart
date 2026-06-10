@@ -9311,13 +9311,13 @@ class AirportDirectory {
         .toLowerCase()
         .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
         .trim();
-    final results = airports.where((airport) {
-      if (excludeCode != null && airport.code == excludeCode) {
-        return false;
-      }
-      if (normalized.isEmpty) {
-        return true;
-      }
+
+    // If the user hasn't typed anything, return an empty list so the
+    // UI does not try to render the entire airport dataset at once.
+    if (normalized.isEmpty) return <AirportOption>[];
+
+    // Helper to build a normalized haystack for token/startsWith checks.
+    String normalizeHaystack(AirportOption airport) {
       final haystack = [
         airport.code,
         airport.city,
@@ -9326,52 +9326,58 @@ class AirportDirectory {
         airport.shortLabel,
         airport.fullLabel,
       ].join(' ').toLowerCase();
-      final haystackNormalized = haystack
-          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
-          .trim();
+      return haystack.replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+    }
+
+    // Progressive filtering:
+    // - 1 character: prefer airports whose code/city/name tokens start with
+    //   that letter (this finds the "letter section").
+    // - 2+ characters: perform a substring match (more specific).
+    final results = airports.where((airport) {
+      if (excludeCode != null && airport.code == excludeCode) return false;
+      final haystackNormalized = normalizeHaystack(airport);
+
+      if (normalized.length == 1) {
+        // Match tokens that start with the single-letter query. This groups
+        // results by initial letter and narrows the set from the full list.
+        final tokens = haystackNormalized.split(' ');
+        final starts = tokens.any((t) => t.startsWith(normalized));
+        // Also allow explicit startsWith on code/city/name for better ranking.
+        final explicit =
+            airport.code.toLowerCase().startsWith(normalized) ||
+            airport.city.toLowerCase().startsWith(normalized) ||
+            airport.name.toLowerCase().startsWith(normalized);
+        return starts || explicit;
+      }
+
+      // 2+ characters: do a substring match for more precise filtering.
       return haystackNormalized.contains(normalized);
     }).toList();
 
     results.sort((a, b) {
       final aCodeExact = a.code.toLowerCase() == normalized;
       final bCodeExact = b.code.toLowerCase() == normalized;
-      if (aCodeExact != bCodeExact) {
-        return aCodeExact ? -1 : 1;
-      }
+      if (aCodeExact != bCodeExact) return aCodeExact ? -1 : 1;
+
       final aStarts =
           a.code.toLowerCase().startsWith(normalized) ||
           a.city.toLowerCase().startsWith(normalized);
       final bStarts =
           b.code.toLowerCase().startsWith(normalized) ||
           b.city.toLowerCase().startsWith(normalized);
-      if (aStarts != bStarts) {
-        return aStarts ? -1 : 1;
-      }
+      if (aStarts != bStarts) return aStarts ? -1 : 1;
+
       final cityCompare = a.city.compareTo(b.city);
-      if (cityCompare != 0) {
-        return cityCompare;
-      }
+      if (cityCompare != 0) return cityCompare;
       return a.code.compareTo(b.code);
     });
 
-    // If the user hasn't typed anything (empty query), return the
-    // full airport list (excluding any excluded code), sorted by city
-    // then code so users can browse all available airports.
-    if (normalized.isEmpty) {
-      final full =
-          airports
-              .where(
-                (airport) => excludeCode == null || airport.code != excludeCode,
-              )
-              .toList()
-            ..sort((a, b) {
-              final cityCompare = a.city.compareTo(b.city);
-              if (cityCompare != 0) return cityCompare;
-              return a.code.compareTo(b.code);
-            });
-      return full;
+    // Limit the returned results to keep the dropdown a reasonable size.
+    // For single-letter queries allow a larger page so users can browse the
+    // letter section; for longer queries keep the list short.
+    if (normalized.length == 1) {
+      return results.take(50).toList();
     }
-
     return results.take(8).toList();
   }
 

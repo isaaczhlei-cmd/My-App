@@ -100,18 +100,19 @@ class AirportAutocompleteField extends StatelessWidget {
             contentPadding: contentPadding,
           ),
         ),
-        if (focusNode.hasFocus) ...[
+        if (focusNode.hasFocus && controller.text.trim().isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
+            constraints: const BoxConstraints(maxHeight: 320),
             decoration: BoxDecoration(
               color: dropdownColor,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: dropdownBorderColor),
             ),
-            child: Column(
-              children:
-                  (matches.isNotEmpty ? matches : AirportDirectory.search(''))
-                      .map((airport) {
+            child: matches.isNotEmpty
+                ? SingleChildScrollView(
+                    child: Column(
+                      children: matches.map((airport) {
                         return ListTile(
                           leading: const Icon(
                             Icons.flight,
@@ -130,9 +131,16 @@ class AirportAutocompleteField extends StatelessWidget {
                           ),
                           onTap: () => onSelected(airport),
                         );
-                      })
-                      .toList(),
-            ),
+                      }).toList(),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      showNoMatches ? noMatchesText : '',
+                      style: const TextStyle(color: Color(0xFF8A8FA7)),
+                    ),
+                  ),
           ),
         ],
       ],
