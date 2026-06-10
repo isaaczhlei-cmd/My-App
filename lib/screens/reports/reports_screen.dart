@@ -20,9 +20,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget build(BuildContext context) {
     final themeColors = context.appColors;
 
-    return SafeArea(
-      child: Scaffold(
-        body: StreamBuilder<List<Flight>>(
+    return Scaffold(
+      backgroundColor: AppColors.darkBackground,
+      body: SafeArea(
+        child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
             final flights = snapshot.data ?? [];
@@ -109,8 +110,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
             );
           },
         ),
-        bottomNavigationBar: const AppBottomNav(currentIndex: 3),
       ),
+      bottomNavigationBar: const AppBottomNav(currentIndex: 3),
     );
   }
 
