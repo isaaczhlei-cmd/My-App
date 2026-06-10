@@ -109,27 +109,29 @@ class AirportAutocompleteField extends StatelessWidget {
               border: Border.all(color: dropdownBorderColor),
             ),
             child: Column(
-              children: (matches.isNotEmpty ? matches : AirportDirectory.search(''))
-                  .map((airport) {
-                return ListTile(
-                  leading: const Icon(
-                    Icons.flight,
-                    color: AppColors.primaryGreen,
-                  ),
-                  title: Text(
-                    airport.shortLabel,
-                    style: const TextStyle(
-                      color: Color(0xFF30324A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${airport.name} • ${airport.country}',
-                    style: const TextStyle(color: Color(0xFF737896)),
-                  ),
-                  onTap: () => onSelected(airport),
-                );
-              }).toList(),
+              children:
+                  (matches.isNotEmpty ? matches : AirportDirectory.search(''))
+                      .map((airport) {
+                        return ListTile(
+                          leading: const Icon(
+                            Icons.flight,
+                            color: AppColors.primaryGreen,
+                          ),
+                          title: Text(
+                            airport.shortLabel,
+                            style: const TextStyle(
+                              color: Color(0xFF30324A),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${airport.name} • ${airport.country}',
+                            style: const TextStyle(color: Color(0xFF737896)),
+                          ),
+                          onTap: () => onSelected(airport),
+                        );
+                      })
+                      .toList(),
             ),
           ),
         ],
