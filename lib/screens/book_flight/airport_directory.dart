@@ -9410,8 +9410,12 @@ class AirportDirectory {
       final la = a.length;
       final lb = b.length;
       final dp = List.generate(la + 1, (_) => List<int>.filled(lb + 1, 0));
-      for (var i = 0; i <= la; i++) dp[i][0] = i;
-      for (var j = 0; j <= lb; j++) dp[0][j] = j;
+      for (var i = 0; i <= la; i++) {
+        dp[i][0] = i;
+      }
+      for (var j = 0; j <= lb; j++) {
+        dp[0][j] = j;
+      }
       for (var i = 1; i <= la; i++) {
         for (var j = 1; j <= lb; j++) {
           final cost = a[i - 1] == b[j - 1] ? 0 : 1;
