@@ -9372,6 +9372,19 @@ class AirportDirectory {
       return a.code.compareTo(b.code);
     });
 
+    // If no results found, try returning a very close match (typo
+    // correction) for queries of length >= 2 so users see a selectable
+    // suggestion (e.g. typing "SZH" will surface "SZX"). Use a strict
+    // maxDistance of 1 to avoid noisy matches.
+    if (results.isEmpty && normalized.length >= 2) {
+      final close = findClosestCode(
+        query,
+        excludeCode: excludeCode,
+        maxDistance: 1,
+      );
+      if (close != null) return [close];
+    }
+
     // Limit the returned results to keep the dropdown a reasonable size.
     // For single-letter queries allow a larger page so users can browse the
     // letter section; for longer queries keep the list short.
