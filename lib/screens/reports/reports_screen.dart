@@ -73,8 +73,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
             }
             final topRoutes = _topRoutes(flights);
 
+            // Add bottom padding equal to the bottom nav height and
+            // any system bottom inset so content isn't overlapped.
+            final bottomInset = MediaQuery.of(context).padding.bottom;
+            final scrollBottom =
+                20.0 + kBottomNavigationBarHeight + bottomInset + 24.0;
+
             return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              padding: EdgeInsets.fromLTRB(20, 16, 20, scrollBottom),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -166,10 +172,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 22),
+            child: Icon(
+              icon,
+              color: Theme.of(context).colorScheme.primary,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -342,7 +354,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     const SizedBox(height: 8),
                     Text(
                       'Add flights to see your monthly breakdown',
-                      style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: themeColors.onCardMuted,
+                      ),
                     ),
                   ],
                 ),
