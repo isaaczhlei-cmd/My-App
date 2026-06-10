@@ -228,10 +228,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       // (helpful for small typos like SZH -> SZX). If we find a suggestion
       // present it as an action the user can accept.
       final fromSuggestion = fromMatch == null
-          ? AirportDirectory.findClosestCode(_fromController.text)
+          ? AirportDirectory.findClosestCode(
+              _fromController.text,
+              excludeCode: _toAirport.code,
+            )
           : null;
       final toSuggestion = toMatch == null
-          ? AirportDirectory.findClosestCode(_toController.text)
+          ? AirportDirectory.findClosestCode(
+              _toController.text,
+              excludeCode: _fromAirport.code,
+            )
           : null;
 
       if (fromSuggestion != null || toSuggestion != null) {
