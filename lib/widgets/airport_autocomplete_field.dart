@@ -106,28 +106,44 @@ class AirportAutocompleteField extends StatelessWidget {
             contentPadding: contentPadding,
           ),
         ),
-        if (shouldShowNoMatches) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF6E5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.warningOrange.withValues(alpha: 0.35),
+          final showFocusedList = focusNode.hasFocus;
+          if (showFocusedList) ...[
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: dropdownColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: dropdownBorderColor),
+              ),
+              child: Column(
+                children: (matches.isNotEmpty
+                        ? matches
+                        : // If no matches for the typed query, show a browsable
+                        // slice of the full airport list so the user can pick.
+                        AirportDirectory.search(''))
+                    .map((airport) {
+                  return ListTile(
+                    leading: const Icon(
+                      Icons.flight,
+                      color: AppColors.primaryGreen,
+                    ),
+                    title: Text(
+                      airport.shortLabel,
+                      style: const TextStyle(
+                        color: Color(0xFF30324A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      '${airport.name} • ${airport.country}',
+                      style: const TextStyle(color: Color(0xFF737896)),
+                    ),
+                    onTap: () => onSelected(airport),
+                  );
+                }).toList(),
               ),
             ),
-            child: Text(
-              noMatchesText,
-              style: const TextStyle(
-                color: Color(0xFF7A4A00),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+          ],
         if (focusNode.hasFocus && matches.isNotEmpty) ...[
           const SizedBox(height: 8),
           Container(
