@@ -9402,7 +9402,11 @@ class AirportDirectory {
   // longer queries we fall back to a simple Levenshtein distance on
   // city/name/code fields. Returns the best candidate if within
   // `maxDistance`, otherwise null.
-  static AirportOption? findClosestCode(String query, {int maxDistance = 2}) {
+  static AirportOption? findClosestCode(
+    String query, {
+    String? excludeCode,
+    int maxDistance = 2,
+  }) {
     final normalized = query.trim().toLowerCase();
     if (normalized.isEmpty) return null;
 
@@ -9433,6 +9437,7 @@ class AirportDirectory {
     var bestScore = 9999;
 
     for (final airport in airports) {
+      if (excludeCode != null && airport.code == excludeCode) continue;
       final code = airport.code.toLowerCase();
       if (normalized.length == code.length) {
         // Hamming-like distance for equal-length strings.
