@@ -588,6 +588,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                   label: 'Depart',
                   date: _departDate,
                   onTap: () => _selectDate(isReturn: false),
+                  selected: _departSelected,
                 ),
               ),
               if (_isRoundTrip) ...[
@@ -597,6 +598,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                     label: 'Return',
                     date: _returnDate,
                     onTap: () => _selectDate(isReturn: true),
+                    selected: _returnSelected,
                   ),
                 ),
               ],
