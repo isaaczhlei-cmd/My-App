@@ -9,6 +9,7 @@ import '../../services/booking_link_service.dart';
 import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../../widgets/airport_autocomplete_field.dart';
 import '../add_flight/flight_catalog.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
 import 'airport_directory.dart';
@@ -722,102 +723,14 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required ValueChanged<String> onChanged,
     required ValueChanged<AirportOption> onSelected,
   }) {
-    final showNoMatches =
-        focusNode.hasFocus &&
-        controller.text.trim().length >= 3 &&
-        matches.isEmpty;
-
-    return Column(
-      children: [
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          onChanged: onChanged,
-          style: const TextStyle(
-            color: Color(0xFF30324A),
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: const TextStyle(color: Color(0xFF8A8FA7), fontSize: 15),
-            filled: true,
-            fillColor: const Color(0xFFF2F3F7),
-            prefixIcon: const Icon(Icons.search, color: Color(0xFF737896)),
-            suffixIcon: controller.text.isNotEmpty
-                ? IconButton(
-                    onPressed: () {
-                      controller.clear();
-                      onChanged('');
-                    },
-                    icon: const Icon(Icons.close, color: Color(0xFF737896)),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 16,
-            ),
-          ),
-        ),
-        if (showNoMatches) ...[
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF6E5),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.warningOrange.withValues(alpha: 0.35),
-              ),
-            ),
-            child: const Text(
-              'No matches - try the IATA code',
-              style: TextStyle(
-                color: Color(0xFF7A4A00),
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-        if (focusNode.hasFocus && matches.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF7F8FB),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE2E5EE)),
-            ),
-            child: Column(
-              children: matches.map((airport) {
-                return ListTile(
-                  leading: const Icon(
-                    Icons.flight,
-                    color: AppColors.primaryGreen,
-                  ),
-                  title: Text(
-                    airport.shortLabel,
-                    style: const TextStyle(
-                      color: Color(0xFF30324A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${airport.name} • ${airport.country}',
-                    style: const TextStyle(color: Color(0xFF737896)),
-                  ),
-                  onTap: () => onSelected(airport),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
-      ],
+    return AirportAutocompleteField(
+      controller: controller,
+      focusNode: focusNode,
+      hintText: hintText,
+      matches: matches,
+      onChanged: onChanged,
+      onSelected: onSelected,
+      prefixIcon: Icons.search,
     );
   }
 

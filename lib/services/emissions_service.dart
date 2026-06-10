@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+
+import '../screens/book_flight/airport_directory.dart';
 
 class EmissionsService {
   @visibleForTesting
@@ -80,9 +83,11 @@ class EmissionsService {
         final data = jsonDecode(response.body);
         return FlightEmissionsResult.fromJson(data);
       } else {
+        debugPrint('[TIM] computeFlightEmissions ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
+      debugPrint('[TIM] computeFlightEmissions error: $e');
       return null;
     }
   }
@@ -111,12 +116,53 @@ class EmissionsService {
         final data = jsonDecode(response.body);
         return TypicalEmissionsResult.fromJson(data);
       } else {
+        debugPrint('[TIM] computeTypicalEmissions ${response.statusCode}: ${response.body}');
         return null;
       }
     } catch (e) {
+      debugPrint('[TIM] computeTypicalEmissions error: $e');
       return null;
     }
   }
+
+  /// Haversine-based local fallback. Returns economy kg CO2/pax.
+  /// Uses DEFRA 2024 emission factors with radiative forcing included.
+  double? computeLocalEmissions({
+    required String origin,
+    required String destination,
+  }) {
+    final orig = AirportDirectory.airports.where(
+      (a) => a.code.toUpperCase() == origin.toUpperCase(),
+    ).firstOrNull;
+    final dest = AirportDirectory.airports.where(
+      (a) => a.code.toUpperCase() == destination.toUpperCase(),
+    ).firstOrNull;
+
+    if (orig == null || dest == null) return null;
+
+    final distKm = _haversineKm(orig.latitude, orig.longitude, dest.latitude, dest.longitude);
+    // DEFRA 2024: short-haul <1500 km = 0.255 kg/km, long-haul = 0.195 kg/km (economy, incl. RFI)
+    final factor = distKm < 1500 ? 0.255 : 0.195;
+    return distKm * factor;
+  }
+
+  static double cabinMultiplier(CabinClass cabin) => switch (cabin) {
+    CabinClass.economy => 1.0,
+    CabinClass.premiumEconomy => 1.6,
+    CabinClass.business => 2.8,
+    CabinClass.first => 4.0,
+  };
+
+  static double _haversineKm(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371.0;
+    final dLat = _rad(lat2 - lat1);
+    final dLon = _rad(lon2 - lon1);
+    final a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_rad(lat1)) * cos(_rad(lat2)) * sin(dLon / 2) * sin(dLon / 2);
+    return r * 2 * atan2(sqrt(a), sqrt(1 - a));
+  }
+
+  static double _rad(double deg) => deg * pi / 180;
 }
 
 /// Result from computeFlightEmissions endpoint

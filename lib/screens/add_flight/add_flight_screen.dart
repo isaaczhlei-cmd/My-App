@@ -11,6 +11,8 @@ import '../../services/emissions_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
+import '../../widgets/airport_autocomplete_field.dart';
+import '../book_flight/airport_directory.dart';
 import 'flight_catalog.dart';
 
 class AddFlightScreen extends StatefulWidget {
@@ -29,6 +31,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   final _originController = TextEditingController();
   final _destinationController = TextEditingController();
   final _passengerCountController = TextEditingController(text: '1');
+  final FocusNode _originFocusNode = FocusNode();
+  final FocusNode _destinationFocusNode = FocusNode();
   final _emissionsService = EmissionsService();
   final _firestoreService = FirestoreService();
   final _authService = AuthService();
@@ -45,6 +49,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   Set<String> _hiddenCatalogEntryIds = <String>{};
   final Map<String, _CatalogVerificationStatus> _verificationStatusByKey = {};
   final Set<String> _activeVerificationKeys = <String>{};
+  List<AirportOption> _originMatches = const [];
+  List<AirportOption> _destinationMatches = const [];
 
   String _origin = '';
   String _destination = '';
@@ -56,6 +62,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   FlightEmission? _flightEmission;
   TypicalRouteEmission? _typicalEmission;
   bool _usedTypicalFallback = false;
+  double? _localEconomyKgPerPax;
+  bool _usedLocalFallback = false;
 
   @override
   void initState() {
@@ -68,6 +76,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       parent: _swapAnimationController,
       curve: Curves.easeInOut,
     );
+    _originFocusNode.addListener(_handleAirportFocusChange);
+    _destinationFocusNode.addListener(_handleAirportFocusChange);
     _loadHiddenCatalogEntries();
   }
 
@@ -79,6 +89,12 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     _originController.dispose();
     _destinationController.dispose();
     _passengerCountController.dispose();
+    _originFocusNode
+      ..removeListener(_handleAirportFocusChange)
+      ..dispose();
+    _destinationFocusNode
+      ..removeListener(_handleAirportFocusChange)
+      ..dispose();
     super.dispose();
   }
 
@@ -96,8 +112,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   String? _parseAirportCode(String input) {
     final cleaned = input.trim().toUpperCase();
     final regex = RegExp(r'^[A-Z]{3}$');
-    if (!regex.hasMatch(cleaned)) return null;
-    return cleaned;
+    if (regex.hasMatch(cleaned)) return cleaned;
+    return AirportDirectory.findBestMatch(input)?.code;
   }
 
   int? _parsePassengerCount() {
@@ -115,6 +131,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     _flightEmission = null;
     _typicalEmission = null;
     _usedTypicalFallback = false;
+    _localEconomyKgPerPax = null;
+    _usedLocalFallback = false;
     _origin = '';
     _destination = '';
     _airlineCode = '';
@@ -123,6 +141,53 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   List<String> get _airlineFilters => FlightCatalog.airlineOptions();
+
+  void _handleAirportFocusChange() {
+    if (!_originFocusNode.hasFocus && _originMatches.isNotEmpty) {
+      setState(() {
+        _originMatches = const [];
+      });
+    }
+    if (!_destinationFocusNode.hasFocus && _destinationMatches.isNotEmpty) {
+      setState(() {
+        _destinationMatches = const [];
+      });
+    }
+  }
+
+  void _updateAirportMatches(String query, {required bool isOrigin}) {
+    final excludeCode = isOrigin
+        ? _parseAirportCode(_destinationController.text)
+        : _parseAirportCode(_originController.text);
+    final matches = AirportDirectory.search(query, excludeCode: excludeCode);
+    setState(() {
+      _errorMessage = null;
+      _selectedCatalogEntry = null;
+      _clearLookupResult();
+      if (isOrigin) {
+        _originMatches = matches;
+      } else {
+        _destinationMatches = matches;
+      }
+    });
+  }
+
+  void _selectAirport(AirportOption airport, {required bool isOrigin}) {
+    setState(() {
+      _errorMessage = null;
+      _selectedCatalogEntry = null;
+      _clearLookupResult();
+      if (isOrigin) {
+        _originController.text = airport.code;
+        _originMatches = const [];
+        _originFocusNode.unfocus();
+      } else {
+        _destinationController.text = airport.code;
+        _destinationMatches = const [];
+        _destinationFocusNode.unfocus();
+      }
+    });
+  }
 
   List<FlightCatalogEntry> get _catalogFlights {
     final query = _heroSearchController.text.trim();
@@ -249,11 +314,34 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         _hasResult = true;
       });
     } else {
-      setState(() {
-        _isLoading = false;
-        _errorMessage =
-            'Could not find emissions data for this route. Double-check the airport codes.';
-      });
+      // Local Haversine fallback — works offline, no API needed
+      final localKg = _emissionsService.computeLocalEmissions(
+        origin: origin,
+        destination: destination,
+      );
+
+      if (!mounted) return;
+
+      if (localKg != null && localKg > 0) {
+        final kg = localKg * EmissionsService.cabinMultiplier(_selectedCabin);
+        setState(() {
+          _localEconomyKgPerPax = localKg;
+          _usedLocalFallback = true;
+          _origin = origin;
+          _destination = destination;
+          _airlineCode = parsed?.carrier ?? '';
+          _flightNum = parsed?.number ?? 0;
+          _emissionsKg = kg * passengerCount;
+          _isLoading = false;
+          _hasResult = true;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _errorMessage =
+              'Could not find emissions data for this route. Double-check the airport codes.';
+        });
+      }
     }
   }
 
@@ -267,6 +355,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       } else if (_typicalEmission != null) {
         _emissionsKg = _totalEmissionsKg(
           _typicalEmission!.getEmissionsKg(cabin),
+        );
+      } else if (_localEconomyKgPerPax != null) {
+        _emissionsKg = _totalEmissionsKg(
+          _localEconomyKgPerPax! * EmissionsService.cabinMultiplier(cabin),
         );
       }
     });
@@ -282,6 +374,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       } else if (_typicalEmission != null) {
         _emissionsKg = _totalEmissionsKg(
           _typicalEmission!.getEmissionsKg(_selectedCabin),
+        );
+      } else if (_localEconomyKgPerPax != null) {
+        _emissionsKg = _totalEmissionsKg(
+          _localEconomyKgPerPax! *
+              EmissionsService.cabinMultiplier(_selectedCabin),
         );
       }
     });
@@ -308,6 +405,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     setState(() {
       _errorMessage = null;
       _selectedCatalogEntry = null;
+      _originMatches = const [];
+      _destinationMatches = const [];
       _clearLookupResult();
     });
   }
@@ -505,6 +604,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       _flightNumberController.clear();
       _originController.clear();
       _destinationController.clear();
+      _originMatches = const [];
+      _destinationMatches = const [];
       _passengerCountController.text = '1';
       _flightEmission = null;
       _errorMessage = null;
@@ -596,13 +697,17 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           _buildAirportCodeField(
             label: 'From',
             controller: _originController,
+            focusNode: _originFocusNode,
             hintText: 'Departing airport',
+            matches: _originMatches,
             icon: Icons.radio_button_checked,
             backgroundColor: themeColors.cardMuted,
             borderColor: themeColors.outlineSoft,
             labelColor: themeColors.onCardMuted,
             textColor: themeColors.onCard,
             hintColor: themeColors.onCardMuted,
+            onChanged: (value) => _updateAirportMatches(value, isOrigin: true),
+            onSelected: (airport) => _selectAirport(airport, isOrigin: true),
           ),
           const SizedBox(height: 8),
           Center(
@@ -626,13 +731,17 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           _buildAirportCodeField(
             label: 'To',
             controller: _destinationController,
+            focusNode: _destinationFocusNode,
             hintText: 'Arriving airport',
+            matches: _destinationMatches,
             icon: Icons.location_on_outlined,
             backgroundColor: themeColors.cardMuted,
             borderColor: themeColors.outlineSoft,
             labelColor: themeColors.onCardMuted,
             textColor: themeColors.onCard,
             hintColor: themeColors.onCardMuted,
+            onChanged: (value) => _updateAirportMatches(value, isOrigin: false),
+            onSelected: (airport) => _selectAirport(airport, isOrigin: false),
           ),
           const SizedBox(height: 14),
           _buildDateField(
@@ -697,11 +806,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                 color: primary.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                Icons.airlines,
-                color: primary,
-                size: 21,
-              ),
+              child: Icon(Icons.airlines, color: primary, size: 21),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -773,9 +878,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       backgroundColor: themeColors.cardMuted,
       selectedColor: primary,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(999)),
-      side: BorderSide(
-        color: isSelected ? primary : themeColors.outlineSoft,
-      ),
+      side: BorderSide(color: isSelected ? primary : themeColors.outlineSoft),
     );
   }
 
@@ -1123,7 +1226,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   Widget _buildAirportCodeField({
     required String label,
     required TextEditingController controller,
+    required FocusNode focusNode,
     required String hintText,
+    required List<AirportOption> matches,
+    required ValueChanged<String> onChanged,
+    required ValueChanged<AirportOption> onSelected,
     IconData? icon,
     Color backgroundColor = const Color(0xFFF6F8FA),
     Color borderColor = Colors.transparent,
@@ -1131,52 +1238,32 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     Color textColor = const Color(0xFF1A1A2E),
     Color hintColor = const Color(0xFFBDBDBD),
   }) {
-    final themeColors = context.appColors;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            border: Border.all(color: borderColor),
-            borderRadius: BorderRadius.circular(12),
+        AirportAutocompleteField(
+          controller: controller,
+          focusNode: focusNode,
+          hintText: hintText,
+          matches: matches,
+          onChanged: onChanged,
+          onSelected: onSelected,
+          prefixIcon: icon,
+          textCapitalization: TextCapitalization.characters,
+          textStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: textColor,
           ),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 22, color: themeColors.onCardMuted),
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  textCapitalization: TextCapitalization.characters,
-                  maxLength: 3,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    counterText: '',
-                    hintText: hintText,
-                    hintStyle: TextStyle(color: hintColor),
-                  ),
-                  onChanged: (_) {
-                    setState(() {
-                      _errorMessage = null;
-                      _selectedCatalogEntry = null;
-                      _clearLookupResult();
-                    });
-                  },
-                ),
-              ),
-            ],
+          hintStyle: TextStyle(color: hintColor),
+          fillColor: backgroundColor,
+          borderColor: borderColor,
+          borderRadius: 12,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
           ),
         ),
       ],
@@ -1284,9 +1371,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                           color: Colors.transparent,
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            splashColor: Theme.of(context).colorScheme.primary.withValues(
-                              alpha: 0.14,
-                            ),
+                            splashColor: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.14),
                             highlightColor: Colors.transparent,
                             onTap: () => _onCabinChanged(cabin),
                             child: AnimatedContainer(
@@ -1544,7 +1631,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _usedTypicalFallback
+            _usedLocalFallback
+                ? 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'} (distance estimate)'
+                : _usedTypicalFallback
                 ? 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'} (route average)'
                 : 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'}',
             style: const TextStyle(
