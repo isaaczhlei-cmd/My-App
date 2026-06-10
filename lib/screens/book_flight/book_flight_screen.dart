@@ -161,10 +161,13 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   void _updateAirportMatches(String query, {required bool isFrom}) {
-    final matches = AirportDirectory.search(
-      query,
-      excludeCode: isFrom ? _toAirport.code : _fromAirport.code,
-    );
+    // Only exclude the opposite airport when that input has a value
+    // (so default internal values like LAX don't hide matching results).
+    final otherController = isFrom ? _toController : _fromController;
+    final exclude = otherController.text.trim().isEmpty
+        ? null
+        : (isFrom ? _toAirport.code : _fromAirport.code);
+    final matches = AirportDirectory.search(query, excludeCode: exclude);
     setState(() {
       if (isFrom) {
         _fromMatches = matches;
