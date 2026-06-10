@@ -43,6 +43,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   late final Animation<double> _swapRotationAnimation;
   late DateTime _departDate;
   late DateTime _returnDate;
+  late bool _departSelected;
+  late bool _returnSelected;
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
   List<_FlightSearchResult> _results = const [];
@@ -61,10 +63,14 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       curve: Curves.easeInOut,
     );
     final today = DateUtils.dateOnly(DateTime.now());
-    _departDate = today;
-    _returnDate = today.add(const Duration(days: 2));
-    _fromController = TextEditingController(text: _fromAirport.shortLabel);
-    _toController = TextEditingController(text: _toAirport.shortLabel);
+    // Default depart date two weeks from today (e.g., Jun 15)
+    _departDate = today.add(const Duration(days: 14));
+    _returnDate = _departDate.add(const Duration(days: 2));
+    // Start inputs blank; user will type the airports
+    _fromController = TextEditingController();
+    _toController = TextEditingController();
+    _departSelected = false;
+    _returnSelected = false;
 
     _fromFocusNode.addListener(_handleFocusChange);
     _toFocusNode.addListener(_handleFocusChange);
@@ -142,8 +148,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     setState(() {
       if (isReturn) {
         _returnDate = selected;
+        _returnSelected = true;
       } else {
         _departDate = selected;
+        _departSelected = true;
         if (_returnDate.isBefore(_departDate)) {
           _returnDate = _departDate.add(const Duration(days: 7));
         }
