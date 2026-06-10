@@ -9304,7 +9304,13 @@ class AirportDirectory {
   ];
 
   static List<AirportOption> search(String query, {String? excludeCode}) {
-    final normalized = query.trim().toLowerCase();
+    // Normalize query by keeping only alphanumeric characters and
+    // replacing other characters with spaces. This makes inputs like
+    // "Los Angeles(LAX)" match the stored "Los Angeles (LAX)" label.
+    final normalized = query
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+        .trim();
     final results = airports.where((airport) {
       if (excludeCode != null && airport.code == excludeCode) {
         return false;
@@ -9320,7 +9326,10 @@ class AirportDirectory {
         airport.shortLabel,
         airport.fullLabel,
       ].join(' ').toLowerCase();
-      return haystack.contains(normalized);
+      final haystackNormalized = haystack
+          .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+          .trim();
+      return haystackNormalized.contains(normalized);
     }).toList();
 
     results.sort((a, b) {
