@@ -9303,6 +9303,17 @@ class AirportDirectory {
     ),
   ];
 
+  // When an external CSV is loaded at runtime this will be populated and
+  // searched instead of the static `airports` const. Use the setter
+  // `setDynamicAirports` to register a parsed dataset.
+  static List<AirportOption>? _dynamicAirports;
+
+  static List<AirportOption> get _source => _dynamicAirports ?? airports;
+
+  static void setDynamicAirports(List<AirportOption> list) {
+    _dynamicAirports = list;
+  }
+
   static List<AirportOption> search(String query, {String? excludeCode}) {
     // Normalize query by keeping only alphanumeric characters and
     // replacing other characters with spaces. This makes inputs like
@@ -9333,7 +9344,7 @@ class AirportDirectory {
     // - 1 character: prefer airports whose code/city/name tokens start with
     //   that letter (this finds the "letter section").
     // - 2+ characters: perform a substring match (more specific).
-    final results = airports.where((airport) {
+    final results = _source.where((airport) {
       if (excludeCode != null && airport.code == excludeCode) return false;
       final haystackNormalized = normalizeHaystack(airport);
 
@@ -9360,7 +9371,7 @@ class AirportDirectory {
     if (results.isEmpty && normalized.length == 4) {
       final tail = normalized.substring(normalized.length - 3);
       try {
-        final icaoMatch = airports.firstWhere(
+        final icaoMatch = _source.firstWhere(
           (a) =>
               (excludeCode == null || a.code != excludeCode) &&
               a.code.toLowerCase() == tail,
@@ -9396,7 +9407,7 @@ class AirportDirectory {
     if (results.isEmpty && normalized.length >= 2) {
       // First try a direct code-based Hamming check (fast and deterministic)
       // which works well for 3-letter IATA codes.
-      for (final airport in airports) {
+      for (final airport in _source) {
         if (excludeCode != null && airport.code == excludeCode) continue;
         final code = airport.code.toLowerCase();
         if (code.length == normalized.length) {
@@ -9430,7 +9441,7 @@ class AirportDirectory {
 
   static AirportOption? findBestMatch(String query, {String? excludeCode}) {
     final normalized = query.trim().toLowerCase();
-    for (final airport in airports) {
+    for (final airport in _source) {
       if (excludeCode != null && airport.code == excludeCode) {
         continue;
       }
@@ -9491,7 +9502,7 @@ class AirportDirectory {
     AirportOption? best;
     var bestScore = 9999;
 
-    for (final airport in airports) {
+    for (final airport in _source) {
       if (excludeCode != null && airport.code == excludeCode) continue;
       final code = airport.code.toLowerCase();
       if (normalized.length == code.length) {
