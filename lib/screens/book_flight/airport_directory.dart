@@ -9354,6 +9354,23 @@ class AirportDirectory {
       return haystackNormalized.contains(normalized);
     }).toList();
 
+    // If user typed a 4-letter ICAO like "KLAX" or "PHNL", try the
+    // last 3 letters as an IATA code and prefer that exact match so
+    // users can paste ICAO identifiers and still find the airport.
+    if (results.isEmpty && normalized.length == 4) {
+      final tail = normalized.substring(normalized.length - 3);
+      try {
+        final icaoMatch = airports.firstWhere(
+          (a) =>
+              (excludeCode == null || a.code != excludeCode) &&
+              a.code.toLowerCase() == tail,
+        );
+        return [icaoMatch];
+      } catch (_) {
+        // no-op if not found
+      }
+    }
+
     results.sort((a, b) {
       final aCodeExact = a.code.toLowerCase() == normalized;
       final bCodeExact = b.code.toLowerCase() == normalized;
@@ -9377,6 +9394,23 @@ class AirportDirectory {
     // suggestion (e.g. typing "SZH" will surface "SZX"). Use a strict
     // maxDistance of 1 to avoid noisy matches.
     if (results.isEmpty && normalized.length >= 2) {
+      // First try a direct code-based Hamming check (fast and deterministic)
+      // which works well for 3-letter IATA codes.
+      for (final airport in airports) {
+        if (excludeCode != null && airport.code == excludeCode) continue;
+        final code = airport.code.toLowerCase();
+        if (code.length == normalized.length) {
+          var d = 0;
+          for (var i = 0; i < code.length; i++) {
+            if (i >= normalized.length) break;
+            if (code[i] != normalized[i]) d++;
+            if (d > 1) break;
+          }
+          if (d <= 1) return [airport];
+        }
+      }
+
+      // Fall back to the more general closest-code search.
       final close = findClosestCode(
         query,
         excludeCode: excludeCode,
