@@ -467,11 +467,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
-          Positioned(
-            top: -5,
-            right: -5,
-            child: NotificationBadge(count: badgeCount),
-          ),
+          if (badgeCount > 0)
+            Positioned(
+              top: -5,
+              right: -5,
+              child: NotificationBadge(count: badgeCount),
+            ),
         ],
       ),
     );
