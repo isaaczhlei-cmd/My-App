@@ -195,10 +195,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   AnimatedBuilder(
                     animation: _notificationInbox,
                     builder: (context, _) {
+                      // Show the badge for the total number of notifications
+                      // (the white label reflects count); the red circle remains
+                      // visible even when the count is zero per design request.
                       return _buildMenuItem(
                         icon: Icons.notifications_outlined,
                         label: 'Notifications',
-                        badgeCount: _notificationInbox.unreadCount,
+                        badgeCount: _notificationInbox.notifications.length,
                         onTap: () {
                           if (isGuest) {
                             _openGuestPrompt('Notifications');
@@ -239,9 +242,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? OutlinedButton.icon(
                             onPressed: () => _openGuestPrompt('your account'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Theme.of(context).colorScheme.primary,
+                              foregroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
                               side: BorderSide(
-                                color: Theme.of(context).colorScheme.primary.withAlpha(100),
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.primary.withAlpha(100),
                               ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),

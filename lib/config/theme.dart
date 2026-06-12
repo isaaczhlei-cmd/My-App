@@ -15,20 +15,21 @@ class AppColors {
   //   book_flight_screen.dart:118,119                      (colorScheme override - const)
   //   booking_handoff_screen.dart:168                      (ternary)
   //   guest_sign_in_prompt_screen.dart:39,41               (const context)
-  static const Color primaryGreen = Color(0xFF64B067);
+  // Primary brand color — slightly more saturated for better visibility in dark
+  static const Color primaryGreen = Color(0xFF2ECC71);
 
-  // Background colors
-  static const Color darkBackground = Color(0xFF0D1B2A);
-  static const Color cardBackground = Color(0xFF1B2838);
-  static const Color surface = Color(0xFF243447);
+  // Background colors — stronger separation for improved legibility
+  static const Color darkBackground = Color(0xFF021217);
+  static const Color cardBackground = Color(0xFF0A1A22);
+  static const Color surface = Color(0xFF0F2A32);
 
-  // Text colors
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB0BEC5);
+  // Text colors — slightly brighter off-white for clarity on dark
+  static const Color textPrimary = Color(0xFFF4FBF9);
+  static const Color textSecondary = Color(0xFF90A8AD);
 
-  // Status colors
-  static const Color successGreen = Color(0xFF4CAF50);
-  static const Color warningOrange = Color(0xFFFF9800);
+  // Status colors — vivid variants to stand out against dark backgrounds
+  static const Color successGreen = Color(0xFF28C67A);
+  static const Color warningOrange = Color(0xFFFFA726);
   static const Color errorRed = Color(0xFFF44336);
 }
 
@@ -91,8 +92,16 @@ class AppThemeColors extends ThemeExtension<AppThemeColors> {
       onCardMuted: Color.lerp(onCardMuted, other.onCardMuted, t)!,
       outlineSoft: Color.lerp(outlineSoft, other.outlineSoft, t)!,
       logoPlate: Color.lerp(logoPlate, other.logoPlate, t)!,
-      successContainer: Color.lerp(successContainer, other.successContainer, t)!,
-      onSuccessContainer: Color.lerp(onSuccessContainer, other.onSuccessContainer, t)!,
+      successContainer: Color.lerp(
+        successContainer,
+        other.successContainer,
+        t,
+      )!,
+      onSuccessContainer: Color.lerp(
+        onSuccessContainer,
+        other.onSuccessContainer,
+        t,
+      )!,
     );
   }
 }
@@ -120,7 +129,9 @@ class AppTheme {
   static ThemeData buildTheme(Color accent, Brightness brightness) {
     final themeColors = colorsFor(brightness);
     final isDark = brightness == Brightness.dark;
-    final scaffoldBg = isDark ? AppColors.darkBackground : const Color(0xFFF4F7F3);
+    final scaffoldBg = isDark
+        ? AppColors.darkBackground
+        : const Color(0xFFF4F7F3);
     final card = themeColors.card;
     final cardMuted = themeColors.cardMuted;
     final elevatedSurface = themeColors.elevatedSurface;
@@ -128,35 +139,35 @@ class AppTheme {
     final onCardMuted = themeColors.onCardMuted;
     final outlineSoft = themeColors.outlineSoft;
 
-    final colorScheme = ColorScheme.fromSeed(
-      seedColor: accent,
-      brightness: brightness,
-    ).copyWith(
-      surface: card,
-      onSurface: onCard,
-      surfaceContainerHighest: cardMuted,
-      onSurfaceVariant: onCardMuted,
-      outlineVariant: outlineSoft,
-      error: AppColors.errorRed,
-    );
+    // For light mode, mix the accent with white so accents appear lighter.
+    // For dark mode, slightly blend the accent towards the dark background
+    // so large accent surfaces (like the carbon card) read darker on dark UI.
+    final seedColor = isDark
+        ? Color.lerp(accent, AppColors.darkBackground, 0.22)!
+        : Color.lerp(accent, Colors.white, 0.48)!;
 
-    final base = ThemeData.from(
-      colorScheme: colorScheme,
-      useMaterial3: true,
-    );
+    final colorScheme =
+        ColorScheme.fromSeed(
+          seedColor: seedColor,
+          brightness: brightness,
+        ).copyWith(
+          surface: card,
+          onSurface: onCard,
+          surfaceContainerHighest: cardMuted,
+          onSurfaceVariant: onCardMuted,
+          outlineVariant: outlineSoft,
+          error: AppColors.errorRed,
+        );
+
+    final base = ThemeData.from(colorScheme: colorScheme, useMaterial3: true);
 
     return base.copyWith(
       brightness: brightness,
       colorScheme: colorScheme,
       scaffoldBackgroundColor: scaffoldBg,
-      extensions: [
-        themeColors,
-      ],
+      extensions: [themeColors],
       dividerTheme: DividerThemeData(color: outlineSoft, thickness: 1),
-      textTheme: base.textTheme.apply(
-        bodyColor: onCard,
-        displayColor: onCard,
-      ),
+      textTheme: base.textTheme.apply(bodyColor: onCard, displayColor: onCard),
       cardTheme: CardThemeData(
         color: card,
         elevation: 0,
@@ -169,7 +180,9 @@ class AppTheme {
           color: onCard,
           fontWeight: FontWeight.w700,
         ),
-        contentTextStyle: base.textTheme.bodyMedium?.copyWith(color: onCardMuted),
+        contentTextStyle: base.textTheme.bodyMedium?.copyWith(
+          color: onCardMuted,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
@@ -195,7 +208,9 @@ class AppTheme {
           backgroundColor: accent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
@@ -219,20 +234,27 @@ class AppTheme {
   }
 
   // Keep darkTheme getter for any legacy call sites during migration
-  static ThemeData get darkTheme => buildTheme(AppColors.primaryGreen, Brightness.dark);
+  static ThemeData get darkTheme =>
+      buildTheme(AppColors.primaryGreen, Brightness.dark);
 
   static AppThemeColors colorsFor(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
     return AppThemeColors(
       card: isDark ? AppColors.cardBackground : Colors.white,
       cardMuted: isDark ? AppColors.surface : const Color(0xFFEAF0EA),
-      elevatedSurface: isDark ? const Color(0xFF223145) : const Color(0xFFFDFDF8),
-      onCard: isDark ? AppColors.textPrimary : const Color(0xFF18251C),
+      elevatedSurface: isDark
+          ? const Color(0xFF14353D)
+          : const Color(0xFFFDFDF8),
+      onCard: isDark ? AppColors.textPrimary : const Color(0xFF17241A),
       onCardMuted: isDark ? AppColors.textSecondary : const Color(0xFF66736A),
-      outlineSoft: isDark ? const Color(0xFF34465D) : const Color(0xFFD8E0D7),
-      logoPlate: isDark ? const Color(0xFFEFF3F0) : const Color(0xFFF1F5F1),
-      successContainer: isDark ? AppColors.primaryGreen : const Color(0xFFE3F3E4),
-      onSuccessContainer: isDark ? Colors.white : const Color(0xFF17391C),
+      outlineSoft: isDark ? const Color(0xFF2F5D6E) : const Color(0xFFD8E0D7),
+      logoPlate: isDark ? const Color(0xFFDFF8EE) : const Color(0xFFF7FBF7),
+      successContainer: isDark
+          ? AppColors.successGreen
+          : const Color(0xFFEAF6EE),
+      onSuccessContainer: isDark
+          ? AppColors.textPrimary
+          : const Color(0xFF17391C),
     );
   }
 }
