@@ -111,8 +111,10 @@ class _NotificationSettingsScreenState
             }
             if (snapshot.hasError) {
               return Center(
-                child: Text('Failed to load notifications.',
-                    style: TextStyle(color: themeColors.onCardMuted)),
+                child: Text(
+                  'Failed to load notifications.',
+                  style: TextStyle(color: themeColors.onCardMuted),
+                ),
               );
             }
 
@@ -134,7 +136,9 @@ class _NotificationSettingsScreenState
                             decoration: BoxDecoration(
                               color: themeColors.card,
                               borderRadius: BorderRadius.circular(32),
-                              border: Border.all(color: themeColors.outlineSoft),
+                              border: Border.all(
+                                color: themeColors.outlineSoft,
+                              ),
                             ),
                             child: Icon(
                               Icons.notifications_outlined,
@@ -174,8 +178,14 @@ class _NotificationSettingsScreenState
                     final notification = notifications[index];
                     return Dismissible(
                       key: ValueKey('notification-${notification.id}'),
-                      direction: DismissDirection.endToStart,
+                      // Allow swiping both left and right
+                      direction: DismissDirection.horizontal,
+                      // Background when swiping to the right (shows on the left)
                       background: const _DeleteNotificationBackground(
+                        alignment: Alignment.centerLeft,
+                      ),
+                      // Background when swiping to the left (shows on the right)
+                      secondaryBackground: const _DeleteNotificationBackground(
                         alignment: Alignment.centerRight,
                       ),
                       onDismissed: (_) {
@@ -250,9 +260,7 @@ class _NotificationTile extends StatelessWidget {
             ),
             child: Icon(
               Icons.eco,
-              color: notification.isRead
-                  ? themeColors.onCardMuted
-                  : primary,
+              color: notification.isRead ? themeColors.onCardMuted : primary,
               size: 20,
             ),
           ),
@@ -397,19 +405,22 @@ class AppSettingsScreen extends StatelessWidget {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['Economy', 'Premium', 'Business'],
+                                options: const [
+                                  'Economy',
+                                  'Premium',
+                                  'Business',
+                                ],
                                 selected: switch (prefs.defaultCabinClass) {
                                   CabinClass.premiumEconomy => 1,
-                                  CabinClass.business ||
-                                  CabinClass.first => 2,
+                                  CabinClass.business || CabinClass.first => 2,
                                   _ => 0,
                                 },
                                 onSelect: (i) =>
                                     prefs.setDefaultCabinClass(switch (i) {
-                                  1 => CabinClass.premiumEconomy,
-                                  2 => CabinClass.business,
-                                  _ => CabinClass.economy,
-                                }),
+                                      1 => CabinClass.premiumEconomy,
+                                      2 => CabinClass.business,
+                                      _ => CabinClass.economy,
+                                    }),
                                 activeColor: accent,
                               ),
                             ],
@@ -437,10 +448,10 @@ class AppSettingsScreen extends StatelessWidget {
                               const Spacer(),
                               _InlineSegmented(
                                 options: const ['kg', 'tons'],
-                                selected:
-                                    prefs.co2Unit == Co2Unit.kg ? 0 : 1,
+                                selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
                                 onSelect: (i) => prefs.setCo2Unit(
-                                    i == 0 ? Co2Unit.kg : Co2Unit.metricTons),
+                                  i == 0 ? Co2Unit.kg : Co2Unit.metricTons,
+                                ),
                                 activeColor: accent,
                               ),
                             ],
@@ -468,14 +479,13 @@ class AppSettingsScreen extends StatelessWidget {
                               const Spacer(),
                               _InlineSegmented(
                                 options: const ['Miles', 'km'],
-                                selected: prefs.distanceUnit ==
-                                        DistanceUnit.miles
+                                selected:
+                                    prefs.distanceUnit == DistanceUnit.miles
                                     ? 0
                                     : 1,
                                 onSelect: (i) => prefs.setDistanceUnit(
-                                    i == 0
-                                        ? DistanceUnit.miles
-                                        : DistanceUnit.km),
+                                  i == 0 ? DistanceUnit.miles : DistanceUnit.km,
+                                ),
                                 activeColor: accent,
                               ),
                             ],
@@ -582,8 +592,7 @@ class AppSettingsScreen extends StatelessWidget {
                                   ThemeMode.system => 2,
                                   _ => 0,
                                 },
-                                onSelect: (i) =>
-                                    prefs.setThemeMode(switch (i) {
+                                onSelect: (i) => prefs.setThemeMode(switch (i) {
                                   1 => ThemeMode.light,
                                   2 => ThemeMode.system,
                                   _ => ThemeMode.dark,
@@ -667,10 +676,7 @@ class _AccentColorRow extends StatelessWidget {
                       color: preset.color,
                       shape: BoxShape.circle,
                       border: isSelected
-                          ? Border.all(
-                              color: Colors.white,
-                              width: 2.5,
-                            )
+                          ? Border.all(color: Colors.white, width: 2.5)
                           : null,
                       boxShadow: isSelected
                           ? [
@@ -712,10 +718,7 @@ class _TicketCard extends StatelessWidget {
 
     return ClipPath(
       clipper: const _TicketEdgeClipper(),
-      child: Container(
-        color: themeColors.card,
-        child: child,
-      ),
+      child: Container(color: themeColors.card, child: child),
     );
   }
 }
@@ -804,8 +807,7 @@ class _InlineSegmented extends StatelessWidget {
             onTap: () => onSelect(i),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 150),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? activeColor : Colors.transparent,
                 borderRadius: BorderRadius.horizontal(
@@ -818,9 +820,7 @@ class _InlineSegmented extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
-                  color: isSelected
-                      ? Colors.white
-                      : themeColors.onCard,
+                  color: isSelected ? Colors.white : themeColors.onCard,
                 ),
               ),
             ),
@@ -923,10 +923,7 @@ class _ChevronRow extends StatelessWidget {
             if (value != null) ...[
               Text(
                 value!,
-                style: TextStyle(
-                  color: themeColors.onCardMuted,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: themeColors.onCardMuted, fontSize: 14),
               ),
               const SizedBox(width: 4),
             ],
@@ -949,11 +946,7 @@ class _TicketDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Divider(
-      height: 1,
-      indent: 48,
-      color: context.appColors.outlineSoft,
-    );
+    return Divider(height: 1, indent: 48, color: context.appColors.outlineSoft);
   }
 }
 
