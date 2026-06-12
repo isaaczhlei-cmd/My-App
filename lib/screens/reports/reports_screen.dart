@@ -360,7 +360,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
             )
           else
             SizedBox(
-              height: 168,
+              // Slightly increased height to avoid 11px bottom overflow
+              // when labels, bars and padding sum to more than the
+              // originally allocated space on some devices/fonts.
+              height: 184,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: monthlyData.map((data) {
