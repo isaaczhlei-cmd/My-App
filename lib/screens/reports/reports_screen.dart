@@ -360,16 +360,18 @@ class _ReportsScreenState extends State<ReportsScreen> {
             )
           else
             SizedBox(
-              // Slightly increased height to avoid 11px bottom overflow
-              // when labels, bars and padding sum to more than the
-              // originally allocated space on some devices/fonts.
-              height: 184,
+              // Adjusted height and reduced max bar height to avoid
+              // small bottom overflows on certain devices / font scales.
+              height: 172,
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: monthlyData.map((data) {
-                  final barHeight = maxKg > 0
+                  final rawBar = maxKg > 0
                       ? (data.emissionsKg / maxKg) * 120
                       : 0.0;
+                  // Reduce the maximum allowed bar height slightly to give
+                  // extra room for labels and avoid overflow.
+                  final barHeight = rawBar.clamp(0.0, 108.0);
                   return Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
