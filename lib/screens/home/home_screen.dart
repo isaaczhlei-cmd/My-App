@@ -114,16 +114,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? (totalEmissionsKg / totalFlights).round()
                 : 0;
             // Rough estimate: 1 kg CO2 ≈ 2.51 miles; convert to km if needed
-            final distKm = UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
+            final distKm =
+                UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
             final totalDistK = distKm
                 ? (totalEmissionsKg * 2.51 * 1.60934 / 1000)
                 : (totalEmissionsKg * 2.51 / 1000);
-            final totalMilesK = totalDistK; // variable kept for call-site compat
+            final totalMilesK =
+                totalDistK; // variable kept for call-site compat
 
             final recentFlights = currentMonthFlights
                 .take(_recentFlightsLimit)
                 .toList();
-            final recentTravelPattern = _buildRecentTravelPattern(recentFlights);
+            final recentTravelPattern = _buildRecentTravelPattern(
+              recentFlights,
+            );
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               _queueEcoTipNotification(
@@ -143,7 +147,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 24),
                   _buildFootprintCard(totalCO2Tons),
                   const SizedBox(height: 20),
-                  _buildStatsRow(context, totalFlights, totalMilesK, avgKgPerFlight),
+                  _buildStatsRow(
+                    context,
+                    totalFlights,
+                    totalMilesK,
+                    avgKgPerFlight,
+                  ),
                   const SizedBox(height: 24),
                   _buildRecentFlights(recentFlights),
                   const SizedBox(height: 20),
@@ -265,13 +274,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
-                Positioned(
-                  top: -6,
-                  right: -6,
-                  child: NotificationBadge(
-                    count: _notificationInbox.unreadCount,
+                // Show total notifications count on the avatar corner.
+                // We use `notifications.length` (total stored notifications)
+                // rather than `unreadCount` because the Notifications screen
+                // marks items read on open — the user expects the red dot
+                // to reflect that there are (total) notifications available.
+                if (_notificationInbox.notifications.length > 0)
+                  Positioned(
+                    top: -6,
+                    right: -6,
+                    child: NotificationBadge(
+                      count: _notificationInbox.notifications.length,
+                    ),
                   ),
-                ),
               ],
             );
           },
@@ -461,7 +476,11 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.calendar_today, color: Colors.white, size: 18),
+                  const Icon(
+                    Icons.calendar_today,
+                    color: Colors.white,
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     '${DateTime.now().year} Carbon Footprint',
@@ -500,7 +519,10 @@ class _HomeScreenState extends State<HomeScreen> {
               if (goalTons == null) ...[
                 // No goal: original badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(40),
                     borderRadius: BorderRadius.circular(20),
@@ -546,7 +568,9 @@ class _HomeScreenState extends State<HomeScreen> {
     required Co2Unit co2Unit,
   }) {
     final isOver = currentTons >= goalTons;
-    final progress = goalTons > 0 ? (currentTons / goalTons).clamp(0.0, 1.0) : 0.0;
+    final progress = goalTons > 0
+        ? (currentTons / goalTons).clamp(0.0, 1.0)
+        : 0.0;
     final barColor = isOver ? AppColors.errorRed : Colors.white;
 
     String fmt(double tons) {
@@ -622,7 +646,10 @@ class _HomeScreenState extends State<HomeScreen> {
             iconColor: const Color(0xFFFF8F00),
             iconBgColor: const Color(0xFFFFF3E0),
             value: '${totalMilesK.toStringAsFixed(1)}K',
-            label: UserPreferencesService.instance.distanceUnit == DistanceUnit.km ? 'km' : 'Miles',
+            label:
+                UserPreferencesService.instance.distanceUnit == DistanceUnit.km
+                ? 'km'
+                : 'Miles',
           ),
         ),
         const SizedBox(width: 12),
@@ -731,7 +758,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 4),
                 Text(
                   'Add a flight dated this month to start tracking',
-                  style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: themeColors.onCardMuted,
+                  ),
                 ),
               ],
             ),
