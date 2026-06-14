@@ -1134,10 +1134,14 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         ),
         const SizedBox(height: 8),
         Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: borderColor),
+            borderRadius: BorderRadius.circular(13),
+          ),
+          child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: backgroundColor,
-            border: Border.all(color: borderColor),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -1172,6 +1176,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                   size: 22,
                 ),
             ],
+          ),
           ),
         ),
       ],
