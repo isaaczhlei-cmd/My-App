@@ -46,6 +46,8 @@ dependencies:
   url_launcher: ^6.3.1
   shared_preferences: ^2.5.3
   csv: ^5.0.0
+  sign_in_with_apple: ^6.1.4
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
