@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import '../models/flight.dart';
 
 class FirestoreService {
@@ -41,4 +42,58 @@ class FirestoreService {
     if (_auth.currentUser?.isAnonymous == true) return;
     await _flightsRef.doc(flightId).delete();
   }
+
+  /// Delete all data owned by [uid]: flights subcollection then profile doc.
+  Future<void> deleteUserData(String uid) =>
+      UserDataDeletionCoordinator(FirestoreUserDataStore(_firestore))
+          .deleteUserData(uid);
+}
+
+@visibleForTesting
+abstract class UserDataStore {
+  /// Deletes up to [limit] flight docs in one batch. Returns how many were deleted.
+  Future<int> deleteFlightsBatch(String uid, {required int limit});
+  Future<void> deleteUserDoc(String uid);
+}
+
+@visibleForTesting
+class UserDataDeletionCoordinator {
+  const UserDataDeletionCoordinator(this._store);
+
+  final UserDataStore _store;
+
+  Future<void> deleteUserData(String uid) async {
+    int deleted;
+    do {
+      deleted = await _store.deleteFlightsBatch(uid, limit: 400);
+    } while (deleted == 400);
+    await _store.deleteUserDoc(uid);
+  }
+}
+
+class FirestoreUserDataStore implements UserDataStore {
+  const FirestoreUserDataStore(this._firestore);
+
+  final FirebaseFirestore _firestore;
+
+  @override
+  Future<int> deleteFlightsBatch(String uid, {required int limit}) async {
+    final snap = await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('flights')
+        .limit(limit)
+        .get();
+    if (snap.docs.isEmpty) return 0;
+    final wb = _firestore.batch();
+    for (final doc in snap.docs) {
+      wb.delete(doc.reference);
+    }
+    await wb.commit();
+    return snap.docs.length;
+  }
+
+  @override
+  Future<void> deleteUserDoc(String uid) =>
+      _firestore.collection('users').doc(uid).delete();
 }
