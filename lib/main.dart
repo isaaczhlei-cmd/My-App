@@ -29,7 +29,7 @@ void _logBootstrapError(Object error, StackTrace stack, {String? stage}) {
 
 Future<void> _bootstrap() async {
   try {
-    await dotenv.load(fileName: '.env');
+    await dotenv.load(fileName: '.env', isOptional: true);
   } catch (e, st) {
     _logBootstrapError(e, st, stage: BootstrapStage.dotenv.name);
     throw _BootstrapException(BootstrapStage.dotenv, e, st);
