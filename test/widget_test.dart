@@ -286,6 +286,11 @@ class FakeAuthService implements AuthServiceLike {
   }
 
   @override
+  Future<({UserCredential? user, String? error})> signInWithApple() async {
+    return (user: null, error: null);
+  }
+
+  @override
   Future<void> signOut() async {
     throw UnimplementedError();
   }

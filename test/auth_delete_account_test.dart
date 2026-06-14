@@ -137,6 +137,11 @@ class FakeAccountDeletionStore implements AccountDeletionStore {
   }
 
   @override
+  Future<void> reauthWithApple() async {
+    calls.add('reauthWithApple');
+  }
+
+  @override
   Future<void> deleteUserData(String uid) async {
     calls.add('deleteUserData:$uid');
   }

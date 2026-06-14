@@ -146,6 +146,11 @@ class FakeUserProfileDocumentStore implements UserProfileDocumentStore {
       ProfileWrite(profile: profile, includeCreatedAt: includeCreatedAt),
     );
   }
+
+  @override
+  Future<void> mergeFields(String uid, Map<String, Object?> fields) async {
+    if (throwOnSet) throw StateError('write failed');
+  }
 }
 
 class ProfileWrite {
