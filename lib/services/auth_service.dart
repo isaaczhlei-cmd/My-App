@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'firestore_service.dart';
+
 abstract class AuthServiceLike {
   Stream<User?> get authStateChanges;
   Stream<User?> get userChanges;
@@ -38,28 +40,36 @@ abstract class AuthServiceLike {
   Future<({bool success, String? error})> updateProfilePhoto(File imageFile);
 
   Future<void> signOut();
+
+  Future<({bool success, String? error})> deleteAccount({String? password});
 }
 
 class AuthService implements AuthServiceLike {
   factory AuthService() => _instance;
 
-  AuthService._({UserProfileDocumentCoordinator? profileDocumentCoordinator})
-    : _profileDocumentCoordinator =
-          profileDocumentCoordinator ??
-          UserProfileDocumentCoordinator(FirestoreUserProfileDocumentStore());
+  AuthService._({
+    UserProfileDocumentCoordinator? profileDocumentCoordinator,
+    AccountDeletionStore? accountDeletionStore,
+  }) : _profileDocumentCoordinator =
+           profileDocumentCoordinator ??
+           UserProfileDocumentCoordinator(FirestoreUserProfileDocumentStore()),
+       _accountDeletionStore = accountDeletionStore;
 
   @visibleForTesting
   factory AuthService.forTesting({
     required UserProfileDocumentCoordinator profileDocumentCoordinator,
+    AccountDeletionStore? accountDeletionStore,
   }) {
     return AuthService._(
       profileDocumentCoordinator: profileDocumentCoordinator,
+      accountDeletionStore: accountDeletionStore,
     );
   }
 
   static final AuthService _instance = AuthService._();
 
   final UserProfileDocumentCoordinator _profileDocumentCoordinator;
+  final AccountDeletionStore? _accountDeletionStore;
   Future<void>? _googleSignInInitialization;
 
   FirebaseAuth get _auth => FirebaseAuth.instance;
@@ -346,6 +356,25 @@ class AuthService implements AuthServiceLike {
     }
   }
 
+  /// Permanently delete the account: re-authenticate, wipe all user data, then
+  /// delete the Firebase Auth record. [password] is required for email users;
+  /// omit for Google users (re-auth via Google Sign-In is triggered instead).
+  @override
+  Future<({bool success, String? error})> deleteAccount({
+    String? password,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      return (success: false, error: 'No signed-in user found');
+    }
+    final store = _accountDeletionStore ??
+        FirebaseAccountDeletionStore(user, _initializeGoogleSignIn);
+    return AccountDeletionCoordinator(store).deleteAccount(
+      uid: user.uid,
+      password: password,
+    );
+  }
+
   /// Sign out
   @override
   Future<void> signOut() async {
@@ -377,11 +406,125 @@ class AuthService implements AuthServiceLike {
         return 'Too many attempts. Please try again later';
       case 'invalid-credential':
         return 'Invalid email or password';
+      case 'requires-recent-login':
+        return 'Please sign in again before deleting your account';
       default:
         return 'An error occurred. Please try again';
     }
   }
 }
+
+// ─── Account deletion ────────────────────────────────────────────────────────
+
+@visibleForTesting
+abstract class AccountDeletionStore {
+  String get providerId;
+  Future<void> reauthWithEmailPassword(String password);
+  Future<void> reauthWithGoogle();
+  Future<void> deleteUserData(String uid);
+  Future<void> deleteStoragePhoto(String uid);
+  Future<void> deleteAuthAccount();
+}
+
+@visibleForTesting
+class AccountDeletionCoordinator {
+  const AccountDeletionCoordinator(this._store);
+
+  final AccountDeletionStore _store;
+
+  Future<({bool success, String? error})> deleteAccount({
+    required String uid,
+    String? password,
+  }) async {
+    try {
+      final providerId = _store.providerId;
+      if (providerId == 'password') {
+        if (password == null || password.isEmpty) {
+          return (success: false, error: 'Password is required');
+        }
+        await _store.reauthWithEmailPassword(password);
+      } else if (providerId == 'google.com') {
+        await _store.reauthWithGoogle();
+      }
+
+      await _store.deleteUserData(uid);
+
+      try {
+        await _store.deleteStoragePhoto(uid);
+      } on FirebaseException catch (e) {
+        if (e.code != 'object-not-found') rethrow;
+      }
+
+      await _store.deleteAuthAccount();
+      return (success: true, error: null);
+    } on FirebaseAuthException catch (e) {
+      return (success: false, error: AuthService.getErrorMessage(e.code));
+    } on GoogleSignInException catch (e) {
+      if (e.code == GoogleSignInExceptionCode.canceled) {
+        return (success: false, error: 'Sign-in cancelled');
+      }
+      return (
+        success: false,
+        error: 'Could not re-authenticate: ${e.description}',
+      );
+    } catch (e) {
+      return (success: false, error: 'An unexpected error occurred');
+    }
+  }
+}
+
+class FirebaseAccountDeletionStore implements AccountDeletionStore {
+  FirebaseAccountDeletionStore(this._user, this._initGoogleSignIn);
+
+  final User _user;
+  final Future<void> Function(GoogleSignIn) _initGoogleSignIn;
+
+  @override
+  String get providerId =>
+      _user.providerData.isEmpty ? '' : _user.providerData.first.providerId;
+
+  @override
+  Future<void> reauthWithEmailPassword(String password) async {
+    final cred = EmailAuthProvider.credential(
+      email: _user.email!,
+      password: password,
+    );
+    await _user.reauthenticateWithCredential(cred);
+  }
+
+  @override
+  Future<void> reauthWithGoogle() async {
+    final googleSignIn = GoogleSignIn.instance;
+    await _initGoogleSignIn(googleSignIn);
+    final account = await googleSignIn.authenticate();
+    final auth = account.authentication;
+    final authorization = await account.authorizationClient.authorizeScopes([
+      'email',
+      'profile',
+    ]);
+    final cred = GoogleAuthProvider.credential(
+      accessToken: authorization.accessToken,
+      idToken: auth.idToken,
+    );
+    await _user.reauthenticateWithCredential(cred);
+  }
+
+  @override
+  Future<void> deleteUserData(String uid) =>
+      FirestoreService().deleteUserData(uid);
+
+  @override
+  Future<void> deleteStoragePhoto(String uid) => FirebaseStorage.instance
+      .ref()
+      .child('profile_photos')
+      .child('$uid.jpg')
+      .delete();
+
+  @override
+  Future<void> deleteAuthAccount() => _user.delete();
+}
+
+// ─── User profile document ────────────────────────────────────────────────────
 
 @visibleForTesting
 class UserProfileDocument {

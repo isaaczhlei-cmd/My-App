@@ -316,6 +316,13 @@ class FakeAuthService implements AuthServiceLike {
   }
 
   @override
+  Future<({bool success, String? error})> deleteAccount({
+    String? password,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
   Stream<User?> get userChanges => const Stream<User?>.empty();
 }
 
