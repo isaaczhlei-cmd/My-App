@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+// 'package:flutter/services.dart' removed: not needed for the stepper UI
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -382,6 +382,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         );
       }
     });
+  }
+
+  void _setPassengerCount(int value) {
+    final clamped = value.clamp(1, 9);
+    _passengerCountController.text = clamped.toString();
+    _onPassengerCountChanged(_passengerCountController.text);
+    setState(() {});
   }
 
   void _onHeroQueryChanged(String value) {
@@ -1198,23 +1205,71 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                 color: themeColors.onCardMuted,
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _passengerCountController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: themeColors.onCard,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: 'How many people?',
-                    hintStyle: TextStyle(color: themeColors.onCardMuted),
-                  ),
-                  onChanged: _onPassengerCountChanged,
-                  onSubmitted: (_) => _lookupFlight(),
+              // Compact stepper: minus, count, plus
+              SizedBox(
+                width: 120,
+                height: 48,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Minus button
+                    GestureDetector(
+                      onTap: () {
+                        final current =
+                            int.tryParse(_passengerCountController.text) ?? 1;
+                        _setPassengerCount(current - 1);
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: themeColors.card,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: themeColors.outlineSoft),
+                        ),
+                        child: Icon(
+                          Icons.remove,
+                          color: themeColors.onCard,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    // Count display
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      alignment: Alignment.center,
+                      child: Text(
+                        (_parsePassengerCount() ?? 1).toString(),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: themeColors.onCard,
+                        ),
+                      ),
+                    ),
+                    // Plus button
+                    GestureDetector(
+                      onTap: () {
+                        final current =
+                            int.tryParse(_passengerCountController.text) ?? 1;
+                        _setPassengerCount(current + 1);
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: themeColors.card,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: themeColors.outlineSoft),
+                        ),
+                        child: Icon(
+                          Icons.add,
+                          color: themeColors.onCard,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
