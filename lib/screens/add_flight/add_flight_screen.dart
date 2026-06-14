@@ -1183,7 +1183,8 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+          clipBehavior: Clip.hardEdge,
           decoration: BoxDecoration(
             color: themeColors.cardMuted,
             border: Border.all(color: themeColors.outlineSoft),
