@@ -114,7 +114,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
 
     if (result.success) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      // Defer past the current frame so any lingering dialog focus events
+      // finish cleanup before we tear down the navigation stack.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result.error ?? 'Could not delete account')),
