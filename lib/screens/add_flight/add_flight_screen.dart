@@ -1180,6 +1180,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
 
   Widget _buildPassengerCountField() {
     final themeColors = context.appColors;
+    final int currentPassengers = _parsePassengerCount() ?? 1;
+    final bool canDecrease = currentPassengers > 1;
+    final bool canIncrease = currentPassengers < 9;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1205,7 +1208,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                 color: themeColors.onCardMuted,
               ),
               const SizedBox(width: 12),
-              // Compact stepper: minus, count, plus
+              // Compact stepper: minus, count, plus (compact width)
               SizedBox(
                 width: 120,
                 height: 48,
@@ -1214,11 +1217,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                   children: [
                     // Minus button
                     GestureDetector(
-                      onTap: () {
-                        final current =
-                            int.tryParse(_passengerCountController.text) ?? 1;
-                        _setPassengerCount(current - 1);
-                      },
+                      onTap: canDecrease
+                          ? () => _setPassengerCount(currentPassengers - 1)
+                          : null,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -1229,7 +1230,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                         ),
                         child: Icon(
                           Icons.remove,
-                          color: themeColors.onCard,
+                          color: canDecrease
+                              ? themeColors.onCard
+                              : themeColors.onCardMuted,
                           size: 20,
                         ),
                       ),
@@ -1239,7 +1242,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       alignment: Alignment.center,
                       child: Text(
-                        (_parsePassengerCount() ?? 1).toString(),
+                        currentPassengers.toString(),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -1249,11 +1252,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                     ),
                     // Plus button
                     GestureDetector(
-                      onTap: () {
-                        final current =
-                            int.tryParse(_passengerCountController.text) ?? 1;
-                        _setPassengerCount(current + 1);
-                      },
+                      onTap: canIncrease
+                          ? () => _setPassengerCount(currentPassengers + 1)
+                          : null,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -1264,7 +1265,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                         ),
                         child: Icon(
                           Icons.add,
-                          color: themeColors.onCard,
+                          color: canIncrease
+                              ? themeColors.onCard
+                              : themeColors.onCardMuted,
                           size: 20,
                         ),
                       ),
