@@ -997,7 +997,7 @@ class AboutScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Flight Carbon Tracker',
+                'FlightPrint',
                 style: TextStyle(
                   color: themeColors.onCard,
                   fontSize: 20,
