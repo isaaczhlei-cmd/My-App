@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import '../../services/auth_service.dart';
 import '../../config/theme.dart';
 import 'forgot_password_screen.dart';
@@ -75,6 +78,28 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     final result = await _authService.signInWithGoogle();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (result.error != null) {
+          _errorMessage = result.error;
+        }
+      });
+
+      if (result.error == null) {
+        _handleSuccessfulAuth();
+      }
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await _authService.signInWithApple();
 
     if (mounted) {
       setState(() {
@@ -518,6 +543,17 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ),
+
+          if (Platform.isIOS) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 52,
+              child: SignInWithAppleButton(
+                onPressed: _isLoading ? () {} : _signInWithApple,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
         ],
       ),
     );

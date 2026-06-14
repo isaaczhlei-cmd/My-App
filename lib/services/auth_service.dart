@@ -1,13 +1,34 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../firebase_options.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+
 import 'firestore_service.dart';
+
+String _generateNonce([int length = 32]) {
+  const charset =
+      '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+  final random = Random.secure();
+  return List.generate(
+    length,
+    (_) => charset[random.nextInt(charset.length)],
+  ).join();
+}
+
+String _sha256ofString(String input) {
+  final bytes = utf8.encode(input);
+  return sha256.convert(bytes).toString();
+}
 
 abstract class AuthServiceLike {
   Stream<User?> get authStateChanges;
@@ -32,6 +53,8 @@ abstract class AuthServiceLike {
   Future<({bool success, String? error})> reloadCurrentUser();
 
   Future<({UserCredential? user, String? error})> signInWithGoogle();
+
+  Future<({UserCredential? user, String? error})> signInWithApple();
 
   Future<({UserCredential? user, String? error})> signInAsGuest();
 
@@ -212,11 +235,6 @@ class AuthService implements AuthServiceLike {
     try {
       // Trigger Google Sign-In flow using the new API (google_sign_in 7.x)
       final googleSignIn = GoogleSignIn.instance;
-      final googleSignInConfigError = _ensureGoogleSignInConfigured();
-      if (googleSignInConfigError != null) {
-        return (user: null, error: googleSignInConfigError);
-      }
-
       await _initializeGoogleSignIn(googleSignIn);
       final account = await googleSignIn.authenticate();
 
@@ -257,16 +275,7 @@ class AuthService implements AuthServiceLike {
     }
   }
 
-  String? _ensureGoogleSignInConfigured() {
-    final serverClientId = dotenv.env['GOOGLE_SIGN_IN_SERVER_CLIENT_ID'];
-    if (serverClientId == null ||
-        serverClientId.trim().isEmpty ||
-        serverClientId == 'local-placeholder') {
-      return 'Google sign-in is not configured. Add GOOGLE_SIGN_IN_SERVER_CLIENT_ID from Firebase web client settings.';
-    }
-
-    return null;
-  }
+  String? _ensureGoogleSignInConfigured() => null;
 
   Future<void> _initializeGoogleSignIn(GoogleSignIn googleSignIn) {
     final initialization = _googleSignInInitialization;
@@ -275,8 +284,59 @@ class AuthService implements AuthServiceLike {
     }
 
     return _googleSignInInitialization = googleSignIn.initialize(
-      serverClientId: dotenv.env['GOOGLE_SIGN_IN_SERVER_CLIENT_ID'],
+      serverClientId: DefaultFirebaseOptions.ios.iosClientId,
     );
+  }
+
+  /// Sign in with Apple (iOS only)
+  @override
+  Future<({UserCredential? user, String? error})> signInWithApple() async {
+    try {
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
+
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+
+      final oauthCredential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      final user = userCredential.user;
+      if (user != null) {
+        final givenName = appleCredential.givenName;
+        final familyName = appleCredential.familyName;
+        final displayName = [givenName, familyName]
+            .whereType<String>()
+            .where((s) => s.isNotEmpty)
+            .join(' ');
+
+        final profileError = await _upsertAppleProfile(
+          user,
+          displayName: displayName.isEmpty ? null : displayName,
+          email: appleCredential.email,
+        );
+        if (profileError != null) {
+          return (user: userCredential, error: profileError);
+        }
+      }
+
+      return (user: userCredential, error: null);
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return (user: null, error: 'Apple sign-in was cancelled');
+      }
+      return (user: null, error: 'Error signing in with Apple: ${e.message}');
+    } catch (e) {
+      return (user: null, error: 'Error signing in with Apple: $e');
+    }
   }
 
   /// Sign in anonymously (guest mode)
@@ -312,6 +372,18 @@ class AuthService implements AuthServiceLike {
       uid: user.uid,
       displayName: user.displayName,
       email: user.email,
+    );
+  }
+
+  Future<String?> _upsertAppleProfile(
+    User user, {
+    required String? displayName,
+    required String? email,
+  }) async {
+    return _profileDocumentCoordinator.upsertAppleProfile(
+      uid: user.uid,
+      displayName: displayName,
+      email: email,
     );
   }
 
@@ -421,6 +493,7 @@ abstract class AccountDeletionStore {
   String get providerId;
   Future<void> reauthWithEmailPassword(String password);
   Future<void> reauthWithGoogle();
+  Future<void> reauthWithApple();
   Future<void> deleteUserData(String uid);
   Future<void> deleteStoragePhoto(String uid);
   Future<void> deleteAuthAccount();
@@ -445,6 +518,8 @@ class AccountDeletionCoordinator {
         await _store.reauthWithEmailPassword(password);
       } else if (providerId == 'google.com') {
         await _store.reauthWithGoogle();
+      } else if (providerId == 'apple.com') {
+        await _store.reauthWithApple();
       }
 
       await _store.deleteUserData(uid);
@@ -466,6 +541,14 @@ class AccountDeletionCoordinator {
       return (
         success: false,
         error: 'Could not re-authenticate: ${e.description}',
+      );
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (e.code == AuthorizationErrorCode.canceled) {
+        return (success: false, error: 'Sign-in cancelled');
+      }
+      return (
+        success: false,
+        error: 'Could not re-authenticate: ${e.message}',
       );
     } catch (e) {
       return (success: false, error: 'An unexpected error occurred');
@@ -505,6 +588,26 @@ class FirebaseAccountDeletionStore implements AccountDeletionStore {
     final cred = GoogleAuthProvider.credential(
       accessToken: authorization.accessToken,
       idToken: auth.idToken,
+    );
+    await _user.reauthenticateWithCredential(cred);
+  }
+
+  @override
+  Future<void> reauthWithApple() async {
+    final rawNonce = _generateNonce();
+    final nonce = _sha256ofString(rawNonce);
+
+    final appleCredential = await SignInWithApple.getAppleIDCredential(
+      scopes: [
+        AppleIDAuthorizationScopes.email,
+        AppleIDAuthorizationScopes.fullName,
+      ],
+      nonce: nonce,
+    );
+
+    final cred = OAuthProvider('apple.com').credential(
+      idToken: appleCredential.identityToken,
+      rawNonce: rawNonce,
     );
     await _user.reauthenticateWithCredential(cred);
   }
@@ -559,6 +662,8 @@ abstract class UserProfileDocumentStore {
     UserProfileDocument profile, {
     required bool includeCreatedAt,
   });
+
+  Future<void> mergeFields(String uid, Map<String, Object?> fields);
 }
 
 @visibleForTesting
@@ -605,6 +710,31 @@ class UserProfileDocumentCoordinator {
       return 'Signed in, but could not update your account profile. Check your connection and try again.';
     }
   }
+
+  Future<String?> upsertAppleProfile({
+    required String uid,
+    required String? displayName,
+    required String? email,
+  }) async {
+    // Apple only sends name/email on first authorization — skip null fields
+    // so subsequent sign-ins don't overwrite existing profile data.
+    final fields = <String, Object?>{
+      'isAnonymous': false,
+      'displayName': ?displayName,
+      'email': ?email,
+    };
+
+    try {
+      final exists = await _store.exists(uid);
+      if (!exists) {
+        fields['createdAt'] = FieldValue.serverTimestamp();
+      }
+      await _store.mergeFields(uid, fields);
+      return null;
+    } catch (_) {
+      return 'Signed in, but could not update your account profile. Check your connection and try again.';
+    }
+  }
 }
 
 class FirestoreUserProfileDocumentStore implements UserProfileDocumentStore {
@@ -631,5 +761,13 @@ class FirestoreUserProfileDocumentStore implements UserProfileDocumentStore {
           ),
           SetOptions(merge: true),
         );
+  }
+
+  @override
+  Future<void> mergeFields(String uid, Map<String, Object?> fields) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .set(fields, SetOptions(merge: true));
   }
 }
