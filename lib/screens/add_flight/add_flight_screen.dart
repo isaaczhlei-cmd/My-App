@@ -1139,44 +1139,44 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             borderRadius: BorderRadius.circular(12),
           ),
           child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _flightNumberController,
-                  textCapitalization: TextCapitalization.characters,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ).copyWith(color: textColor),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: hintText,
-                    hintStyle: TextStyle(color: hintColor),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: backgroundColor,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _flightNumberController,
+                    textCapitalization: TextCapitalization.characters,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ).copyWith(color: textColor),
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: hintText,
+                      hintStyle: TextStyle(color: hintColor),
+                    ),
+                    onChanged: (_) {
+                      setState(() {
+                        _errorMessage = null;
+                        _selectedCatalogEntry = null;
+                        _clearLookupResult();
+                      });
+                    },
+                    onSubmitted: (_) => _lookupFlight(),
                   ),
-                  onChanged: (_) {
-                    setState(() {
-                      _errorMessage = null;
-                      _selectedCatalogEntry = null;
-                      _clearLookupResult();
-                    });
-                  },
-                  onSubmitted: (_) => _lookupFlight(),
                 ),
-              ),
-              if (_hasResult)
-                const Icon(
-                  Icons.check_circle,
-                  color: AppColors.primaryGreen,
-                  size: 22,
-                ),
-            ],
-          ),
+                if (_hasResult)
+                  const Icon(
+                    Icons.check_circle,
+                    color: AppColors.primaryGreen,
+                    size: 22,
+                  ),
+              ],
+            ),
           ),
         ),
       ],
