@@ -1136,7 +1136,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
         Container(
           decoration: BoxDecoration(
             border: Border.all(color: borderColor),
-            borderRadius: BorderRadius.circular(13),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
