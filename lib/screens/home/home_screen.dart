@@ -771,9 +771,22 @@ class _HomeScreenState extends State<HomeScreen> {
             if (isGuest) return FlightCard(flight: flight, compact: true);
             return Dismissible(
               key: Key(flight.id),
-              direction: DismissDirection.endToStart,
+              // Allow swiping both left and right
+              direction: DismissDirection.horizontal,
               onDismissed: (_) => _handleFlightDismiss(flight),
+              // Shown when swiping right (reveals left side)
               background: Container(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.only(left: 20),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              // Shown when swiping left (reveals right side)
+              secondaryBackground: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
                 margin: const EdgeInsets.only(bottom: 12),
