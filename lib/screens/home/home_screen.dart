@@ -279,7 +279,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 // rather than `unreadCount` because the Notifications screen
                 // marks items read on open — the user expects the red dot
                 // to reflect that there are (total) notifications available.
-                if (_notificationInbox.notifications.length > 0)
+                if (_notificationInbox.notifications.isNotEmpty)
                   Positioned(
                     top: -6,
                     right: -6,
@@ -771,9 +771,19 @@ class _HomeScreenState extends State<HomeScreen> {
             if (isGuest) return FlightCard(flight: flight, compact: true);
             return Dismissible(
               key: Key(flight.id),
-              direction: DismissDirection.endToStart,
+              direction: DismissDirection.horizontal,
               onDismissed: (_) => _handleFlightDismiss(flight),
               background: Container(
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.only(left: 20),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.delete, color: Colors.white),
+              ),
+              secondaryBackground: Container(
                 alignment: Alignment.centerRight,
                 padding: const EdgeInsets.only(right: 20),
                 margin: const EdgeInsets.only(bottom: 12),
