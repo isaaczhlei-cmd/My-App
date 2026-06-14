@@ -7,7 +7,6 @@ import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../firebase_options.dart';
@@ -274,8 +273,6 @@ class AuthService implements AuthServiceLike {
       return (user: null, error: 'Error signing in with Google: $e');
     }
   }
-
-  String? _ensureGoogleSignInConfigured() => null;
 
   Future<void> _initializeGoogleSignIn(GoogleSignIn googleSignIn) {
     final initialization = _googleSignInInitialization;
