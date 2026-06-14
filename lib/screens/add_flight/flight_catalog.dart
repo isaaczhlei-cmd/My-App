@@ -571,7 +571,16 @@ class FlightCatalog {
         destinationCity.startsWith(normalizedQuery)) {
       return 200;
     }
-    if (route.contains(normalizedQuery)) {
+    // Allow matching route queries that include common connectors like "to"
+    // e.g. user types "LAX to HKG" — normalize by removing the word 'to'
+    // and collapsing punctuation/extra spaces so it matches the `route` string.
+    final altQuery = normalizedQuery
+        .replaceAll(RegExp(r'\bto\b'), ' ')
+        .replaceAll(RegExp(r'[^a-z0-9 ]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (route.contains(normalizedQuery) ||
+        (altQuery.isNotEmpty && route.contains(altQuery))) {
       return 150;
     }
     if (airline.contains(normalizedQuery) ||
