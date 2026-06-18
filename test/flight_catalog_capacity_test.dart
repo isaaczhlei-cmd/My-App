@@ -40,4 +40,14 @@ void main() {
       },
     );
   });
+
+  group('FlightCatalog search', () {
+    test('finds JetBlue B6 23 from compact lowercase query', () {
+      final results = FlightCatalog.search('b623');
+
+      expect(results, isNotEmpty);
+      expect(results.first.carrierCode, 'B6');
+      expect(results.first.flightNumber, 23);
+    });
+  });
 }

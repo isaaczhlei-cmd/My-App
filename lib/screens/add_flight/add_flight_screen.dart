@@ -9,6 +9,7 @@ import '../../models/flight.dart';
 import '../../services/auth_service.dart';
 import '../../services/emissions_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/flight_number_parser.dart';
 import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../../widgets/airport_autocomplete_field.dart';
@@ -96,17 +97,6 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       ..removeListener(_handleAirportFocusChange)
       ..dispose();
     super.dispose();
-  }
-
-  ({String carrier, int number})? _parseFlightNumber(String input) {
-    final cleaned = input.trim().toUpperCase();
-    final regex = RegExp(r'^([A-Z]{2})\s*[-]?\s*(\d{1,5})$');
-    final match = regex.firstMatch(cleaned);
-    if (match == null) return null;
-    final carrier = match.group(1)!;
-    final number = int.tryParse(match.group(2)!);
-    if (number == null) return null;
-    return (carrier: carrier, number: number);
   }
 
   String? _parseAirportCode(String input) {
@@ -240,11 +230,11 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     final flightNumber = _flightNumberController.text.trim();
     final parsed = flightNumber.isEmpty
         ? null
-        : _parseFlightNumber(flightNumber);
+        : parseFlightNumber(flightNumber);
     if (flightNumber.isNotEmpty && parsed == null) {
       setState(() {
         _errorMessage =
-            'Enter a valid flight number like UA 857, or leave it blank.';
+            'Enter a valid flight number like UA 857 or B6 23, or leave it blank.';
         _clearLookupResult();
       });
       return;
