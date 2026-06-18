@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/screens/book_flight/airport_directory.dart';
+import 'package:flightprint/screens/book_flight/airport_directory.dart';
 
 void main() {
   group('AirportDirectory', () {

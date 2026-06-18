@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-import 'package:my_app/services/eco_tip_service.dart';
+import 'package:flightprint/services/eco_tip_service.dart';
 
 void main() {
   group('EcoTipService', () {

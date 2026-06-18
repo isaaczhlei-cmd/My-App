@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/screens/auth/widgets/signup_form.dart';
+import 'package:flightprint/screens/auth/widgets/signup_form.dart';
 
 void main() {
   group('SignupFormValidator', () {

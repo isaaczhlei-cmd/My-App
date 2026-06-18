@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:my_app/services/booking_link_service.dart';
-import 'package:my_app/services/emissions_service.dart';
+import 'package:flightprint/services/booking_link_service.dart';
+import 'package:flightprint/services/emissions_service.dart';
 
 void main() {
   group('BookingLinkService', () {
