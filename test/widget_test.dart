@@ -6,8 +6,8 @@ import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/screens/auth/login_screen.dart';
-import 'package:my_app/services/auth_service.dart';
+import 'package:flightprint/screens/auth/login_screen.dart';
+import 'package:flightprint/services/auth_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
