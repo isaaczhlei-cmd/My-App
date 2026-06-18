@@ -28,10 +28,6 @@ migrate_working_dir/
 build/
 .pub-cache/
 .pub/
-pubspec.lock
-
-# iOS generated / build artifacts
-ios/Podfile.lock
 
 # Environment
 .env
