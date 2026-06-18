@@ -129,6 +129,7 @@ class AppTheme {
   static ThemeData buildTheme(Color accent, Brightness brightness) {
     final themeColors = colorsFor(brightness);
     final isDark = brightness == Brightness.dark;
+    final resolvedAccent = accentForBrightness(accent, brightness);
     final scaffoldBg = isDark
         ? AppColors.darkBackground
         : const Color(0xFFF4F7F3);
@@ -139,11 +140,10 @@ class AppTheme {
     final onCardMuted = themeColors.onCardMuted;
     final outlineSoft = themeColors.outlineSoft;
 
-    // For light mode, mix the accent with white so accents appear lighter.
-    // For dark mode, slightly blend the accent towards the dark background
-    // so large accent surfaces (like the carbon card) read darker on dark UI.
+    // Keep selected dark-mode accents saturated but darker, so large surfaces
+    // read as dark green, dark red, etc. instead of pastel highlights.
     final seedColor = isDark
-        ? Color.lerp(accent, AppColors.darkBackground, 0.22)!
+        ? resolvedAccent
         : Color.lerp(accent, Colors.white, 0.48)!;
 
     final colorScheme =
@@ -156,6 +156,8 @@ class AppTheme {
           surfaceContainerHighest: cardMuted,
           onSurfaceVariant: onCardMuted,
           outlineVariant: outlineSoft,
+          primary: resolvedAccent,
+          onPrimary: Colors.white,
           error: AppColors.errorRed,
         );
 
@@ -200,12 +202,12 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: accent, width: 2),
+          borderSide: BorderSide(color: resolvedAccent, width: 2),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: accent,
+          backgroundColor: resolvedAccent,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           shape: RoundedRectangleBorder(
@@ -215,7 +217,7 @@ class AppTheme {
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: card,
-        selectedItemColor: accent,
+        selectedItemColor: resolvedAccent,
         unselectedItemColor: onCardMuted,
         type: BottomNavigationBarType.fixed,
       ),
@@ -236,6 +238,15 @@ class AppTheme {
   // Keep darkTheme getter for any legacy call sites during migration
   static ThemeData get darkTheme =>
       buildTheme(AppColors.primaryGreen, Brightness.dark);
+
+  static Color accentForBrightness(Color accent, Brightness brightness) {
+    if (brightness == Brightness.light) return accent;
+
+    final hsl = HSLColor.fromColor(accent);
+    final lightness = (hsl.lightness * 0.68).clamp(0.28, 0.42).toDouble();
+    final saturation = (hsl.saturation * 1.08).clamp(0.45, 0.95).toDouble();
+    return hsl.withLightness(lightness).withSaturation(saturation).toColor();
+  }
 
   static AppThemeColors colorsFor(Brightness brightness) {
     final isDark = brightness == Brightness.dark;

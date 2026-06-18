@@ -8,10 +8,7 @@ import 'forgot_password_screen.dart';
 import 'widgets/signup_form.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({
-    super.key,
-    this.authService,
-  });
+  const LoginScreen({super.key, this.authService});
 
   final AuthServiceLike? authService;
 
@@ -205,7 +202,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
 
                 const SizedBox(height: 24),
-
               ],
             ),
           ),
@@ -260,7 +256,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final toggleWidth = (constraints.maxWidth - 8) / 2;
+          final toggleWidth = constraints.maxWidth / 2;
           return Stack(
             children: [
               // Animated sliding indicator
@@ -463,9 +459,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                disabledBackgroundColor: primary.withValues(
-                  alpha: 0.5,
-                ),
+                disabledBackgroundColor: primary.withValues(alpha: 0.5),
               ),
               child: _isLoading
                   ? SizedBox(
@@ -548,9 +542,18 @@ class _LoginScreenState extends State<LoginScreen> {
             const SizedBox(height: 12),
             SizedBox(
               height: 52,
-              child: SignInWithAppleButton(
-                onPressed: _isLoading ? () {} : _signInWithApple,
-                borderRadius: BorderRadius.circular(12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: themeColors.outlineSoft),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(11),
+                  child: SignInWithAppleButton(
+                    onPressed: _isLoading ? () {} : _signInWithApple,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                ),
               ),
             ),
           ],
