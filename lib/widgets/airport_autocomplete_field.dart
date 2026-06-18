@@ -52,6 +52,27 @@ class AirportAutocompleteField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+    final effectiveFillColor = fillColor == const Color(0xFFF2F3F7)
+        ? themeColors.cardMuted
+        : fillColor;
+    final effectiveDropdownColor = dropdownColor == const Color(0xFFF7F8FB)
+        ? themeColors.elevatedSurface
+        : dropdownColor;
+    final effectiveBorderColor = borderColor == Colors.transparent
+        ? themeColors.outlineSoft
+        : borderColor;
+    final effectiveDropdownBorderColor =
+        dropdownBorderColor == const Color(0xFFE2E5EE)
+        ? themeColors.outlineSoft
+        : dropdownBorderColor;
+    final effectiveTextStyle =
+        textStyle ??
+        TextStyle(color: accent, fontSize: 16, fontWeight: FontWeight.w700);
+    final effectiveHintStyle =
+        hintStyle ?? TextStyle(color: themeColors.onCardMuted, fontSize: 15);
+
     return Column(
       children: [
         TextField(
@@ -59,30 +80,23 @@ class AirportAutocompleteField extends StatelessWidget {
           focusNode: focusNode,
           textCapitalization: textCapitalization,
           onChanged: onChanged,
-          style:
-              textStyle ??
-              const TextStyle(
-                color: Color(0xFF30324A),
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
+          cursorColor: accent,
+          style: effectiveTextStyle,
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle:
-                hintStyle ??
-                const TextStyle(color: Color(0xFF8A8FA7), fontSize: 15),
+            hintStyle: effectiveHintStyle,
             filled: true,
-            fillColor: fillColor,
+            fillColor: effectiveFillColor,
             prefixIcon: prefixIcon == null
                 ? null
-                : Icon(prefixIcon, color: const Color(0xFF737896)),
+                : Icon(prefixIcon, color: themeColors.onCardMuted),
             suffixIcon: showClearButton && controller.text.isNotEmpty
                 ? IconButton(
                     onPressed: () {
                       controller.clear();
                       onChanged('');
                     },
-                    icon: const Icon(Icons.close, color: Color(0xFF737896)),
+                    icon: Icon(Icons.close, color: themeColors.onCardMuted),
                   )
                 : null,
             border: OutlineInputBorder(
@@ -91,11 +105,11 @@ class AirportAutocompleteField extends StatelessWidget {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: BorderSide(color: effectiveBorderColor),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: borderColor),
+              borderSide: BorderSide(color: accent, width: 1.5),
             ),
             contentPadding: contentPadding,
           ),
@@ -109,9 +123,9 @@ class AirportAutocompleteField extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
               decoration: BoxDecoration(
-                color: dropdownColor,
+                color: effectiveDropdownColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: dropdownBorderColor),
+                border: Border.all(color: effectiveDropdownBorderColor),
               ),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -133,14 +147,15 @@ class AirportAutocompleteField extends StatelessWidget {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF2F3F7),
+                            color: themeColors.cardMuted,
                             borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: themeColors.outlineSoft),
                           ),
                           child: Text(
                             letter,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF30324A),
+                              color: accent,
                             ),
                           ),
                         ),
@@ -154,29 +169,26 @@ class AirportAutocompleteField extends StatelessWidget {
             Container(
               constraints: const BoxConstraints(maxHeight: 320),
               decoration: BoxDecoration(
-                color: dropdownColor,
+                color: effectiveDropdownColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: dropdownBorderColor),
+                border: Border.all(color: effectiveDropdownBorderColor),
               ),
               child: matches.isNotEmpty
                   ? SingleChildScrollView(
                       child: Column(
                         children: matches.map((airport) {
                           return ListTile(
-                            leading: const Icon(
-                              Icons.flight,
-                              color: AppColors.primaryGreen,
-                            ),
+                            leading: Icon(Icons.flight, color: accent),
                             title: Text(
                               airport.shortLabel,
-                              style: const TextStyle(
-                                color: Color(0xFF30324A),
+                              style: TextStyle(
+                                color: themeColors.onCard,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                             subtitle: Text(
                               '${airport.name} • ${airport.country}',
-                              style: const TextStyle(color: Color(0xFF737896)),
+                              style: TextStyle(color: themeColors.onCardMuted),
                             ),
                             onTap: () => onSelected(airport),
                           );
@@ -187,7 +199,7 @@ class AirportAutocompleteField extends StatelessWidget {
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
                         showNoMatches ? noMatchesText : '',
-                        style: const TextStyle(color: Color(0xFF8A8FA7)),
+                        style: TextStyle(color: themeColors.onCardMuted),
                       ),
                     ),
             ),

@@ -43,6 +43,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   );
   late final TextEditingController _fromController;
   late final TextEditingController _toController;
+  late final TextEditingController _airlineController;
   final FocusNode _fromFocusNode = FocusNode();
   final FocusNode _toFocusNode = FocusNode();
   List<AirportOption> _fromMatches = const [];
@@ -65,6 +66,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   late bool _returnSelected;
   int _passengers = 1;
   CabinClass _selectedCabin = CabinClass.economy;
+  String? _selectedAirlineFilter;
   List<_FlightSearchResult> _results = const [];
   bool _hasSearchedCatalog = false;
   String? _emptyResultsMessage;
@@ -99,6 +101,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     // Start inputs blank; user will type the airports
     _fromController = TextEditingController();
     _toController = TextEditingController();
+    _airlineController = TextEditingController();
     _departSelected = false;
     _returnSelected = false;
 
@@ -130,6 +133,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     _swapAnimationController.dispose();
     _fromController.dispose();
     _toController.dispose();
+    _airlineController.dispose();
     _fromFocusNode
       ..removeListener(_handleFocusChange)
       ..dispose();
@@ -566,9 +570,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               entry.destinationCode == toAirport.code,
         )
         .toList();
-    if (routeEntries.isNotEmpty) return routeEntries;
+    if (routeEntries.isNotEmpty) return _filterEntriesByAirline(routeEntries);
 
-    return FlightCatalog.entries
+    final fallbackEntries = FlightCatalog.entries
         .where(
           (entry) =>
               entry.originCode == fromAirport.code ||
@@ -576,6 +580,71 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         )
         .take(8)
         .toList();
+    return _filterEntriesByAirline(fallbackEntries);
+  }
+
+  List<FlightCatalogEntry> _filterEntriesByAirline(
+    List<FlightCatalogEntry> entries,
+  ) {
+    final airline = _resolvedAirlineFilter;
+    if (airline == null) return entries;
+    return entries.where((entry) => entry.airlineName == airline).toList();
+  }
+
+  String? get _resolvedAirlineFilter {
+    if (_selectedAirlineFilter != null) return _selectedAirlineFilter;
+    final query = _airlineController.text.trim().toLowerCase();
+    if (query.isEmpty) return null;
+
+    final options = FlightCatalog.airlineOptions();
+    for (final airline in options) {
+      if (airline.toLowerCase() == query) return airline;
+    }
+    final matches = options
+        .where((airline) => airline.toLowerCase().contains(query))
+        .toList();
+    return matches.length == 1 ? matches.first : null;
+  }
+
+  List<String> get _visibleAirlineMatches {
+    final query = _airlineController.text.trim().toLowerCase();
+    final options = FlightCatalog.airlineOptions();
+    if (query.isEmpty) return options.take(8).toList();
+    return options
+        .where((airline) => airline.toLowerCase().contains(query))
+        .take(8)
+        .toList();
+  }
+
+  String? get _planeAirlineName {
+    return _resolvedAirlineFilter ??
+        (_results.isNotEmpty ? _results.first.entry.airlineName : null);
+  }
+
+  String _airlineInitials(String airline) {
+    final words = airline
+        .split(RegExp(r'\s+'))
+        .where((word) => word.trim().isNotEmpty)
+        .toList();
+    if (words.isEmpty) return 'FP';
+    if (words.length == 1) {
+      return words.first.substring(0, min(2, words.first.length)).toUpperCase();
+    }
+    return words.take(2).map((word) => word[0]).join().toUpperCase();
+  }
+
+  Color _airlineAccentColor(String? airline) {
+    if (airline == null) return Theme.of(context).colorScheme.primary;
+    final colors = [
+      const Color(0xFF1E88E5),
+      const Color(0xFFD32F2F),
+      const Color(0xFF00897B),
+      const Color(0xFFFF8F00),
+      const Color(0xFF5E35B1),
+      const Color(0xFF00ACC1),
+    ];
+    final index = airline.codeUnits.fold<int>(0, (sum, code) => sum + code);
+    return colors[index % colors.length];
   }
 
   int get _maxPassengersForCurrentSearch {
@@ -735,6 +804,11 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               constraints: constraints,
             );
             final planePitch = _planePitchFor(planePhase);
+            final airlineName = _planeAirlineName;
+            final airlineAccent = _airlineAccentColor(airlineName);
+            final airlineLabel = airlineName == null
+                ? null
+                : _airlineInitials(airlineName);
 
             return Stack(
               clipBehavior: Clip.none,
@@ -777,6 +851,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                                 ),
                                 engineBurn: engineBurn,
                                 phase: planePhase,
+                                accentColor: airlineAccent,
+                                airlineLabel: airlineLabel,
                               ),
                             ),
                           ),
@@ -878,14 +954,18 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFFF1F3F8),
+                color: themeColors.cardMuted,
                 borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: themeColors.outlineSoft),
               ),
               child: IconButton(
                 onPressed: _swapAirports,
                 icon: RotationTransition(
                   turns: _swapRotationAnimation,
-                  child: const Icon(Icons.swap_vert, color: Color(0xFF30324A)),
+                  child: Icon(
+                    Icons.swap_vert,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
             ),
@@ -901,6 +981,10 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             onChanged: (value) => _updateAirportMatches(value, isFrom: false),
             onSelected: (airport) => _selectAirport(airport, isFrom: false),
           ),
+          const SizedBox(height: 18),
+          _buildFieldLabel(Icons.airlines, 'Airline'),
+          const SizedBox(height: 8),
+          _buildAirlineInput(),
           const SizedBox(height: 18),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -964,12 +1048,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildTripToggle() {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Container(
       height: 46,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE7E8EE),
+        color: themeColors.cardMuted,
         borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Row(
         children: [
@@ -983,14 +1071,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 decoration: BoxDecoration(
-                  color: _isRoundTrip ? Colors.white : Colors.transparent,
+                  color: _isRoundTrip ? accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
                   child: Text(
                     'Round Trip',
                     style: TextStyle(
-                      color: const Color(0xFF30324A),
+                      color: _isRoundTrip
+                          ? Colors.white
+                          : themeColors.onCardMuted,
                       fontWeight: _isRoundTrip
                           ? FontWeight.w700
                           : FontWeight.w600,
@@ -1010,14 +1100,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 decoration: BoxDecoration(
-                  color: !_isRoundTrip ? Colors.white : Colors.transparent,
+                  color: !_isRoundTrip ? accent : Colors.transparent,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Center(
                   child: Text(
                     'One Way',
                     style: TextStyle(
-                      color: const Color(0xFF30324A),
+                      color: !_isRoundTrip
+                          ? Colors.white
+                          : themeColors.onCardMuted,
                       fontWeight: !_isRoundTrip
                           ? FontWeight.w700
                           : FontWeight.w600,
@@ -1033,14 +1125,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildFieldLabel(IconData icon, String label) {
+    final themeColors = context.appColors;
+
     return Row(
       children: [
-        Icon(icon, size: 18, color: const Color(0xFF30324A)),
+        Icon(icon, size: 18, color: themeColors.onCardMuted),
         const SizedBox(width: 8),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF30324A),
+          style: TextStyle(
+            color: themeColors.onCard,
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
@@ -1057,6 +1151,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required ValueChanged<String> onChanged,
     required ValueChanged<AirportOption> onSelected,
   }) {
+    final themeColors = context.appColors;
+
     return AirportAutocompleteField(
       controller: controller,
       focusNode: focusNode,
@@ -1065,6 +1161,109 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       onChanged: onChanged,
       onSelected: onSelected,
       prefixIcon: Icons.search,
+      fillColor: themeColors.cardMuted,
+      borderColor: themeColors.outlineSoft,
+      textStyle: TextStyle(
+        color: Theme.of(context).colorScheme.primary,
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+      ),
+      hintStyle: TextStyle(color: themeColors.onCardMuted),
+    );
+  }
+
+  Widget _buildAirlineInput() {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+    final matches = _visibleAirlineMatches;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextField(
+          controller: _airlineController,
+          cursorColor: accent,
+          textCapitalization: TextCapitalization.words,
+          style: TextStyle(
+            color: accent,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+          decoration: InputDecoration(
+            hintText: 'Type airline name',
+            hintStyle: TextStyle(color: themeColors.onCardMuted),
+            filled: true,
+            fillColor: themeColors.cardMuted,
+            prefixIcon: Icon(Icons.search, color: themeColors.onCardMuted),
+            suffixIcon: _airlineController.text.isEmpty
+                ? null
+                : IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _airlineController.clear();
+                        _selectedAirlineFilter = null;
+                      });
+                      _refreshCatalogResults();
+                    },
+                    icon: Icon(Icons.close, color: themeColors.onCardMuted),
+                  ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: themeColors.outlineSoft),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: accent, width: 1.5),
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: BorderSide(color: themeColors.outlineSoft),
+            ),
+          ),
+          onChanged: (value) {
+            setState(() {
+              _selectedAirlineFilter = null;
+            });
+            _refreshCatalogResults();
+          },
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 34,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: matches.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final airline = matches[index];
+              final selected = _resolvedAirlineFilter == airline;
+              return ChoiceChip(
+                label: Text(airline),
+                selected: selected,
+                onSelected: (_) {
+                  setState(() {
+                    _selectedAirlineFilter = airline;
+                    _airlineController.text = airline;
+                  });
+                  _refreshCatalogResults();
+                },
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : themeColors.onCardMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+                backgroundColor: themeColors.cardMuted,
+                selectedColor: accent,
+                side: BorderSide(
+                  color: selected ? accent : themeColors.outlineSoft,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -1074,6 +1273,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required VoidCallback onTap,
     required bool selected,
   }) {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1085,8 +1287,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFFF2F3F7),
+              color: themeColors.cardMuted,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: themeColors.outlineSoft),
             ),
             child: Row(
               children: [
@@ -1094,9 +1297,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                   child: Text(
                     selected ? _formatDate(date) : 'Select',
                     style: TextStyle(
-                      color: selected
-                          ? const Color(0xFF30324A)
-                          : const Color(0xFF9AA0B3),
+                      color: selected ? accent : themeColors.onCardMuted,
                       fontSize: selected ? 15 : 14,
                       fontWeight: FontWeight.w600,
                     ),
@@ -1105,7 +1306,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                 Icon(
                   Icons.arrow_drop_down,
                   size: 20,
-                  color: const Color(0xFFB3B7C7),
+                  color: themeColors.onCardMuted,
                 ),
               ],
             ),
@@ -1116,14 +1317,17 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildPassengerField() {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
     final maxPassengers = _maxPassengersForCurrentSearch;
     final canAdd = maxPassengers == 0 || _passengers < maxPassengers;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2F3F7),
+        color: themeColors.cardMuted,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1141,14 +1345,14 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                       }
                     : null,
                 icon: const Icon(Icons.remove_circle_outline),
-                color: const Color(0xFF30324A),
+                color: accent,
               ),
               Expanded(
                 child: Text(
                   '$_passengers',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Color(0xFF30324A),
+                  style: TextStyle(
+                    color: accent,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1167,7 +1371,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
                       }
                     : null,
                 icon: const Icon(Icons.add_circle_outline),
-                color: const Color(0xFF30324A),
+                color: accent,
               ),
             ],
           ),
@@ -1175,8 +1379,8 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             const SizedBox(height: 4),
             Text(
               'Max $maxPassengers for ${_selectedCabin.displayName}',
-              style: const TextStyle(
-                color: Color(0xFF737896),
+              style: TextStyle(
+                color: themeColors.onCardMuted,
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
               ),
@@ -1188,6 +1392,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildCabinClassSelector() {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -1204,15 +1411,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primaryGreen
-                  : const Color(0xFFF2F3F7),
+              color: isSelected ? accent : themeColors.cardMuted,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? accent : themeColors.outlineSoft,
+              ),
             ),
             child: Text(
               cabin.displayName,
               style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF30324A),
+                color: isSelected ? Colors.white : themeColors.onCardMuted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1223,6 +1431,9 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   Widget _buildProviderSelector() {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
     return Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -1240,15 +1451,16 @@ class _BookFlightScreenState extends State<BookFlightScreen>
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primaryGreen
-                  : const Color(0xFFF2F3F7),
+              color: isSelected ? accent : themeColors.cardMuted,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? accent : themeColors.outlineSoft,
+              ),
             ),
             child: Text(
               provider.displayName,
               style: TextStyle(
-                color: isSelected ? Colors.white : const Color(0xFF30324A),
+                color: isSelected ? Colors.white : themeColors.onCardMuted,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1567,12 +1779,16 @@ class _MiniPlanePainter extends CustomPainter {
     required this.trailColor,
     required this.engineBurn,
     required this.phase,
+    required this.accentColor,
+    required this.airlineLabel,
   });
 
   final Color color;
   final Color trailColor;
   final double engineBurn;
   final _MiniPlanePhase phase;
+  final Color accentColor;
+  final String? airlineLabel;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1587,12 +1803,17 @@ class _MiniPlanePainter extends CustomPainter {
       _MiniPlanePhase.landing => 1.0,
       _MiniPlanePhase.cruise => 0.0,
     };
-    final paint = Paint()
-      ..color = color
+    final outlinePaint = Paint()
+      ..color = color.withValues(alpha: 0.95)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.7
-      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.5
       ..strokeJoin = StrokeJoin.round;
+    final bodyPaint = Paint()
+      ..color = color.withValues(alpha: 0.92)
+      ..style = PaintingStyle.fill;
+    final accentPaint = Paint()
+      ..color = accentColor.withValues(alpha: 0.92)
+      ..style = PaintingStyle.fill;
     final trailPaint = Paint()
       ..color = trailColor
       ..style = PaintingStyle.stroke
@@ -1657,23 +1878,79 @@ class _MiniPlanePainter extends CustomPainter {
       trailPaint,
     );
 
-    final body = Path()
-      ..moveTo(size.width * 0.16, centerY)
-      ..lineTo(size.width * 0.86, centerY)
-      ..quadraticBezierTo(
-        size.width * 0.96,
-        centerY,
-        size.width * 0.88,
-        centerY - 4,
-      );
-    canvas.drawPath(body, paint);
+    final bodyRect = RRect.fromLTRBR(
+      size.width * 0.18,
+      centerY - 5.4,
+      size.width * 0.88,
+      centerY + 5.4,
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(bodyRect, bodyPaint);
+    canvas.drawRRect(bodyRect, outlinePaint);
 
-    final wings = Path()
-      ..moveTo(size.width * 0.48, centerY)
-      ..lineTo(size.width * 0.26, 3)
-      ..moveTo(size.width * 0.50, centerY)
-      ..lineTo(size.width * 0.28, size.height - 3);
-    canvas.drawPath(wings, paint);
+    final nose = Path()
+      ..moveTo(size.width * 0.84, centerY - 5.4)
+      ..quadraticBezierTo(
+        size.width * 0.99,
+        centerY,
+        size.width * 0.84,
+        centerY + 5.4,
+      )
+      ..close();
+    canvas.drawPath(nose, bodyPaint);
+    canvas.drawPath(nose, outlinePaint);
+
+    final upperWing = Path()
+      ..moveTo(size.width * 0.48, centerY - 2)
+      ..lineTo(size.width * 0.25, 1.5)
+      ..quadraticBezierTo(
+        size.width * 0.35,
+        2.5,
+        size.width * 0.62,
+        centerY - 1,
+      )
+      ..close();
+    final lowerWing = Path()
+      ..moveTo(size.width * 0.49, centerY + 2)
+      ..lineTo(size.width * 0.25, size.height - 1.5)
+      ..quadraticBezierTo(
+        size.width * 0.36,
+        size.height - 2.5,
+        size.width * 0.63,
+        centerY + 1,
+      )
+      ..close();
+    canvas.drawPath(upperWing, bodyPaint);
+    canvas.drawPath(lowerWing, bodyPaint);
+    canvas.drawPath(upperWing, outlinePaint);
+    canvas.drawPath(lowerWing, outlinePaint);
+
+    final stripe = RRect.fromLTRBR(
+      size.width * 0.34,
+      centerY - 2.2,
+      size.width * 0.76,
+      centerY + 2.2,
+      const Radius.circular(3),
+    );
+    canvas.drawRRect(stripe, accentPaint);
+
+    if (airlineLabel != null) {
+      final textPainter = TextPainter(
+        text: TextSpan(
+          text: airlineLabel,
+          style: TextStyle(
+            color: accentColor,
+            fontSize: 7,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: 24);
+      textPainter.paint(
+        canvas,
+        Offset(size.width * 0.52, centerY - textPainter.height / 2),
+      );
+    }
 
     if (flapExtension > 0) {
       final flapPaint = Paint()
@@ -1730,11 +2007,14 @@ class _MiniPlanePainter extends CustomPainter {
     }
 
     final tail = Path()
-      ..moveTo(size.width * 0.21, centerY)
-      ..lineTo(size.width * 0.10, centerY - 10)
-      ..moveTo(size.width * 0.21, centerY)
-      ..lineTo(size.width * 0.10, centerY + 10);
-    canvas.drawPath(tail, paint);
+      ..moveTo(size.width * 0.22, centerY - 4)
+      ..lineTo(size.width * 0.08, centerY - 14)
+      ..lineTo(size.width * 0.15, centerY - 2)
+      ..moveTo(size.width * 0.22, centerY + 4)
+      ..lineTo(size.width * 0.08, centerY + 14)
+      ..lineTo(size.width * 0.15, centerY + 2);
+    canvas.drawPath(tail, accentPaint);
+    canvas.drawPath(tail, outlinePaint);
   }
 
   @override
@@ -1742,7 +2022,9 @@ class _MiniPlanePainter extends CustomPainter {
     return oldDelegate.color != color ||
         oldDelegate.trailColor != trailColor ||
         oldDelegate.engineBurn != engineBurn ||
-        oldDelegate.phase != phase;
+        oldDelegate.phase != phase ||
+        oldDelegate.accentColor != accentColor ||
+        oldDelegate.airlineLabel != airlineLabel;
   }
 }
 

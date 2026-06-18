@@ -170,6 +170,11 @@ class AppTheme {
       extensions: [themeColors],
       dividerTheme: DividerThemeData(color: outlineSoft, thickness: 1),
       textTheme: base.textTheme.apply(bodyColor: onCard, displayColor: onCard),
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: resolvedAccent,
+        selectionColor: resolvedAccent.withValues(alpha: 0.26),
+        selectionHandleColor: resolvedAccent,
+      ),
       cardTheme: CardThemeData(
         color: card,
         elevation: 0,
@@ -243,8 +248,8 @@ class AppTheme {
     if (brightness == Brightness.light) return accent;
 
     final hsl = HSLColor.fromColor(accent);
-    final lightness = (hsl.lightness * 0.68).clamp(0.28, 0.42).toDouble();
-    final saturation = (hsl.saturation * 1.08).clamp(0.45, 0.95).toDouble();
+    final lightness = (hsl.lightness * 0.48).clamp(0.18, 0.30).toDouble();
+    final saturation = (hsl.saturation * 1.16).clamp(0.55, 0.98).toDouble();
     return hsl.withLightness(lightness).withSaturation(saturation).toColor();
   }
 

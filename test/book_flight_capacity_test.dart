@@ -55,4 +55,18 @@ void main() {
     expect(find.text('Max 20 for First'), findsOneWidget);
     expect(find.textContaining('JetBlue B6'), findsNothing);
   });
+
+  testWidgets('airline input filters book flight matches', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: BookFlightScreen()));
+    await tester.pumpAndSettle();
+
+    final airlineInput = find.widgetWithText(TextField, 'Type airline name');
+    await tester.ensureVisible(airlineInput);
+    await tester.enterText(airlineInput, 'Delta');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Delta'), findsWidgets);
+    expect(find.textContaining('Delta DL'), findsWidgets);
+    expect(find.textContaining('United UA'), findsNothing);
+  });
 }
