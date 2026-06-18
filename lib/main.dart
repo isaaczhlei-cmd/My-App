@@ -73,45 +73,48 @@ Future<void> _retryBootstrap() async {
 }
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  runZonedGuarded<Future<void>>(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-  FlutterError.onError = (FlutterErrorDetails details) {
-    _logBootstrapError(
-      details.exception,
-      details.stack ?? StackTrace.empty,
-      stage: 'widget',
-    );
-    FlutterError.presentError(details);
-  };
+      FlutterError.onError = (FlutterErrorDetails details) {
+        _logBootstrapError(
+          details.exception,
+          details.stack ?? StackTrace.empty,
+          stage: 'widget',
+        );
+        FlutterError.presentError(details);
+      };
 
-  runZonedGuarded<Future<void>>(() async {
-    try {
-      await _bootstrap();
-      await UserPreferencesService.instance.load();
-      runApp(const MyApp());
-    } on _BootstrapException catch (be) {
-      runApp(
-        ErrorApp(
-          stage: be.stage,
-          error: be.error,
-          stack: be.stack,
-          onRetry: _retryBootstrap,
-        ),
-      );
-    } catch (e, st) {
-      _logBootstrapError(e, st, stage: BootstrapStage.unknown.name);
-      runApp(
-        ErrorApp(
-          stage: BootstrapStage.unknown,
-          error: e,
-          stack: st,
-          onRetry: _retryBootstrap,
-        ),
-      );
-    }
-  }, (error, stack) {
-    _logBootstrapError(error, stack, stage: 'zone');
-  });
+      try {
+        await _bootstrap();
+        await UserPreferencesService.instance.load();
+        runApp(const MyApp());
+      } on _BootstrapException catch (be) {
+        runApp(
+          ErrorApp(
+            stage: be.stage,
+            error: be.error,
+            stack: be.stack,
+            onRetry: _retryBootstrap,
+          ),
+        );
+      } catch (e, st) {
+        _logBootstrapError(e, st, stage: BootstrapStage.unknown.name);
+        runApp(
+          ErrorApp(
+            stage: BootstrapStage.unknown,
+            error: e,
+            stack: st,
+            onRetry: _retryBootstrap,
+          ),
+        );
+      }
+    },
+    (error, stack) {
+      _logBootstrapError(error, stack, stage: 'zone');
+    },
+  );
 }
 
 class MyApp extends StatelessWidget {
