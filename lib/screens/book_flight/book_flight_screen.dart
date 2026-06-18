@@ -34,7 +34,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
 
   final _authService = AuthService();
   bool _isRoundTrip = true;
-  BookingProvider _selectedProvider = BookingProvider.skyscanner;
+  BookingProvider _selectedProvider = BookingProvider.automatic;
   AirportOption _fromAirport = AirportDirectory.airports.firstWhere(
     (airport) => airport.code == 'JFK',
   );
@@ -1725,13 +1725,7 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     required DateTime departureDate,
   }) {
     return switch (_selectedProvider) {
-      BookingProvider.skyscanner => BookingLinkService.skyscannerUri(
-        origin: origin,
-        destination: destination,
-        departureDate: departureDate,
-        passengers: _passengers,
-        cabinClass: _selectedCabin,
-      ),
+      BookingProvider.automatic ||
       BookingProvider.googleFlights => BookingLinkService.googleFlightsUri(
         origin: origin,
         destination: destination,
@@ -1740,6 +1734,13 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         cabinClass: _selectedCabin,
       ),
       BookingProvider.kayak => BookingLinkService.kayakUri(
+        origin: origin,
+        destination: destination,
+        departureDate: departureDate,
+        passengers: _passengers,
+        cabinClass: _selectedCabin,
+      ),
+      BookingProvider.skyscanner => BookingLinkService.skyscannerUri(
         origin: origin,
         destination: destination,
         departureDate: departureDate,

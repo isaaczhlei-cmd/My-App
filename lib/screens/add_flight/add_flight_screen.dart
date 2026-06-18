@@ -1177,9 +1177,9 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                   ),
                 ),
                 if (_hasResult)
-                  const Icon(
+                  Icon(
                     Icons.check_circle,
-                    color: AppColors.primaryGreen,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 22,
                   ),
               ],
@@ -1535,10 +1535,12 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildLoadingIndicator() {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(40),
-        child: CircularProgressIndicator(color: AppColors.primaryGreen),
+        padding: const EdgeInsets.all(40),
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }
@@ -1707,10 +1709,10 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                 : _usedTypicalFallback
                 ? 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'} (route average)'
                 : 'Estimated Carbon Emission for $passengerCount ${passengerCount == 1 ? 'passenger' : 'passengers'}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
-              color: AppColors.primaryGreen,
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 8),

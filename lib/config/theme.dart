@@ -5,17 +5,6 @@ import 'package:flutter/material.dart';
 class AppColors {
   // Primary brand color — kept as const fallback for const-constructor contexts.
   // Interactive widgets should use Theme.of(context).colorScheme.primary instead.
-  // TODO: migrate remaining AppColors.primaryGreen usages to colorScheme.primary:
-  //   add_flight_screen.dart:338  (date picker colorScheme override - const context)
-  //   add_flight_screen.dart:693  (const Icon in const section)
-  //   add_flight_screen.dart:895  (featured text - const context)
-  //   auth/forgot_password_screen.dart:92,168,197,203,273  (auth screen, lower priority)
-  //   auth/login_screen.dart:202,245,249,415,427,432,583   (auth screen, lower priority)
-  //   auth/widgets/signup_form.dart:57                     (const local, auth screen)
-  //   book_flight_screen.dart:118,119                      (colorScheme override - const)
-  //   booking_handoff_screen.dart:168                      (ternary)
-  //   guest_sign_in_prompt_screen.dart:39,41               (const context)
-  // Primary brand color — slightly more saturated for better visibility in dark
   static const Color primaryGreen = Color(0xFF2ECC71);
 
   // Background colors — stronger separation for improved legibility

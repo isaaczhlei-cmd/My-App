@@ -1,7 +1,14 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:csv/csv.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../config/theme.dart';
 import '../../models/flight.dart';
+import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_inbox_service.dart';
@@ -364,8 +371,155 @@ class _NotificationTile extends StatelessWidget {
 
 // ── Settings screen ────────────────────────────────────────────────────────
 
-class AppSettingsScreen extends StatelessWidget {
+class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
+
+  @override
+  State<AppSettingsScreen> createState() => _AppSettingsScreenState();
+}
+
+class _AppSettingsScreenState extends State<AppSettingsScreen> {
+  final _firestoreService = FirestoreService();
+  BookingProvider _selectedProvider = BookingProvider.automatic;
+  bool _isExportingFlightHistory = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookingProvider();
+  }
+
+  Future<void> _loadBookingProvider() async {
+    final provider = await BookingProviderService.getSelectedProvider();
+    if (!mounted) return;
+    setState(() {
+      _selectedProvider = provider;
+    });
+  }
+
+  Future<void> _showBookingProviderSheet() async {
+    const providers = [
+      BookingProvider.googleFlights,
+      BookingProvider.kayak,
+      BookingProvider.skyscanner,
+      BookingProvider.automatic,
+    ];
+    final provider = await showCupertinoModalPopup<BookingProvider>(
+      context: context,
+      builder: (context) {
+        return CupertinoActionSheet(
+          title: const Text('Booking Provider'),
+          actions: providers.map((provider) {
+            final isSelected = provider == _selectedProvider;
+            return CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(context).pop(provider),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(provider.displayName),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    const Icon(CupertinoIcons.check_mark, size: 18),
+                  ],
+                ],
+              ),
+            );
+          }).toList(),
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        );
+      },
+    );
+
+    if (provider == null) return;
+    await BookingProviderService.setSelectedProvider(provider);
+    if (!mounted) return;
+    setState(() {
+      _selectedProvider = provider;
+    });
+  }
+
+  Future<void> _shareFlightHistory() async {
+    setState(() {
+      _isExportingFlightHistory = true;
+    });
+
+    try {
+      final flights = await _firestoreService.getFlights();
+      if (!mounted) return;
+
+      if (flights.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No flight history to export yet')),
+        );
+        return;
+      }
+
+      final csv = _buildFlightHistoryCsv(flights);
+      final file = XFile.fromData(
+        Uint8List.fromList(utf8.encode(csv)),
+        mimeType: 'text/csv',
+        name: 'flightprint-history.csv',
+      );
+      final box = context.findRenderObject() as RenderBox?;
+      await SharePlus.instance.share(
+        ShareParams(
+          subject: 'FlightPrint flight history',
+          text: 'Sharing my FlightPrint flight history.',
+          files: [file],
+          fileNameOverrides: const ['flightprint-history.csv'],
+          sharePositionOrigin: box == null
+              ? null
+              : box.localToGlobal(Offset.zero) & box.size,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not export flight history')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isExportingFlightHistory = false;
+        });
+      }
+    }
+  }
+
+  String _buildFlightHistoryCsv(List<Flight> flights) {
+    final rows = <List<Object?>>[
+      [
+        'Date',
+        'Origin',
+        'Destination',
+        'Cabin',
+        'Emissions kg CO2',
+        'Airline',
+        'Flight number',
+      ],
+      ...flights.map(
+        (flight) => [
+          _isoDate(flight.date),
+          flight.originCode,
+          flight.destinationCode,
+          flight.travelClass,
+          flight.emissionsKg.toStringAsFixed(1),
+          flight.AirlineCode,
+          flight.AirlineNumber,
+        ],
+      ),
+    ];
+    return const ListToCsvConverter().convert(rows);
+  }
+
+  String _isoDate(DateTime date) {
+    final month = date.month.toString().padLeft(2, '0');
+    final day = date.day.toString().padLeft(2, '0');
+    return '${date.year}-$month-$day';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -433,24 +587,36 @@ class AppSettingsScreen extends StatelessWidget {
                                 ),
                               ),
                               const Spacer(),
-                              _InlineSegmented(
-                                options: const [
-                                  'Economy',
-                                  'Premium',
-                                  'Business',
-                                ],
-                                selected: switch (prefs.defaultCabinClass) {
-                                  CabinClass.premiumEconomy => 1,
-                                  CabinClass.business || CabinClass.first => 2,
-                                  _ => 0,
-                                },
-                                onSelect: (i) =>
-                                    prefs.setDefaultCabinClass(switch (i) {
-                                      1 => CabinClass.premiumEconomy,
-                                      2 => CabinClass.business,
-                                      _ => CabinClass.economy,
-                                    }),
-                                activeColor: accent,
+                              Flexible(
+                                child: Align(
+                                  alignment: Alignment.centerRight,
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: _InlineSegmented(
+                                      options: const [
+                                        'Economy',
+                                        'Premium',
+                                        'Business',
+                                        'First',
+                                      ],
+                                      selected: switch (
+                                          prefs.defaultCabinClass) {
+                                        CabinClass.premiumEconomy => 1,
+                                        CabinClass.business => 2,
+                                        CabinClass.first => 3,
+                                        _ => 0,
+                                      },
+                                      onSelect: (i) =>
+                                          prefs.setDefaultCabinClass(switch (i) {
+                                            1 => CabinClass.premiumEconomy,
+                                            2 => CabinClass.business,
+                                            3 => CabinClass.first,
+                                            _ => CabinClass.economy,
+                                          }),
+                                      activeColor: accent,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -476,7 +642,7 @@ class AppSettingsScreen extends StatelessWidget {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['kg', 'tons'],
+                                options: const ['Kg', 'T'],
                                 selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
                                 onSelect: (i) => prefs.setCo2Unit(
                                   i == 0 ? Co2Unit.kg : Co2Unit.metricTons,
@@ -507,7 +673,7 @@ class AppSettingsScreen extends StatelessWidget {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['Miles', 'km'],
+                                options: const ['mi', 'Km'],
                                 selected:
                                     prefs.distanceUnit == DistanceUnit.miles
                                     ? 0
@@ -565,18 +731,17 @@ class AppSettingsScreen extends StatelessWidget {
                             _ChevronRow(
                               icon: Icons.luggage_outlined,
                               label: 'Booking provider',
-                              value: 'Automatic',
-                              onTap: () {},
+                              value: _selectedProvider.displayName,
+                              onTap: _showBookingProviderSheet,
                             ),
                             const _TicketDivider(),
                             _ChevronRow(
                               icon: Icons.ios_share_outlined,
                               label: 'Export flight history',
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => FlightHistoryScreen(),
-                                ),
-                              ),
+                              value: _isExportingFlightHistory ? 'Preparing' : null,
+                              onTap: _isExportingFlightHistory
+                                  ? () {}
+                                  : _shareFlightHistory,
                             ),
                           ],
                         ),
@@ -741,7 +906,7 @@ class _AccentColorRow extends StatelessWidget {
   }
 }
 
-// ── Ticket card with perforated edges ─────────────────────────────────────
+// ── Settings group card ───────────────────────────────────────────────────
 
 class _TicketCard extends StatelessWidget {
   const _TicketCard({required this.child});
@@ -752,63 +917,19 @@ class _TicketCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeColors = context.appColors;
 
-    return ClipPath(
-      clipper: const _TicketEdgeClipper(),
-      child: Container(color: themeColors.card, child: child),
+    return Container(
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 }
 
-// ── Perforated edge clipper ────────────────────────────────────────────────
-
-class _TicketEdgeClipper extends CustomClipper<Path> {
-  const _TicketEdgeClipper();
-
-  static const double notchRadius = 5.5;
-
-  @override
-  Path getClip(Size size) {
-    const r = notchRadius;
-    final gap = r * 2.2;
-    final path = Path();
-
-    // Top edge — notches dip downward into card
-    path.moveTo(0, 0);
-    double x = gap + r;
-    while (x + r < size.width - gap) {
-      path.lineTo(x - r, 0);
-      path.arcToPoint(
-        Offset(x + r, 0),
-        radius: Radius.circular(r),
-        clockwise: true,
-      );
-      x += r * 2 + gap;
-    }
-    path.lineTo(size.width, 0);
-    path.lineTo(size.width, size.height);
-
-    // Bottom edge — notches dip upward into card (drawn right to left)
-    double bx = size.width - gap - r;
-    while (bx - r > gap) {
-      path.lineTo(bx + r, size.height);
-      path.arcToPoint(
-        Offset(bx - r, size.height),
-        radius: Radius.circular(r),
-        clockwise: true,
-      );
-      bx -= r * 2 + gap;
-    }
-    path.lineTo(0, size.height);
-    path.close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(_TicketEdgeClipper old) => false;
-}
-
-// ── Inline segmented chip control ─────────────────────────────────────────
+// ── Native segmented control ──────────────────────────────────────────────
 
 class _InlineSegmented extends StatelessWidget {
   const _InlineSegmented({
@@ -827,41 +948,33 @@ class _InlineSegmented extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeColors = context.appColors;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: themeColors.cardMuted,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: themeColors.outlineSoft),
+    return CupertinoTheme(
+      data: CupertinoThemeData(
+        brightness: Theme.of(context).brightness,
+        primaryColor: activeColor,
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(options.length, (i) {
-          final isSelected = i == selected;
-          final isFirst = i == 0;
-          final isLast = i == options.length - 1;
-          return GestureDetector(
-            onTap: () => onSelect(i),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected ? activeColor : Colors.transparent,
-                borderRadius: BorderRadius.horizontal(
-                  left: isFirst ? const Radius.circular(7) : Radius.zero,
-                  right: isLast ? const Radius.circular(7) : Radius.zero,
-                ),
-              ),
+      child: CupertinoSlidingSegmentedControl<int>(
+        groupValue: selected,
+        backgroundColor: themeColors.cardMuted,
+        thumbColor: activeColor,
+        padding: const EdgeInsets.all(2),
+        onValueChanged: (value) {
+          if (value != null) onSelect(value);
+        },
+        children: {
+          for (var i = 0; i < options.length; i++)
+            i: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               child: Text(
                 options[i],
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: isSelected ? Colors.white : themeColors.onCard,
+                  fontWeight: FontWeight.w600,
+                  color: i == selected ? Colors.white : themeColors.onCard,
                 ),
               ),
             ),
-          );
-        }),
+        },
       ),
     );
   }
@@ -994,41 +1107,184 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(title: const Text('About')),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'FlightPrint',
-                style: TextStyle(
-                  color: themeColors.onCard,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Track your flights and estimate CO₂ impact to fly more consciously.',
-                style: TextStyle(
-                  color: themeColors.onCardMuted,
-                  fontSize: 15,
-                  height: 1.45,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.flight_takeoff, color: accent, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'FlightPrint',
+                          style: TextStyle(
+                            color: themeColors.onCard,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Fly with a clearer footprint.',
+                          style: TextStyle(
+                            color: themeColors.onCardMuted,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
+              _AboutSection(
+                title: 'What FlightPrint Does',
+                body:
+                    'FlightPrint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
+              ),
+              const SizedBox(height: 14),
+              _AboutSection(
+                title: 'How Emissions Work',
+                body:
+                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, FlightPrint uses a local distance-based estimate so you can still compare trips consistently.',
+              ),
+              const SizedBox(height: 14),
+              _AboutSection(
+                title: 'Why It Matters',
+                body:
+                    'Carbon numbers can feel abstract, so the app translates totals into trends, milestones, and real-world equivalents like driving distance and home energy use.',
+              ),
+              const SizedBox(height: 18),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: themeColors.card,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: themeColors.outlineSoft),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _AboutBullet(
+                      icon: Icons.map_outlined,
+                      text: 'Visual route maps and monthly emission trends',
+                    ),
+                    const SizedBox(height: 12),
+                    _AboutBullet(
+                      icon: Icons.eco_outlined,
+                      text: 'Eco tips and carbon equivalency storytelling',
+                    ),
+                    const SizedBox(height: 12),
+                    _AboutBullet(
+                      icon: Icons.ios_share_outlined,
+                      text: 'Exportable flight history for your own records',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
               Text(
-                'Powered by Google Travel Impact Model API',
-                style: TextStyle(color: themeColors.onCardMuted, fontSize: 13),
+                'Data source',
+                style: TextStyle(
+                  color: themeColors.onCard,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Powered by Google Travel Impact Model API when available, with route-distance fallback estimates for continuity.',
+                style: TextStyle(
+                  color: themeColors.onCardMuted,
+                  fontSize: 13,
+                  height: 1.4,
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _AboutSection extends StatelessWidget {
+  const _AboutSection({required this.title, required this.body});
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: themeColors.onCard,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          body,
+          style: TextStyle(
+            color: themeColors.onCardMuted,
+            fontSize: 14,
+            height: 1.45,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _AboutBullet extends StatelessWidget {
+  const _AboutBullet({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    return Row(
+      children: [
+        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 20),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: themeColors.onCard,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -23,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _authService = AuthService();
   final _notificationInbox = NotificationInboxService.instance;
   bool _uploadingPhoto = false;
+  bool _showDeveloperDiagnostics = false;
 
   @override
   void initState() {
@@ -258,11 +259,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Debug auth panel: omitted in profile & release (`kDebugMode` is false).
-                  if (kDebugMode) ...[
-                    const SizedBox(height: 20),
-                    _buildDebugPanel(user, isGuest),
-                  ],
                   const SizedBox(height: 24),
                   _buildMenuItem(
                     icon: Icons.flight,
@@ -397,6 +393,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                   ],
+                  if (kDebugMode) ...[
+                    const SizedBox(height: 12),
+                    _buildDeveloperModeToggle(),
+                    if (_showDeveloperDiagnostics) ...[
+                      const SizedBox(height: 12),
+                      _buildDebugPanel(user, isGuest),
+                    ],
+                  ],
                 ],
               ),
             ),
@@ -510,6 +514,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDeveloperModeToggle() {
+    return _buildMenuItem(
+      icon: Icons.developer_mode,
+      label: _showDeveloperDiagnostics
+          ? 'Hide Developer Diagnostics'
+          : 'Developer Diagnostics',
+      onTap: () {
+        setState(() {
+          _showDeveloperDiagnostics = !_showDeveloperDiagnostics;
+        });
+      },
     );
   }
 

@@ -237,7 +237,7 @@ class _CompareScreenState extends State<CompareScreen> {
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: isBelow
-                        ? AppColors.primaryGreen
+                        ? Theme.of(context).colorScheme.primary
                         : const Color(0xFFFF8F00),
                   ),
                 ),
@@ -413,7 +413,11 @@ class _GaugePainter extends CustomPainter {
   final double maxValue;
   final Color color;
 
-  _GaugePainter({required this.value, required this.maxValue, required this.color});
+  _GaugePainter({
+    required this.value,
+    required this.maxValue,
+    required this.color,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -452,6 +456,8 @@ class _GaugePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _GaugePainter oldDelegate) {
-    return oldDelegate.value != value || oldDelegate.maxValue != maxValue || oldDelegate.color != color;
+    return oldDelegate.value != value ||
+        oldDelegate.maxValue != maxValue ||
+        oldDelegate.color != color;
   }
 }

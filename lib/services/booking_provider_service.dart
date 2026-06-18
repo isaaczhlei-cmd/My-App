@@ -2,9 +2,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Enum for supported booking providers.
 enum BookingProvider {
-  skyscanner('Skyscanner'),
+  automatic('Automatic'),
   googleFlights('Google Flights'),
-  kayak('Kayak');
+  kayak('KAYAK'),
+  skyscanner('Skyscanner'),
 
   final String displayName;
   const BookingProvider(this.displayName);
@@ -19,24 +20,24 @@ class BookingProviderService {
 
   /// Loads the saved booking provider from SharedPreferences.
   ///
-  /// Defaults to Skyscanner if no provider has been saved yet.
+  /// Defaults to Automatic if no provider has been saved yet.
   ///
-  /// Returns the saved [BookingProvider] or [BookingProvider.skyscanner] as default.
+  /// Returns the saved [BookingProvider] or [BookingProvider.automatic] as default.
   static Future<BookingProvider> getSelectedProvider() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getString(_storageKey);
 
     if (saved == null) {
-      return BookingProvider.skyscanner;
+      return BookingProvider.automatic;
     }
 
     try {
       return BookingProvider.values.firstWhere(
         (provider) => provider.name == saved,
-        orElse: () => BookingProvider.skyscanner,
+        orElse: () => BookingProvider.automatic,
       );
     } catch (_) {
-      return BookingProvider.skyscanner;
+      return BookingProvider.automatic;
     }
   }
 

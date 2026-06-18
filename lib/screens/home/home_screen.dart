@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -97,7 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
-            final flights = snapshot.data ?? [];
+            final flights = [...(snapshot.data ?? <Flight>[])]
+              ..sort((a, b) => b.date.compareTo(a.date));
             final now = DateTime.now();
             final currentMonthFlights = flights
                 .where((flight) => _isInCurrentMonth(flight.date, now))
@@ -152,6 +154,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     totalFlights,
                     totalMilesK,
                     avgKgPerFlight,
+                  ),
+                  const SizedBox(height: 20),
+                  _buildJourneyMapCard(flights),
+                  const SizedBox(height: 20),
+                  _buildMonthlyTrends(flights),
+                  const SizedBox(height: 20),
+                  _buildImpactStories(
+                    flights: flights,
+                    totalEmissionsKg: totalEmissionsKg,
+                    avgKgPerFlight: avgKgPerFlight,
                   ),
                   const SizedBox(height: 24),
                   _buildRecentFlights(recentFlights),
@@ -715,6 +727,265 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildJourneyMapCard(List<Flight> flights) {
+    final themeColors = context.appColors;
+    final mappedFlights = flights.take(5).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.public,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Flight Map',
+                style: TextStyle(
+                  color: themeColors.onCard,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 148,
+            width: double.infinity,
+            child: CustomPaint(
+              painter: _JourneyMapPainter(
+                flights: mappedFlights,
+                accent: Theme.of(context).colorScheme.primary,
+                muted: themeColors.onCardMuted,
+                outline: themeColors.outlineSoft,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (mappedFlights.isEmpty)
+            Text(
+              'Add a flight to draw your first route.',
+              style: TextStyle(color: themeColors.onCardMuted, fontSize: 14),
+            )
+          else
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: mappedFlights
+                  .map(
+                    (flight) => _RouteChip(
+                      label:
+                          '${flight.originCode} -> ${flight.destinationCode}',
+                    ),
+                  )
+                  .toList(),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMonthlyTrends(List<Flight> flights) {
+    final themeColors = context.appColors;
+    final buckets = _monthlyEmissionBuckets(flights);
+    final maxKg = buckets.fold<double>(
+      0,
+      (maxValue, point) => math.max(maxValue, point.emissionsKg),
+    );
+    final bestMonth = buckets
+        .where((point) => point.emissionsKg > 0)
+        .fold<_MonthlyEmissionPoint?>(null, (best, point) {
+          if (best == null || point.emissionsKg < best.emissionsKg) {
+            return point;
+          }
+          return best;
+        });
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.auto_graph, color: const Color(0xFFFF8F00), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Emission Trends',
+                style: TextStyle(
+                  color: themeColors.onCard,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 152,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: buckets.map((point) {
+                final ratio = maxKg == 0 ? 0.0 : point.emissionsKg / maxKg;
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _MonthlyTrendBar(point: point, ratio: ratio),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            bestMonth == null
+                ? 'No yearly trend yet'
+                : 'Greenest month: ${bestMonth.label} at ${bestMonth.emissionsKg.round()} kg CO2.',
+            style: TextStyle(color: themeColors.onCardMuted, fontSize: 14),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImpactStories({
+    required List<Flight> flights,
+    required double totalEmissionsKg,
+    required int avgKgPerFlight,
+  }) {
+    final themeColors = context.appColors;
+    final milesDriven = (totalEmissionsKg * 2.51).round();
+    final homeMonths = totalEmissionsKg <= 0 ? 0.0 : totalEmissionsKg / 280;
+    final efficientFlight = flights
+        .where((flight) => flight.emissionsKg > 0)
+        .fold<Flight?>(null, (best, flight) {
+          if (best == null || flight.emissionsKg < best.emissionsKg) {
+            return flight;
+          }
+          return best;
+        });
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Row(
+        children: [
+          _ImpactRing(totalKg: totalEmissionsKg),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Carbon Story',
+                  style: TextStyle(
+                    color: themeColors.onCard,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  totalEmissionsKg == 0
+                      ? 'Your next logged trip will unlock impact milestones.'
+                      : 'Equivalent to driving ${_formatInt(milesDriven)} miles or powering a home for ${homeMonths.toStringAsFixed(1)} months.',
+                  style: TextStyle(
+                    color: themeColors.onCardMuted,
+                    fontSize: 14,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _MilestonePill(
+                  icon: Icons.bolt_outlined,
+                  label: efficientFlight == null
+                      ? 'Most efficient trip awaits'
+                      : 'Most efficient: ${efficientFlight.originCode} -> ${efficientFlight.destinationCode}',
+                ),
+                const SizedBox(height: 8),
+                _MilestonePill(
+                  icon: Icons.speed,
+                  label: avgKgPerFlight == 0
+                      ? 'Average unlocks after logging'
+                      : 'Average: ${_formatInt(avgKgPerFlight)} kg per flight',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<_MonthlyEmissionPoint> _monthlyEmissionBuckets(List<Flight> flights) {
+    final now = DateTime.now();
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return List.generate(6, (index) {
+      final month = DateTime(now.year, now.month - 5 + index);
+      final kg = flights
+          .where(
+            (flight) =>
+                flight.date.year == month.year &&
+                flight.date.month == month.month,
+          )
+          .fold<double>(0, (sum, flight) => sum + flight.emissionsKg);
+      return _MonthlyEmissionPoint(
+        label: monthNames[month.month - 1],
+        emissionsKg: kg,
+      );
+    });
+  }
+
+  String _formatInt(int value) {
+    final text = value.toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < text.length; i++) {
+      final remaining = text.length - i;
+      buffer.write(text[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+    return buffer.toString();
+  }
+
   Widget _buildRecentFlights(List<Flight> recentFlights) {
     final themeColors = context.appColors;
     final visibleFlights = recentFlights
@@ -810,5 +1081,338 @@ class _HomeScreenState extends State<HomeScreen> {
         .map((flight) => '${flight.originCode} -> ${flight.destinationCode}')
         .join(', ');
     return 'Recent routes: $routes.';
+  }
+}
+
+class _MonthlyEmissionPoint {
+  const _MonthlyEmissionPoint({required this.label, required this.emissionsKg});
+
+  final String label;
+  final double emissionsKg;
+}
+
+class _MonthlyTrendBar extends StatelessWidget {
+  const _MonthlyTrendBar({required this.point, required this.ratio});
+
+  final _MonthlyEmissionPoint point;
+  final double ratio;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final barHeight = 18.0 + (ratio * 82.0);
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Text(
+          point.emissionsKg == 0 ? '-' : point.emissionsKg.round().toString(),
+          style: TextStyle(color: themeColors.onCardMuted, fontSize: 11),
+        ),
+        const SizedBox(height: 6),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          height: barHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: point.emissionsKg == 0
+                ? themeColors.cardMuted
+                : Color.lerp(accent, const Color(0xFFFF8F00), ratio * 0.55),
+            borderRadius: BorderRadius.circular(7),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          point.label,
+          style: TextStyle(
+            color: themeColors.onCardMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _RouteChip extends StatelessWidget {
+  const _RouteChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: themeColors.cardMuted,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: themeColors.onCard,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _ImpactRing extends StatelessWidget {
+  const _ImpactRing({required this.totalKg});
+
+  final double totalKg;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final progress = (totalKg / 2000).clamp(0.0, 1.0);
+    return SizedBox(
+      width: 92,
+      height: 92,
+      child: CustomPaint(
+        painter: _ImpactRingPainter(
+          progress: progress,
+          accent: Theme.of(context).colorScheme.primary,
+          track: themeColors.cardMuted,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                totalKg < 1000
+                    ? totalKg.round().toString()
+                    : (totalKg / 1000).toStringAsFixed(1),
+                style: TextStyle(
+                  color: themeColors.onCard,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                totalKg < 1000 ? 'kg' : 'tons',
+                style: TextStyle(color: themeColors.onCardMuted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MilestonePill extends StatelessWidget {
+  const _MilestonePill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    return Row(
+      children: [
+        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 16),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: themeColors.onCard,
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ImpactRingPainter extends CustomPainter {
+  const _ImpactRingPainter({
+    required this.progress,
+    required this.accent,
+    required this.track,
+  });
+
+  final double progress;
+  final Color accent;
+  final Color track;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final strokeWidth = 8.0;
+    final rect = Offset.zero & size;
+    final circleRect = rect.deflate(strokeWidth / 2);
+    final trackPaint = Paint()
+      ..color = track
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    final progressPaint = Paint()
+      ..shader = SweepGradient(
+        colors: [accent, const Color(0xFFFF8F00), accent],
+      ).createShader(circleRect)
+      ..strokeWidth = strokeWidth
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawArc(circleRect, 0, math.pi * 2, false, trackPaint);
+    canvas.drawArc(
+      circleRect,
+      -math.pi / 2,
+      math.pi * 2 * progress,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ImpactRingPainter oldDelegate) {
+    return progress != oldDelegate.progress ||
+        accent != oldDelegate.accent ||
+        track != oldDelegate.track;
+  }
+}
+
+class _JourneyMapPainter extends CustomPainter {
+  const _JourneyMapPainter({
+    required this.flights,
+    required this.accent,
+    required this.muted,
+    required this.outline,
+  });
+
+  final List<Flight> flights;
+  final Color accent;
+  final Color muted;
+  final Color outline;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final landPaint = Paint()
+      ..color = outline.withValues(alpha: 0.34)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final routePaint = Paint()
+      ..color = accent
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.4
+      ..strokeCap = StrokeCap.round;
+    final routeShadowPaint = Paint()
+      ..color = accent.withValues(alpha: 0.16)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+
+    _drawWorldHint(canvas, size, landPaint);
+
+    if (flights.isEmpty) {
+      final emptyPaint = Paint()
+        ..color = muted.withValues(alpha: 0.42)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(size.width * 0.18, size.height * 0.65),
+        Offset(size.width * 0.82, size.height * 0.38),
+        emptyPaint,
+      );
+      return;
+    }
+
+    for (var i = 0; i < flights.length; i++) {
+      final start = _pointForCode(flights[i].originCode, size);
+      final end = _pointForCode(flights[i].destinationCode, size);
+      final control = Offset(
+        (start.dx + end.dx) / 2,
+        math.min(start.dy, end.dy) - 26 - (i % 2) * 8,
+      );
+      final path = Path()
+        ..moveTo(start.dx, start.dy)
+        ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
+      canvas.drawPath(path, routeShadowPaint);
+      canvas.drawPath(path, routePaint);
+      _drawDot(canvas, start, muted);
+      _drawDot(canvas, end, accent);
+    }
+  }
+
+  void _drawWorldHint(Canvas canvas, Size size, Paint paint) {
+    final americas = Rect.fromLTWH(
+      size.width * 0.07,
+      size.height * 0.20,
+      size.width * 0.25,
+      size.height * 0.46,
+    );
+    final europeAfrica = Rect.fromLTWH(
+      size.width * 0.42,
+      size.height * 0.18,
+      size.width * 0.20,
+      size.height * 0.50,
+    );
+    final asia = Rect.fromLTWH(
+      size.width * 0.62,
+      size.height * 0.22,
+      size.width * 0.30,
+      size.height * 0.38,
+    );
+
+    canvas.drawOval(americas, paint);
+    canvas.drawOval(europeAfrica, paint);
+    canvas.drawOval(asia, paint);
+    canvas.drawLine(
+      Offset(size.width * 0.03, size.height * 0.74),
+      Offset(size.width * 0.97, size.height * 0.74),
+      paint,
+    );
+  }
+
+  void _drawDot(Canvas canvas, Offset offset, Color color) {
+    final paint = Paint()..color = color;
+    final halo = Paint()..color = color.withValues(alpha: 0.18);
+    canvas.drawCircle(offset, 7, halo);
+    canvas.drawCircle(offset, 3.5, paint);
+  }
+
+  Offset _pointForCode(String code, Size size) {
+    final hash = code.codeUnits.fold<int>(0, (sum, value) => sum + value);
+    final normalized = code.toUpperCase();
+    final known = <String, Offset>{
+      'LAX': const Offset(0.16, 0.50),
+      'SFO': const Offset(0.15, 0.42),
+      'SEA': const Offset(0.15, 0.31),
+      'JFK': const Offset(0.29, 0.43),
+      'EWR': const Offset(0.29, 0.44),
+      'ATL': const Offset(0.25, 0.54),
+      'ORD': const Offset(0.23, 0.40),
+      'DFW': const Offset(0.20, 0.56),
+      'HND': const Offset(0.79, 0.47),
+      'NRT': const Offset(0.80, 0.45),
+      'SIN': const Offset(0.72, 0.68),
+      'LHR': const Offset(0.48, 0.36),
+      'CDG': const Offset(0.50, 0.39),
+      'DXB': const Offset(0.58, 0.54),
+      'SYD': const Offset(0.84, 0.78),
+    }[normalized];
+    final fallback = Offset(0.12 + (hash % 73) / 100, 0.28 + (hash % 41) / 100);
+    final unit = known ?? fallback;
+    return Offset(unit.dx * size.width, unit.dy * size.height);
+  }
+
+  @override
+  bool shouldRepaint(covariant _JourneyMapPainter oldDelegate) {
+    return flights != oldDelegate.flights ||
+        accent != oldDelegate.accent ||
+        muted != oldDelegate.muted ||
+        outline != oldDelegate.outline;
   }
 }
