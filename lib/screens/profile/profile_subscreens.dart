@@ -543,6 +543,13 @@ class AppSettingsScreen extends StatelessWidget {
                           value: prefs.weeklyDigestEnabled,
                           onChanged: prefs.setWeeklyDigestEnabled,
                         ),
+                        const _TicketDivider(),
+                        _ToggleRow(
+                          icon: Icons.flight_takeoff_outlined,
+                          label: 'Airplane mode',
+                          value: prefs.tinyFlightAnimationEnabled,
+                          onChanged: prefs.setTinyFlightAnimationEnabled,
+                        ),
                       ],
                     ),
                   ),

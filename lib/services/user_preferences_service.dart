@@ -23,6 +23,7 @@ class UserPreferencesService extends ChangeNotifier {
   static const _keyCo2Unit = 'co2_unit';
   static const _keyDistanceUnit = 'distance_unit';
   static const _keyEcoTipsEnabled = 'eco_tips_enabled';
+  static const _keyTinyFlightAnimationEnabled = 'tiny_flight_animation_enabled';
   static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
   static const _keyAnnualCo2GoalTons = 'annual_co2_goal_tons';
 
@@ -42,6 +43,7 @@ class UserPreferencesService extends ChangeNotifier {
   Co2Unit _co2Unit = Co2Unit.metricTons;
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
+  bool _tinyFlightAnimationEnabled = true;
   bool _weeklyDigestEnabled = true;
   double? _annualCo2GoalTons;
 
@@ -51,6 +53,7 @@ class UserPreferencesService extends ChangeNotifier {
   Co2Unit get co2Unit => _co2Unit;
   DistanceUnit get distanceUnit => _distanceUnit;
   bool get ecoTipsEnabled => _ecoTipsEnabled;
+  bool get tinyFlightAnimationEnabled => _tinyFlightAnimationEnabled;
   bool get weeklyDigestEnabled => _weeklyDigestEnabled;
   double? get annualCo2GoalTons => _annualCo2GoalTons;
 
@@ -88,11 +91,18 @@ class UserPreferencesService extends ChangeNotifier {
 
     final distUnitStr = prefs.getString(_keyDistanceUnit);
     if (distUnitStr != null) {
-      _distanceUnit = distUnitStr == 'km' ? DistanceUnit.km : DistanceUnit.miles;
+      _distanceUnit = distUnitStr == 'km'
+          ? DistanceUnit.km
+          : DistanceUnit.miles;
     }
 
     final ecoTips = prefs.getBool(_keyEcoTipsEnabled);
     if (ecoTips != null) _ecoTipsEnabled = ecoTips;
+
+    final tinyFlightAnimation = prefs.getBool(_keyTinyFlightAnimationEnabled);
+    if (tinyFlightAnimation != null) {
+      _tinyFlightAnimationEnabled = tinyFlightAnimation;
+    }
 
     final weeklyDigest = prefs.getBool(_keyWeeklyDigestEnabled);
     if (weeklyDigest != null) _weeklyDigestEnabled = weeklyDigest;
@@ -137,14 +147,20 @@ class UserPreferencesService extends ChangeNotifier {
     _co2Unit = unit;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyCo2Unit, unit == Co2Unit.kg ? 'kg' : 'metricTons');
+    await prefs.setString(
+      _keyCo2Unit,
+      unit == Co2Unit.kg ? 'kg' : 'metricTons',
+    );
   }
 
   Future<void> setDistanceUnit(DistanceUnit unit) async {
     _distanceUnit = unit;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyDistanceUnit, unit == DistanceUnit.km ? 'km' : 'miles');
+    await prefs.setString(
+      _keyDistanceUnit,
+      unit == DistanceUnit.km ? 'km' : 'miles',
+    );
   }
 
   Future<void> setEcoTipsEnabled(bool enabled) async {
@@ -152,6 +168,13 @@ class UserPreferencesService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyEcoTipsEnabled, enabled);
+  }
+
+  Future<void> setTinyFlightAnimationEnabled(bool enabled) async {
+    _tinyFlightAnimationEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keyTinyFlightAnimationEnabled, enabled);
   }
 
   Future<void> setWeeklyDigestEnabled(bool enabled) async {

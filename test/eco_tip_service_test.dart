@@ -48,9 +48,7 @@ void main() {
     test('falls back when the response is malformed', () async {
       final client = MockClient((request) async {
         return http.Response(
-          jsonEncode({
-            'output_text': 'not valid json',
-          }),
+          jsonEncode({'output_text': 'not valid json'}),
           200,
         );
       });

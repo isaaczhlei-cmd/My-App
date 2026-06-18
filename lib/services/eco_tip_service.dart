@@ -8,10 +8,7 @@ class EcoTipSuggestion {
   final String tip;
   final String category;
 
-  const EcoTipSuggestion({
-    required this.tip,
-    required this.category,
-  });
+  const EcoTipSuggestion({required this.tip, required this.category});
 }
 
 class EcoTipService {
@@ -23,6 +20,9 @@ class EcoTipService {
 
   static const String _model = 'gpt-5-mini';
   static const String _baseUrl = 'https://api.openai.com/v1/responses';
+  static const String airlineReferenceUrl =
+      'https://en.wikipedia.org/wiki/Lists_of_airlines';
+  static const String airlineDatasetUrl = 'https://openflights.org/data.php';
   static const List<String> _categories = <String>[
     'travel',
     'home',
@@ -34,27 +34,33 @@ class EcoTipService {
 
   static const List<EcoTipSuggestion> fallbackTips = <EcoTipSuggestion>[
     EcoTipSuggestion(
-      tip: 'Compare aircraft type and seat count, not just stops, when two fares are similar.',
+      tip:
+          'Compare aircraft type and seat count, not just stops, when two fares are similar.',
       category: 'travel',
     ),
     EcoTipSuggestion(
-      tip: 'A slightly longer route can still be cleaner if it uses a newer, denser aircraft.',
+      tip:
+          'A slightly longer route can still be cleaner if it uses a newer, denser aircraft.',
       category: 'travel',
     ),
     EcoTipSuggestion(
-      tip: 'If you need a connection, compare hubs because some layovers add a big detour.',
+      tip:
+          'If you need a connection, compare hubs because some layovers add a big detour.',
       category: 'travel',
     ),
     EcoTipSuggestion(
-      tip: 'For the same price, pick the itinerary with fewer premium seats or a smaller cabin footprint.',
+      tip:
+          'For the same price, pick the itinerary with fewer premium seats or a smaller cabin footprint.',
       category: 'travel',
     ),
     EcoTipSuggestion(
-      tip: 'Use flexible dates to unlock a direct flight that is missing on your original day.',
+      tip:
+          'Use flexible dates to unlock a direct flight that is missing on your original day.',
       category: 'travel',
     ),
     EcoTipSuggestion(
-      tip: 'When you must connect, avoid routes that backtrack through a faraway hub.',
+      tip:
+          'When you must connect, avoid routes that backtrack through a faraway hub.',
       category: 'travel',
     ),
   ];
@@ -63,12 +69,10 @@ class EcoTipService {
   final String? _apiKeyOverride;
   final bool _ownsClient;
 
-  EcoTipService({
-    http.Client? client,
-    String? apiKey,
-  })  : _client = client ?? http.Client(),
-        _apiKeyOverride = apiKey,
-        _ownsClient = client == null;
+  EcoTipService({http.Client? client, String? apiKey})
+    : _client = client ?? http.Client(),
+      _apiKeyOverride = apiKey,
+      _ownsClient = client == null;
 
   void dispose() {
     if (_ownsClient) {
@@ -178,7 +182,8 @@ class EcoTipService {
     required String recentTravelPattern,
     int refreshToken = 0,
   }) {
-    final seed = flightCount * 7 +
+    final seed =
+        flightCount * 7 +
         totalEmissionsKg.round() +
         recentTravelPattern.runes.fold<int>(0, (sum, rune) => sum + rune) +
         refreshToken * 13;
@@ -204,6 +209,8 @@ class EcoTipService {
                   'You write one short, practical eco tip for a flight carbon tracker app. '
                   'Focus on real flight-planning tradeoffs like aircraft type, cabin layout, connection hubs, '
                   'seat density, route detours, and flexible dates. '
+                  'Use web search to open current airline references when airline names, aliases, or carrier codes matter. '
+                  'Start at $airlineReferenceUrl and cross-check codes against the OpenFlights airline database at $airlineDatasetUrl. '
                   'Do not give generic sustainability advice or obvious tips unless they are directly justified by the trip. '
                   'Prefer concrete, less-obvious, real-world guidance that helps the user choose a better itinerary. '
                   'Return only JSON that matches the schema. Keep the tip to one sentence and under 18 words.',
@@ -215,7 +222,8 @@ class EcoTipService {
           'content': [
             {
               'type': 'input_text',
-              'text': '''
+              'text':
+                  '''
 User context:
 - Flight count: $flightCount
 - Total emissions: ${totalEmissionsKg.toStringAsFixed(1)} kg CO2
@@ -228,6 +236,9 @@ Write one tailored eco tip that helps the user choose a better flight itinerary.
           ],
         },
       ],
+      'tools': [
+        {'type': 'web_search', 'search_context_size': 'low'},
+      ],
       'text': {
         'format': {
           'type': 'json_schema',
@@ -238,16 +249,10 @@ Write one tailored eco tip that helps the user choose a better flight itinerary.
             'type': 'object',
             'additionalProperties': false,
             'properties': {
-              'tip': {
-                'type': 'string',
-                'minLength': 1,
-              },
-              'category': {
-                'type': 'string',
-                'enum': _categories,
-              },
+              'tip': {'type': 'string', 'minLength': 1},
+              'category': {'type': 'string', 'enum': _categories},
             },
-            'required': ['tip'],
+            'required': ['tip', 'category'],
           },
         },
       },
