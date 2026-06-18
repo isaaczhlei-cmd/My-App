@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -9,15 +8,12 @@ import '../../services/auth_service.dart';
 import '../../services/booking_link_service.dart';
 import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
-import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../../widgets/airport_autocomplete_field.dart';
 import '../add_flight/flight_catalog.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
 import 'airport_directory.dart';
 import 'booking_handoff_screen.dart';
-
-enum _MiniPlanePhase { takeoff, cruise, landing }
 
 class BookFlightScreen extends StatefulWidget {
   const BookFlightScreen({super.key});
@@ -28,10 +24,6 @@ class BookFlightScreen extends StatefulWidget {
 
 class _BookFlightScreenState extends State<BookFlightScreen>
     with TickerProviderStateMixin {
-  static const Duration _planeSweepDuration = Duration(seconds: 4);
-  static const Duration _planeTurboSweepDuration = Duration(milliseconds: 1200);
-  static const Duration _planePauseDuration = Duration(seconds: 8);
-
   final _authService = AuthService();
   bool _isRoundTrip = true;
   BookingProvider _selectedProvider = BookingProvider.automatic;
@@ -50,16 +42,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   List<AirportOption> _toMatches = const [];
   late final AnimationController _swapAnimationController;
   late final Animation<double> _swapRotationAnimation;
-  late final AnimationController _planeSweepController;
-  late final AnimationController _planeRollController;
-  late final Animation<double> _planeRollAnimation;
-  Timer? _planePauseTimer;
-  bool _planeTurboActive = false;
-  bool _planeIsDragging = false;
-  Offset? _planeDragPosition;
-  Offset? _lastPlaneDragPosition;
-  DateTime? _lastPlaneDragAt;
-  double _planeEngineBurn = 0;
   late DateTime _departDate;
   late DateTime _returnDate;
   late bool _departSelected;
@@ -82,18 +64,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       parent: _swapAnimationController,
       curve: Curves.easeInOut,
     );
-    _planeSweepController = AnimationController(
-      vsync: this,
-      duration: _planeSweepDuration,
-    )..addStatusListener(_handlePlaneSweepStatus);
-    _planeRollController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 760),
-    );
-    _planeRollAnimation = CurvedAnimation(
-      parent: _planeRollController,
-      curve: Curves.easeInOutCubic,
-    );
     final today = DateUtils.dateOnly(DateTime.now());
     // Default depart date two weeks from today (e.g., Jun 15)
     _departDate = today.add(const Duration(days: 14));
@@ -111,7 +81,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     // Load saved booking provider preference
     _loadSavedProvider();
     _refreshCatalogResults();
-    _startPlaneSweep();
   }
 
   Future<void> _loadSavedProvider() async {
@@ -125,11 +94,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
 
   @override
   void dispose() {
-    _planePauseTimer?.cancel();
-    _planeSweepController
-      ..removeStatusListener(_handlePlaneSweepStatus)
-      ..dispose();
-    _planeRollController.dispose();
     _swapAnimationController.dispose();
     _fromController.dispose();
     _toController.dispose();
@@ -141,131 +105,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       ..removeListener(_handleFocusChange)
       ..dispose();
     super.dispose();
-  }
-
-  void _handlePlaneSweepStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
-
-    _planeSweepController.duration = _planeSweepDuration;
-    if ((_planeTurboActive || _planeEngineBurn > 0) && mounted) {
-      setState(() {
-        _planeTurboActive = false;
-        _planeEngineBurn = 0;
-      });
-    }
-    _planePauseTimer?.cancel();
-    _planePauseTimer = Timer(_planePauseDuration, () {
-      if (mounted) {
-        _startPlaneSweep();
-      }
-    });
-  }
-
-  void _startPlaneSweep({bool turbo = false}) {
-    _planePauseTimer?.cancel();
-    _planeSweepController.duration = turbo
-        ? _planeTurboSweepDuration
-        : _planeSweepDuration;
-    _planeSweepController.forward(from: 0);
-  }
-
-  void _activatePlaneTurbo() {
-    if (!_planeTurboActive) {
-      setState(() {
-        _planeTurboActive = true;
-        _planeEngineBurn = 0.85;
-      });
-    }
-    _planePauseTimer?.cancel();
-    _planeSweepController.duration = _planeTurboSweepDuration;
-    final start = _planeSweepController.isAnimating
-        ? _planeSweepController.value
-        : 0.0;
-    _planeSweepController.forward(from: start);
-  }
-
-  void _triggerPlaneRoll() {
-    _planeRollController.forward(from: 0);
-  }
-
-  void _startPlaneDrag(Offset currentPlanePosition) {
-    _planePauseTimer?.cancel();
-    _planeSweepController.stop();
-    setState(() {
-      _planeIsDragging = true;
-      _planeTurboActive = false;
-      _planeDragPosition = currentPlanePosition;
-      _lastPlaneDragPosition = currentPlanePosition;
-      _lastPlaneDragAt = DateTime.now();
-      _planeEngineBurn = 0.35;
-    });
-  }
-
-  void _updatePlaneDrag(DragUpdateDetails details, BoxConstraints constraints) {
-    const planeWidth = 100.0;
-    const planeHeight = 38.0;
-    final rawPosition = (_planeDragPosition ?? Offset.zero) + details.delta;
-    final nextPosition = Offset(
-      rawPosition.dx.clamp(0.0, max(0.0, constraints.maxWidth - planeWidth)),
-      rawPosition.dy.clamp(0.0, max(0.0, constraints.maxHeight - planeHeight)),
-    );
-    final now = DateTime.now();
-    final previousPosition = _lastPlaneDragPosition ?? nextPosition;
-    final elapsedMs = max(
-      1,
-      now.difference(_lastPlaneDragAt ?? now).inMilliseconds,
-    );
-    final pixelsPerSecond =
-        (nextPosition - previousPosition).distance / elapsedMs * 1000;
-
-    setState(() {
-      _planeDragPosition = nextPosition;
-      _lastPlaneDragPosition = nextPosition;
-      _lastPlaneDragAt = now;
-      _planeEngineBurn = (0.25 + pixelsPerSecond / 1600).clamp(0.25, 1.0);
-    });
-  }
-
-  void _endPlaneDrag() {
-    setState(() {
-      _planeIsDragging = false;
-      _lastPlaneDragPosition = null;
-      _lastPlaneDragAt = null;
-      _planeEngineBurn = 0.18;
-    });
-    _planePauseTimer?.cancel();
-    _planePauseTimer = Timer(const Duration(milliseconds: 650), () {
-      if (!mounted) return;
-      setState(() {
-        _planeDragPosition = null;
-        _planeEngineBurn = 0;
-      });
-      _startPlaneSweep();
-    });
-  }
-
-  _MiniPlanePhase _planePhaseFor({
-    required double sweepProgress,
-    required Offset position,
-    required BoxConstraints constraints,
-  }) {
-    if (_planeIsDragging) {
-      final lowerBand = constraints.maxHeight * 0.42;
-      if (position.dy >= lowerBand) return _MiniPlanePhase.landing;
-      if (_planeEngineBurn > 0.52) return _MiniPlanePhase.takeoff;
-      return _MiniPlanePhase.cruise;
-    }
-    if (sweepProgress < 0.24) return _MiniPlanePhase.takeoff;
-    if (sweepProgress > 0.76) return _MiniPlanePhase.landing;
-    return _MiniPlanePhase.cruise;
-  }
-
-  double _planePitchFor(_MiniPlanePhase phase) {
-    return switch (phase) {
-      _MiniPlanePhase.takeoff => -0.035,
-      _MiniPlanePhase.landing => 0.025,
-      _MiniPlanePhase.cruise => 0,
-    };
   }
 
   void _handleFocusChange() {
@@ -616,37 +455,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         .toList();
   }
 
-  String? get _planeAirlineName {
-    return _resolvedAirlineFilter ??
-        (_results.isNotEmpty ? _results.first.entry.airlineName : null);
-  }
-
-  String _airlineInitials(String airline) {
-    final words = airline
-        .split(RegExp(r'\s+'))
-        .where((word) => word.trim().isNotEmpty)
-        .toList();
-    if (words.isEmpty) return 'FP';
-    if (words.length == 1) {
-      return words.first.substring(0, min(2, words.first.length)).toUpperCase();
-    }
-    return words.take(2).map((word) => word[0]).join().toUpperCase();
-  }
-
-  Color _airlineAccentColor(String? airline) {
-    if (airline == null) return Theme.of(context).colorScheme.primary;
-    final colors = [
-      const Color(0xFF1E88E5),
-      const Color(0xFFD32F2F),
-      const Color(0xFF00897B),
-      const Color(0xFFFF8F00),
-      const Color(0xFF5E35B1),
-      const Color(0xFF00ACC1),
-    ];
-    final index = airline.codeUnits.fold<int>(0, (sum, code) => sum + code);
-    return colors[index % colors.length];
-  }
-
   int get _maxPassengersForCurrentSearch {
     final fromMatch =
         AirportDirectory.findBestMatch(
@@ -732,140 +540,24 @@ class _BookFlightScreenState extends State<BookFlightScreen>
         ),
         borderRadius: BorderRadius.circular(26),
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Book a Flight',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(height: 6),
-              Text(
-                'Compare price and carbon before you book',
-                style: TextStyle(fontSize: 16, color: Color(0xFFDCE2FF)),
-              ),
-            ],
-          ),
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: UserPreferencesService.instance,
-              builder: (context, _) {
-                if (!UserPreferencesService
-                    .instance
-                    .tinyFlightAnimationEnabled) {
-                  return const SizedBox.shrink();
-                }
-                return _buildSweepingPlane();
-              },
+          Text(
+            'Book a Flight',
+            style: TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Compare price and carbon before you book',
+            style: TextStyle(fontSize: 16, color: Color(0xFFDCE2FF)),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSweepingPlane() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return AnimatedBuilder(
-          animation: Listenable.merge([
-            _planeSweepController,
-            _planeRollController,
-          ]),
-          builder: (context, child) {
-            const planeWidth = 100.0;
-            const planeHeight = 38.0;
-            final x =
-                -planeWidth +
-                (constraints.maxWidth + planeWidth * 2) *
-                    _planeSweepController.value;
-            final y = min(
-              constraints.maxHeight - planeHeight,
-              2 + sin(_planeSweepController.value * pi) * 5,
-            );
-            final planePosition = _planeDragPosition ?? Offset(x, max(0, y));
-            final engineBurn = max(
-              _planeEngineBurn,
-              _planeTurboActive ? 0.85 : 0,
-            ).toDouble();
-            final planeOpacity = _planeTurboActive || _planeIsDragging
-                ? 0.92
-                : 0.68;
-            final planePhase = _planePhaseFor(
-              sweepProgress: _planeSweepController.value,
-              position: planePosition,
-              constraints: constraints,
-            );
-            final planePitch = _planePitchFor(planePhase);
-            final airlineName = _planeAirlineName;
-            final airlineAccent = _airlineAccentColor(airlineName);
-            final airlineLabel = airlineName == null
-                ? null
-                : _airlineInitials(airlineName);
-
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned(
-                  left: planePosition.dx,
-                  top: planePosition.dy,
-                  width: planeWidth,
-                  height: planeHeight,
-                  child: Semantics(
-                    button: true,
-                    label: 'Tiny plane',
-                    hint:
-                        'Tap once for turbo, twice for a barrel roll, or hold and drag',
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: _activatePlaneTurbo,
-                      onDoubleTap: _triggerPlaneRoll,
-                      onPanStart: (_) => _startPlaneDrag(planePosition),
-                      onPanUpdate: (details) =>
-                          _updatePlaneDrag(details, constraints),
-                      onPanEnd: (_) => _endPlaneDrag(),
-                      onPanCancel: _endPlaneDrag,
-                      child: RotationTransition(
-                        turns: _planeRollAnimation,
-                        child: Transform.rotate(
-                          angle: planePitch,
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 180),
-                            opacity: planeOpacity,
-                            child: CustomPaint(
-                              painter: _MiniPlanePainter(
-                                color: Colors.white.withValues(
-                                  alpha: planeOpacity,
-                                ),
-                                trailColor: Colors.white.withValues(
-                                  alpha: _planeTurboActive || _planeIsDragging
-                                      ? 0.24
-                                      : 0.14,
-                                ),
-                                engineBurn: engineBurn,
-                                phase: planePhase,
-                                accentColor: airlineAccent,
-                                airlineLabel: airlineLabel,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
     );
   }
 
@@ -1771,261 +1463,6 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     }
 
     return success;
-  }
-}
-
-class _MiniPlanePainter extends CustomPainter {
-  const _MiniPlanePainter({
-    required this.color,
-    required this.trailColor,
-    required this.engineBurn,
-    required this.phase,
-    required this.accentColor,
-    required this.airlineLabel,
-  });
-
-  final Color color;
-  final Color trailColor;
-  final double engineBurn;
-  final _MiniPlanePhase phase;
-  final Color accentColor;
-  final String? airlineLabel;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerY = size.height / 2;
-    final flapExtension = switch (phase) {
-      _MiniPlanePhase.takeoff => 0.48,
-      _MiniPlanePhase.landing => 0.78,
-      _MiniPlanePhase.cruise => 0.0,
-    };
-    final gearExtension = switch (phase) {
-      _MiniPlanePhase.takeoff => 0.35,
-      _MiniPlanePhase.landing => 1.0,
-      _MiniPlanePhase.cruise => 0.0,
-    };
-    final outlinePaint = Paint()
-      ..color = color.withValues(alpha: 0.95)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5
-      ..strokeJoin = StrokeJoin.round;
-    final bodyPaint = Paint()
-      ..color = color.withValues(alpha: 0.92)
-      ..style = PaintingStyle.fill;
-    final accentPaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.92)
-      ..style = PaintingStyle.fill;
-    final trailPaint = Paint()
-      ..color = trailColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-
-    if (engineBurn > 0) {
-      final burn = engineBurn.clamp(0.0, 1.0);
-      final flamePaint = Paint()..style = PaintingStyle.fill;
-      final flameLength = 10 + burn * 28;
-      final flameHeight = 4 + burn * 8;
-
-      void drawFlame(double yOffset, double scale) {
-        final baseX = size.width * 0.17;
-        final baseY = centerY + yOffset;
-        final outer = Path()
-          ..moveTo(baseX, baseY - flameHeight * scale)
-          ..quadraticBezierTo(
-            baseX - flameLength * scale,
-            baseY,
-            baseX,
-            baseY + flameHeight * scale,
-          )
-          ..close();
-        flamePaint.color = Color.lerp(
-          const Color(0xFFFFD166),
-          const Color(0xFFFF4D1D),
-          burn,
-        )!.withValues(alpha: 0.78);
-        canvas.drawPath(outer, flamePaint);
-
-        final inner = Path()
-          ..moveTo(baseX - 2, baseY - flameHeight * 0.42 * scale)
-          ..quadraticBezierTo(
-            baseX - flameLength * 0.48 * scale,
-            baseY,
-            baseX - 2,
-            baseY + flameHeight * 0.42 * scale,
-          )
-          ..close();
-        flamePaint.color = Colors.white.withValues(alpha: 0.72);
-        canvas.drawPath(inner, flamePaint);
-      }
-
-      drawFlame(-6, 0.74);
-      drawFlame(6, 0.68);
-    }
-
-    canvas.drawLine(
-      Offset(0, centerY),
-      Offset(size.width * 0.22, centerY),
-      trailPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.08, centerY - 7),
-      Offset(size.width * 0.22, centerY - 7),
-      trailPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.08, centerY + 7),
-      Offset(size.width * 0.22, centerY + 7),
-      trailPaint,
-    );
-
-    final bodyRect = RRect.fromLTRBR(
-      size.width * 0.18,
-      centerY - 5.4,
-      size.width * 0.88,
-      centerY + 5.4,
-      const Radius.circular(8),
-    );
-    canvas.drawRRect(bodyRect, bodyPaint);
-    canvas.drawRRect(bodyRect, outlinePaint);
-
-    final nose = Path()
-      ..moveTo(size.width * 0.84, centerY - 5.4)
-      ..quadraticBezierTo(
-        size.width * 0.99,
-        centerY,
-        size.width * 0.84,
-        centerY + 5.4,
-      )
-      ..close();
-    canvas.drawPath(nose, bodyPaint);
-    canvas.drawPath(nose, outlinePaint);
-
-    final upperWing = Path()
-      ..moveTo(size.width * 0.48, centerY - 2)
-      ..lineTo(size.width * 0.25, 1.5)
-      ..quadraticBezierTo(
-        size.width * 0.35,
-        2.5,
-        size.width * 0.62,
-        centerY - 1,
-      )
-      ..close();
-    final lowerWing = Path()
-      ..moveTo(size.width * 0.49, centerY + 2)
-      ..lineTo(size.width * 0.25, size.height - 1.5)
-      ..quadraticBezierTo(
-        size.width * 0.36,
-        size.height - 2.5,
-        size.width * 0.63,
-        centerY + 1,
-      )
-      ..close();
-    canvas.drawPath(upperWing, bodyPaint);
-    canvas.drawPath(lowerWing, bodyPaint);
-    canvas.drawPath(upperWing, outlinePaint);
-    canvas.drawPath(lowerWing, outlinePaint);
-
-    final stripe = RRect.fromLTRBR(
-      size.width * 0.34,
-      centerY - 2.2,
-      size.width * 0.76,
-      centerY + 2.2,
-      const Radius.circular(3),
-    );
-    canvas.drawRRect(stripe, accentPaint);
-
-    if (airlineLabel != null) {
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: airlineLabel,
-          style: TextStyle(
-            color: accentColor,
-            fontSize: 7,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout(maxWidth: 24);
-      textPainter.paint(
-        canvas,
-        Offset(size.width * 0.52, centerY - textPainter.height / 2),
-      );
-    }
-
-    if (flapExtension > 0) {
-      final flapPaint = Paint()
-        ..color = color.withValues(alpha: 0.88)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.1
-        ..strokeCap = StrokeCap.round;
-      final flapDrop = 4 + flapExtension * 5;
-      canvas.drawLine(
-        Offset(size.width * 0.34, centerY - 7),
-        Offset(size.width * (0.43 + flapExtension * 0.04), centerY - flapDrop),
-        flapPaint,
-      );
-      canvas.drawLine(
-        Offset(size.width * 0.35, centerY + 7),
-        Offset(size.width * (0.44 + flapExtension * 0.04), centerY + flapDrop),
-        flapPaint,
-      );
-    }
-
-    if (gearExtension > 0) {
-      final gearPaint = Paint()
-        ..color = color.withValues(alpha: 0.82)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.7
-        ..strokeCap = StrokeCap.round;
-      final wheelPaint = Paint()
-        ..color = color.withValues(alpha: 0.7)
-        ..style = PaintingStyle.fill;
-      final gearDrop = gearExtension * 9;
-      final noseGearX = size.width * 0.70;
-      final mainGearX = size.width * 0.43;
-
-      canvas.drawLine(
-        Offset(noseGearX, centerY + 1),
-        Offset(noseGearX, centerY + gearDrop),
-        gearPaint,
-      );
-      canvas.drawCircle(
-        Offset(noseGearX, centerY + gearDrop + 1.5),
-        1.8,
-        wheelPaint,
-      );
-      canvas.drawLine(
-        Offset(mainGearX, centerY + 2),
-        Offset(mainGearX - 3, centerY + gearDrop + 1),
-        gearPaint,
-      );
-      canvas.drawCircle(
-        Offset(mainGearX - 3, centerY + gearDrop + 2.5),
-        2.1,
-        wheelPaint,
-      );
-    }
-
-    final tail = Path()
-      ..moveTo(size.width * 0.22, centerY - 4)
-      ..lineTo(size.width * 0.08, centerY - 14)
-      ..lineTo(size.width * 0.15, centerY - 2)
-      ..moveTo(size.width * 0.22, centerY + 4)
-      ..lineTo(size.width * 0.08, centerY + 14)
-      ..lineTo(size.width * 0.15, centerY + 2);
-    canvas.drawPath(tail, accentPaint);
-    canvas.drawPath(tail, outlinePaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _MiniPlanePainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.trailColor != trailColor ||
-        oldDelegate.engineBurn != engineBurn ||
-        oldDelegate.phase != phase ||
-        oldDelegate.accentColor != accentColor ||
-        oldDelegate.airlineLabel != airlineLabel;
   }
 }
 

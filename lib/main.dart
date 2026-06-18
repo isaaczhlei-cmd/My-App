@@ -9,6 +9,7 @@ import 'screens/auth/login_screen.dart';
 import 'screens/home/home_screen.dart';
 import 'services/auth_service.dart';
 import 'services/user_preferences_service.dart';
+import 'widgets/airplane_mode_overlay.dart';
 import 'widgets/error_screen.dart';
 
 /// Thrown by [_bootstrap] to annotate a stage failure.
@@ -159,7 +160,7 @@ class AuthWrapper extends StatelessWidget {
 
         // Only fully signed-in accounts should reach the app home.
         if (user != null && !user.isAnonymous) {
-          return const HomeScreen();
+          return const AirplaneModeOverlay(child: HomeScreen());
         }
 
         // Signed out or anonymous users go to the auth flow.

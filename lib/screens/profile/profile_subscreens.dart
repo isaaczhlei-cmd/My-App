@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../config/theme.dart';
 import '../../models/flight.dart';
+import '../../services/airline_directory_service.dart';
 import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
 import '../../services/firestore_service.dart';
@@ -380,13 +381,28 @@ class AppSettingsScreen extends StatefulWidget {
 
 class _AppSettingsScreenState extends State<AppSettingsScreen> {
   final _firestoreService = FirestoreService();
+  late final TextEditingController _airplaneAirlineController;
+  late final FocusNode _airplaneAirlineFocusNode;
+  late final Future<List<AirlineOption>> _airlinesFuture;
   BookingProvider _selectedProvider = BookingProvider.automatic;
   bool _isExportingFlightHistory = false;
 
   @override
   void initState() {
     super.initState();
+    _airplaneAirlineController = TextEditingController(
+      text: UserPreferencesService.instance.airplaneModeAirlineName,
+    );
+    _airplaneAirlineFocusNode = FocusNode();
+    _airlinesFuture = AirlineDirectoryService.instance.loadAirlines();
     _loadBookingProvider();
+  }
+
+  @override
+  void dispose() {
+    _airplaneAirlineController.dispose();
+    _airplaneAirlineFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _loadBookingProvider() async {
@@ -599,15 +615,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                                         'Business',
                                         'First',
                                       ],
-                                      selected: switch (
-                                          prefs.defaultCabinClass) {
-                                        CabinClass.premiumEconomy => 1,
-                                        CabinClass.business => 2,
-                                        CabinClass.first => 3,
-                                        _ => 0,
-                                      },
-                                      onSelect: (i) =>
-                                          prefs.setDefaultCabinClass(switch (i) {
+                                      selected:
+                                          switch (prefs.defaultCabinClass) {
+                                            CabinClass.premiumEconomy => 1,
+                                            CabinClass.business => 2,
+                                            CabinClass.first => 3,
+                                            _ => 0,
+                                          },
+                                      onSelect: (i) => prefs
+                                          .setDefaultCabinClass(switch (i) {
                                             1 => CabinClass.premiumEconomy,
                                             2 => CabinClass.business,
                                             3 => CabinClass.first,
@@ -716,6 +732,20 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                           value: prefs.tinyFlightAnimationEnabled,
                           onChanged: prefs.setTinyFlightAnimationEnabled,
                         ),
+                        if (prefs.tinyFlightAnimationEnabled) ...[
+                          const _TicketDivider(),
+                          _AirplaneModeAirlineField(
+                            controller: _airplaneAirlineController,
+                            focusNode: _airplaneAirlineFocusNode,
+                            airlinesFuture: _airlinesFuture,
+                            onChanged: prefs.setAirplaneModeAirlineName,
+                            onSelected: (airline) {
+                              _airplaneAirlineController.text = airline.name;
+                              prefs.setAirplaneModeAirlineName(airline.name);
+                              _airplaneAirlineFocusNode.unfocus();
+                            },
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -738,7 +768,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                             _ChevronRow(
                               icon: Icons.ios_share_outlined,
                               label: 'Export flight history',
-                              value: _isExportingFlightHistory ? 'Preparing' : null,
+                              value: _isExportingFlightHistory
+                                  ? 'Preparing'
+                                  : null,
                               onTap: _isExportingFlightHistory
                                   ? () {}
                                   : _shareFlightHistory,
@@ -1025,6 +1057,314 @@ class _ToggleRow extends StatelessWidget {
               inactiveTrackColor: Colors.black12,
               inactiveThumbColor: Colors.white,
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AirplaneModeAirlineField extends StatefulWidget {
+  const _AirplaneModeAirlineField({
+    required this.controller,
+    required this.focusNode,
+    required this.airlinesFuture,
+    required this.onChanged,
+    required this.onSelected,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final Future<List<AirlineOption>> airlinesFuture;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<AirlineOption> onSelected;
+
+  @override
+  State<_AirplaneModeAirlineField> createState() =>
+      _AirplaneModeAirlineFieldState();
+}
+
+class _AirplaneModeAirlineFieldState extends State<_AirplaneModeAirlineField> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handleTextChanged);
+    widget.focusNode.addListener(_handleFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleTextChanged);
+    widget.focusNode.removeListener(_handleFocusChanged);
+    super.dispose();
+  }
+
+  void _handleTextChanged() {
+    if (mounted) setState(() {});
+  }
+
+  void _handleFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.airlines, color: themeColors.onCard, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: widget.controller,
+                  focusNode: widget.focusNode,
+                  cursorColor: accent,
+                  textCapitalization: TextCapitalization.words,
+                  style: TextStyle(
+                    color: themeColors.onCard,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Airline on plane',
+                    isDense: true,
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: themeColors.onCardMuted,
+                      size: 20,
+                    ),
+                    suffixIcon: widget.controller.text.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              widget.controller.text = 'FlightPrint Air';
+                              widget.onChanged('FlightPrint Air');
+                              widget.controller.selection =
+                                  TextSelection.collapsed(
+                                    offset: widget.controller.text.length,
+                                  );
+                            },
+                            icon: Icon(
+                              Icons.close,
+                              color: themeColors.onCardMuted,
+                              size: 18,
+                            ),
+                          ),
+                  ),
+                  onChanged: widget.onChanged,
+                ),
+              ),
+            ],
+          ),
+          if (widget.focusNode.hasFocus) ...[
+            const SizedBox(height: 10),
+            FutureBuilder<List<AirlineOption>>(
+              future: widget.airlinesFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const LinearProgressIndicator(minHeight: 2);
+                }
+                if (snapshot.hasError) {
+                  return Text(
+                    'Airline list unavailable.',
+                    style: TextStyle(
+                      color: themeColors.onCardMuted,
+                      fontSize: 13,
+                    ),
+                  );
+                }
+                final airlines = snapshot.data ?? const <AirlineOption>[];
+                return _AirlineDropdown(
+                  airlines: airlines,
+                  query: widget.controller.text,
+                  onSelected: widget.onSelected,
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AirlineDropdown extends StatelessWidget {
+  const _AirlineDropdown({
+    required this.airlines,
+    required this.query,
+    required this.onSelected,
+  });
+
+  final List<AirlineOption> airlines;
+  final String query;
+  final ValueChanged<AirlineOption> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final normalized = query.trim().toLowerCase();
+    final groups = _groupedMatches(normalized);
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 250),
+      decoration: BoxDecoration(
+        color: themeColors.cardMuted,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: groups.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                'No close airline matches.',
+                style: TextStyle(color: themeColors.onCardMuted, fontSize: 13),
+              ),
+            )
+          : ListView.builder(
+              shrinkWrap: true,
+              itemCount: groups.fold<int>(
+                0,
+                (count, group) => count + 1 + group.options.length,
+              ),
+              itemBuilder: (context, flatIndex) {
+                var cursor = 0;
+                for (final group in groups) {
+                  if (flatIndex == cursor) {
+                    return _AirlineLetterHeader(label: group.letter);
+                  }
+                  cursor++;
+                  final optionIndex = flatIndex - cursor;
+                  if (optionIndex >= 0 && optionIndex < group.options.length) {
+                    final option = group.options[optionIndex];
+                    return _AirlineOptionTile(
+                      option: option,
+                      onTap: () => onSelected(option),
+                    );
+                  }
+                  cursor += group.options.length;
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+    );
+  }
+
+  List<_AirlineGroup> _groupedMatches(String normalized) {
+    final matches = normalized.isEmpty
+        ? airlines
+        : airlines.where((airline) => airline.searchText.contains(normalized));
+    final limited = matches.take(normalized.length <= 1 ? 140 : 36).toList();
+
+    if (normalized.length == 1 && RegExp(r'[a-z]').hasMatch(normalized)) {
+      final letter = normalized.toUpperCase();
+      return [
+        _AirlineGroup(
+          letter: letter,
+          options: limited
+              .where((airline) => airline.initial == letter)
+              .take(36)
+              .toList(),
+        ),
+      ];
+    }
+
+    if (normalized.length > 1) {
+      return [_AirlineGroup(letter: 'Closest Matches', options: limited)];
+    }
+
+    final grouped = <String, List<AirlineOption>>{};
+    for (final airline in limited) {
+      grouped.putIfAbsent(airline.initial, () => []).add(airline);
+    }
+    final letters = grouped.keys.toList()..sort();
+    return letters
+        .map(
+          (letter) => _AirlineGroup(letter: letter, options: grouped[letter]!),
+        )
+        .toList();
+  }
+}
+
+class _AirlineGroup {
+  const _AirlineGroup({required this.letter, required this.options});
+
+  final String letter;
+  final List<AirlineOption> options;
+}
+
+class _AirlineLetterHeader extends StatelessWidget {
+  const _AirlineLetterHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+      color: themeColors.card,
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _AirlineOptionTile extends StatelessWidget {
+  const _AirlineOptionTile({required this.option, required this.onTap});
+
+  final AirlineOption option;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final code = option.iata.isNotEmpty
+        ? option.iata
+        : option.icao.isNotEmpty
+        ? option.icao
+        : '';
+    final meta = [
+      if (code.isNotEmpty) code,
+      if (option.country.isNotEmpty) option.country,
+      if (option.active) 'Active',
+    ].join(' • ');
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              option.name,
+              style: TextStyle(
+                color: themeColors.onCard,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (meta.isNotEmpty) ...[
+              const SizedBox(height: 2),
+              Text(
+                meta,
+                style: TextStyle(color: themeColors.onCardMuted, fontSize: 12),
+              ),
+            ],
           ],
         ),
       ),

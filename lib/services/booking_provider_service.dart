@@ -5,7 +5,7 @@ enum BookingProvider {
   automatic('Automatic'),
   googleFlights('Google Flights'),
   kayak('KAYAK'),
-  skyscanner('Skyscanner'),
+  skyscanner('Skyscanner');
 
   final String displayName;
   const BookingProvider(this.displayName);

@@ -34,5 +34,25 @@ void main() {
 
       expect(service.tinyFlightAnimationEnabled, isFalse);
     });
+
+    test('persists airplane mode airline name', () async {
+      final service = UserPreferencesService.instance;
+
+      await service.setAirplaneModeAirlineName('Emirates');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('airplane_mode_airline_name'), 'Emirates');
+      expect(service.airplaneModeAirlineName, 'Emirates');
+    });
+
+    test('uses fallback airline name when saved value is blank', () async {
+      final service = UserPreferencesService.instance;
+
+      await service.setAirplaneModeAirlineName('   ');
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('airplane_mode_airline_name'), 'FlightPrint Air');
+      expect(service.airplaneModeAirlineName, 'FlightPrint Air');
+    });
   });
 }

@@ -24,6 +24,7 @@ class UserPreferencesService extends ChangeNotifier {
   static const _keyDistanceUnit = 'distance_unit';
   static const _keyEcoTipsEnabled = 'eco_tips_enabled';
   static const _keyTinyFlightAnimationEnabled = 'tiny_flight_animation_enabled';
+  static const _keyAirplaneModeAirlineName = 'airplane_mode_airline_name';
   static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
   static const _keyAnnualCo2GoalTons = 'annual_co2_goal_tons';
 
@@ -44,6 +45,7 @@ class UserPreferencesService extends ChangeNotifier {
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
   bool _tinyFlightAnimationEnabled = true;
+  String _airplaneModeAirlineName = 'FlightPrint Air';
   bool _weeklyDigestEnabled = true;
   double? _annualCo2GoalTons;
 
@@ -54,6 +56,7 @@ class UserPreferencesService extends ChangeNotifier {
   DistanceUnit get distanceUnit => _distanceUnit;
   bool get ecoTipsEnabled => _ecoTipsEnabled;
   bool get tinyFlightAnimationEnabled => _tinyFlightAnimationEnabled;
+  String get airplaneModeAirlineName => _airplaneModeAirlineName;
   bool get weeklyDigestEnabled => _weeklyDigestEnabled;
   double? get annualCo2GoalTons => _annualCo2GoalTons;
 
@@ -102,6 +105,11 @@ class UserPreferencesService extends ChangeNotifier {
     final tinyFlightAnimation = prefs.getBool(_keyTinyFlightAnimationEnabled);
     if (tinyFlightAnimation != null) {
       _tinyFlightAnimationEnabled = tinyFlightAnimation;
+    }
+
+    final airplaneModeAirline = prefs.getString(_keyAirplaneModeAirlineName);
+    if (airplaneModeAirline != null && airplaneModeAirline.trim().isNotEmpty) {
+      _airplaneModeAirlineName = airplaneModeAirline.trim();
     }
 
     final weeklyDigest = prefs.getBool(_keyWeeklyDigestEnabled);
@@ -175,6 +183,19 @@ class UserPreferencesService extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyTinyFlightAnimationEnabled, enabled);
+  }
+
+  Future<void> setAirplaneModeAirlineName(String airlineName) async {
+    final normalized = airlineName.trim();
+    _airplaneModeAirlineName = normalized.isEmpty
+        ? 'FlightPrint Air'
+        : normalized;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _keyAirplaneModeAirlineName,
+      _airplaneModeAirlineName,
+    );
   }
 
   Future<void> setWeeklyDigestEnabled(bool enabled) async {

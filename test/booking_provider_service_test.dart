@@ -10,9 +10,17 @@ void main() {
     });
 
     group('getSelectedProvider', () {
-      test('returns Skyscanner as default when no provider is saved', () async {
+      test('returns Automatic as default when no provider is saved', () async {
         final provider = await BookingProviderService.getSelectedProvider();
-        expect(provider, BookingProvider.skyscanner);
+        expect(provider, BookingProvider.automatic);
+      });
+
+      test('returns saved Automatic provider', () async {
+        await BookingProviderService.setSelectedProvider(
+          BookingProvider.automatic,
+        );
+        final provider = await BookingProviderService.getSelectedProvider();
+        expect(provider, BookingProvider.automatic);
       });
 
       test('returns saved Skyscanner provider', () async {
@@ -37,15 +45,25 @@ void main() {
         expect(provider, BookingProvider.kayak);
       });
 
-      test('returns Skyscanner when saved value is corrupted', () async {
+      test('returns Automatic when saved value is corrupted', () async {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('booking_provider', 'invalid_provider');
         final provider = await BookingProviderService.getSelectedProvider();
-        expect(provider, BookingProvider.skyscanner);
+        expect(provider, BookingProvider.automatic);
       });
     });
 
     group('setSelectedProvider', () {
+      test('saves Automatic provider', () async {
+        final success = await BookingProviderService.setSelectedProvider(
+          BookingProvider.automatic,
+        );
+        expect(success, true);
+
+        final provider = await BookingProviderService.getSelectedProvider();
+        expect(provider, BookingProvider.automatic);
+      });
+
       test('saves Skyscanner provider', () async {
         final success = await BookingProviderService.setSelectedProvider(
           BookingProvider.skyscanner,
@@ -99,7 +117,7 @@ void main() {
         expect(success, true);
 
         final provider = await BookingProviderService.getSelectedProvider();
-        expect(provider, BookingProvider.skyscanner);
+        expect(provider, BookingProvider.automatic);
       });
 
       test('returns true even when no provider is saved', () async {
@@ -110,13 +128,18 @@ void main() {
 
     group('BookingProvider enum', () {
       test('has correct display names', () {
+        expect(BookingProvider.automatic.displayName, 'Automatic');
         expect(BookingProvider.skyscanner.displayName, 'Skyscanner');
         expect(BookingProvider.googleFlights.displayName, 'Google Flights');
-        expect(BookingProvider.kayak.displayName, 'Kayak');
+        expect(BookingProvider.kayak.displayName, 'KAYAK');
       });
 
       test('all providers are accessible', () {
-        expect(BookingProvider.values.length, 3);
+        expect(BookingProvider.values.length, 4);
+        expect(
+          BookingProvider.values.contains(BookingProvider.automatic),
+          true,
+        );
         expect(
           BookingProvider.values.contains(BookingProvider.skyscanner),
           true,
