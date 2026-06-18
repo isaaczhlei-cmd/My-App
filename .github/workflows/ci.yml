@@ -45,6 +45,15 @@ jobs:
               messagingSenderId: '1',
               projectId: 'ci-placeholder',
             );
+
+            static const FirebaseOptions ios = FirebaseOptions(
+              apiKey: 'ci-placeholder',
+              appId: '1:1:ios:ci-placeholder',
+              messagingSenderId: '1',
+              projectId: 'ci-placeholder',
+              iosClientId: 'ci-placeholder.apps.googleusercontent.com',
+              iosBundleId: 'ci.placeholder',
+            );
           }
           EOF
 

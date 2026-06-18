@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/services/auth_service.dart';
+import 'package:flightprint/services/auth_service.dart';
 
 void main() {
   group('AuthService.getErrorMessage', () {

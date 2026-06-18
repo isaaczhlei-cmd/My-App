@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/screens/book_flight/book_flight_screen.dart';
+import 'package:flightprint/screens/book_flight/book_flight_screen.dart';
 
 void main() {
   testWidgets('shows local comparison result cards', (tester) async {

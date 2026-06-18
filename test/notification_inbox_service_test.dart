@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/services/eco_tip_service.dart';
-import 'package:my_app/services/notification_inbox_service.dart';
+import 'package:flightprint/services/eco_tip_service.dart';
+import 'package:flightprint/services/notification_inbox_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

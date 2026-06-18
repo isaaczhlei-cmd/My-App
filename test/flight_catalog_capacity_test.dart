@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/screens/add_flight/flight_catalog.dart';
-import 'package:my_app/services/emissions_service.dart';
+import 'package:flightprint/screens/add_flight/flight_catalog.dart';
+import 'package:flightprint/services/emissions_service.dart';
 
 void main() {
   group('FlightCatalogEntry cabin capacities', () {

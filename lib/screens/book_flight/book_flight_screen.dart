@@ -341,18 +341,23 @@ class _BookFlightScreenState extends State<BookFlightScreen>
   }
 
   void _refreshCatalogResults() {
-    final fromMatch = AirportDirectory.findBestMatch(
-      _fromController.text,
-      excludeCode: _toAirport.code,
-    );
-    final toMatch = AirportDirectory.findBestMatch(
-      _toController.text,
-      excludeCode: _fromAirport.code,
-    );
+    // Fall back to the selected airports when the text inputs are blank so the
+    // default route (e.g. JFK -> LAX) shows results immediately, mirroring how
+    // _maxPassengersForCurrentSearch resolves the route.
+    final fromMatch =
+        AirportDirectory.findBestMatch(
+          _fromController.text,
+          excludeCode: _toAirport.code,
+        ) ??
+        _fromAirport;
+    final toMatch =
+        AirportDirectory.findBestMatch(
+          _toController.text,
+          excludeCode: _fromAirport.code,
+        ) ??
+        _toAirport;
 
-    if (fromMatch == null ||
-        toMatch == null ||
-        fromMatch.code == toMatch.code) {
+    if (fromMatch.code == toMatch.code) {
       setState(() {
         _results = const [];
         _hasSearchedCatalog = true;

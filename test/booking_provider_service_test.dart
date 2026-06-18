@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:my_app/services/booking_provider_service.dart';
+import 'package:flightprint/services/booking_provider_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
