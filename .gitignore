@@ -36,6 +36,7 @@ build/
 .claude/
 .codex/
 .agents/
+.gemini/
 openspec/
 AGENTS.md
 CLAUDE.md
