@@ -226,7 +226,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 16),
         Text(
-          'flightprint',
+          'FlightPrint',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,

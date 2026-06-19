@@ -26,7 +26,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
-            final flights = snapshot.data ?? [];
+            final flights = List<Flight>.of(snapshot.data ?? const <Flight>[]);
 
             // Calculate this month's stats
             final now = DateTime.now();

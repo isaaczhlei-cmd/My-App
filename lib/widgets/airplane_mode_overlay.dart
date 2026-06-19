@@ -994,7 +994,7 @@ class _AirlineBrand {
     };
     return overrides[code] ??
         _AirlineBrand(
-          name: 'flightprint Air',
+          name: 'FlightPrint Air',
           code: code.isEmpty ? 'FP' : code,
           primary: fallback,
           secondary: const Color(0xFF0E766E),

@@ -49,7 +49,7 @@ class UserPreferencesService extends ChangeNotifier {
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
   bool _tinyFlightAnimationEnabled = true;
-  String _airplaneModeAirlineName = 'flightprint Air';
+  String _airplaneModeAirlineName = 'FlightPrint Air';
   String _airplaneModeAirlineCode = 'FP';
   String _airplaneModeAirlineIcao = '';
   String _airplaneModeAirlineCountry = '';
@@ -207,9 +207,11 @@ class UserPreferencesService extends ChangeNotifier {
   Future<void> setAirplaneModeAirlineName(String airlineName) async {
     final normalized = airlineName.trim();
     _airplaneModeAirlineName = normalized.isEmpty
-        ? 'flightprint Air'
+        ? 'FlightPrint Air'
         : normalized;
-    if (normalized.isEmpty || normalized == 'flightprint Air') {
+    if (normalized.isEmpty ||
+        normalized == 'flightprint Air' ||
+        normalized == 'FlightPrint Air') {
       _airplaneModeAirlineCode = 'FP';
       _airplaneModeAirlineIcao = '';
       _airplaneModeAirlineCountry = '';
@@ -236,7 +238,7 @@ class UserPreferencesService extends ChangeNotifier {
 
   Future<void> setAirplaneModeAirline(AirlineOption airline) async {
     _airplaneModeAirlineName = airline.name.trim().isEmpty
-        ? 'flightprint Air'
+        ? 'FlightPrint Air'
         : airline.name.trim();
     _airplaneModeAirlineCode = airline.iata.trim().isNotEmpty
         ? airline.iata.trim().toUpperCase()

@@ -27,7 +27,7 @@ class ErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'flightprint',
+      title: 'FlightPrint',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: ErrorScreen(
@@ -79,8 +79,7 @@ class ErrorScreen extends StatelessWidget {
     }
   }
 
-  bool get _showRetry =>
-      stage == BootstrapStage.firebase && onRetry != null;
+  bool get _showRetry => stage == BootstrapStage.firebase && onRetry != null;
 
   @override
   Widget build(BuildContext context) {
@@ -180,10 +179,7 @@ class ErrorScreen extends StatelessWidget {
               ),
               if (_showRetry) ...[
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: onRetry,
-                  child: const Text('Retry'),
-                ),
+                ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
               ],
             ],
           ),

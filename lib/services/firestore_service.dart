@@ -53,12 +53,12 @@ class FirestoreService {
   Stream<List<Flight>> getFlightsStream() async* {
     final uid = _uid;
     if (uid == null) {
-      yield const <Flight>[];
+      yield <Flight>[];
       return;
     }
 
     final localFlights = await _getLocalFlights(uid);
-    yield localFlights;
+    yield List<Flight>.of(localFlights);
 
     try {
       yield* _flightsRef(uid)
@@ -71,7 +71,7 @@ class FirestoreService {
     } catch (e, st) {
       debugPrint('Flight log stream failed: $e');
       debugPrintStack(stackTrace: st);
-      yield localFlights;
+      yield List<Flight>.of(localFlights);
     }
   }
 
@@ -87,7 +87,7 @@ class FirestoreService {
       return _mergeFlights(_flightsFromSnapshot(snapshot), localFlights);
     } on FirebaseException catch (e) {
       debugPrint('Using local flight history after Firestore ${e.code}: $e');
-      return localFlights;
+      return List<Flight>.of(localFlights);
     }
   }
 

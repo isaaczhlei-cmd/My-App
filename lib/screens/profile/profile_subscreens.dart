@@ -494,15 +494,15 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final file = XFile.fromData(
         Uint8List.fromList(utf8.encode(csv)),
         mimeType: 'text/csv',
-        name: 'flightprint-history.csv',
+        name: 'FlightPrint-history.csv',
       );
       final box = context.findRenderObject() as RenderBox?;
       await SharePlus.instance.share(
         ShareParams(
-          subject: 'flightprint flight history',
-          text: 'Sharing my flightprint flight history.',
+          subject: 'FlightPrint flight history',
+          text: 'Sharing my FlightPrint flight history.',
           files: [file],
-          fileNameOverrides: const ['flightprint-history.csv'],
+          fileNameOverrides: const ['FlightPrint-history.csv'],
           sharePositionOrigin: box == null
               ? null
               : box.localToGlobal(Offset.zero) & box.size,
@@ -594,7 +594,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
           return SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 40),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                96 + MediaQuery.paddingOf(context).bottom,
+              ),
               child: Column(
                 children: [
                   // ── Section 1: Preferences ─────────────────────────────
@@ -603,55 +608,66 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.airline_seat_recline_extra_outlined,
-                                color: themeColors.onCard,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                'Default cabin',
-                                style: TextStyle(
-                                  color: themeColors.onCard,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              Flexible(
-                                child: Align(
-                                  alignment: Alignment.centerRight,
-                                  child: FittedBox(
-                                    fit: BoxFit.scaleDown,
-                                    child: _InlineSegmented(
-                                      options: const [
-                                        'Economy',
-                                        'Premium',
-                                        'Business',
-                                        'First',
-                                      ],
-                                      selected:
-                                          switch (prefs.defaultCabinClass) {
-                                            CabinClass.premiumEconomy => 1,
-                                            CabinClass.business => 2,
-                                            CabinClass.first => 3,
-                                            _ => 0,
-                                          },
-                                      onSelect: (i) => prefs
-                                          .setDefaultCabinClass(switch (i) {
-                                            1 => CabinClass.premiumEconomy,
-                                            2 => CabinClass.business,
-                                            3 => CabinClass.first,
-                                            _ => CabinClass.economy,
-                                          }),
-                                      activeColor: accent,
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final cabinSegment = _InlineSegmented(
+                                options: const [
+                                  'Economy',
+                                  'Premium',
+                                  'Business',
+                                  'First',
+                                ],
+                                selected: switch (prefs.defaultCabinClass) {
+                                  CabinClass.premiumEconomy => 1,
+                                  CabinClass.business => 2,
+                                  CabinClass.first => 3,
+                                  _ => 0,
+                                },
+                                onSelect: (i) =>
+                                    prefs.setDefaultCabinClass(switch (i) {
+                                      1 => CabinClass.premiumEconomy,
+                                      2 => CabinClass.business,
+                                      3 => CabinClass.first,
+                                      _ => CabinClass.economy,
+                                    }),
+                                activeColor: accent,
+                              );
+
+                              final label = Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.airline_seat_recline_extra_outlined,
+                                    color: themeColors.onCard,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    'Default cabin',
+                                    style: TextStyle(
+                                      color: themeColors.onCard,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
-                                ),
-                              ),
-                            ],
+                                ],
+                              );
+
+                              if (constraints.maxWidth < 360) {
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    label,
+                                    const SizedBox(height: 12),
+                                    cabinSegment,
+                                  ],
+                                );
+                              }
+
+                              return Row(
+                                children: [label, const Spacer(), cabinSegment],
+                              );
+                            },
                           ),
                         ),
                         const _TicketDivider(),
@@ -706,7 +722,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['mi', 'Km'],
+                                options: const ['Mi', 'Km'],
                                 selected:
                                     prefs.distanceUnit == DistanceUnit.miles
                                     ? 0
@@ -1161,8 +1177,8 @@ class _AirplaneModeAirlineFieldState extends State<_AirplaneModeAirlineField> {
                         ? null
                         : IconButton(
                             onPressed: () {
-                              widget.controller.text = 'flightprint Air';
-                              widget.onChanged('flightprint Air');
+                              widget.controller.text = 'FlightPrint Air';
+                              widget.onChanged('FlightPrint Air');
                               widget.controller.selection =
                                   TextSelection.collapsed(
                                     offset: widget.controller.text.length,
@@ -1640,7 +1656,7 @@ class AboutScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'flightprint',
+                          'FlightPrint',
                           style: TextStyle(
                             color: themeColors.onCard,
                             fontSize: 24,
@@ -1662,15 +1678,15 @@ class AboutScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _AboutSection(
-                title: 'What flightprint Does',
+                title: 'What FlightPrint Does',
                 body:
-                    'flightprint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
+                    'FlightPrint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
               ),
               const SizedBox(height: 14),
               _AboutSection(
                 title: 'How Emissions Work',
                 body:
-                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, flightprint uses a local distance-based estimate so you can still compare trips consistently.',
+                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, FlightPrint uses a local distance-based estimate so you can still compare trips consistently.',
               ),
               const SizedBox(height: 14),
               _AboutSection(
