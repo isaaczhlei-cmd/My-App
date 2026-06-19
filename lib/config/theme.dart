@@ -18,6 +18,7 @@ class AppColors {
 
   // Status colors — vivid variants to stand out against dark backgrounds
   static const Color successGreen = Color(0xFF28C67A);
+  static const Color darkSuccessGreen = Color(0xFF168452);
   static const Color warningOrange = Color(0xFFFFA726);
   static const Color errorRed = Color(0xFFF44336);
 }
@@ -140,13 +141,13 @@ class AppTheme {
           seedColor: seedColor,
           brightness: brightness,
         ).copyWith(
+          primary: resolvedAccent,
+          onPrimary: Colors.white,
           surface: card,
           onSurface: onCard,
           surfaceContainerHighest: cardMuted,
           onSurfaceVariant: onCardMuted,
           outlineVariant: outlineSoft,
-          primary: resolvedAccent,
-          onPrimary: Colors.white,
           error: AppColors.errorRed,
         );
 
@@ -255,11 +256,18 @@ class AppTheme {
       outlineSoft: isDark ? const Color(0xFF2F5D6E) : const Color(0xFFD8E0D7),
       logoPlate: isDark ? const Color(0xFFDFF8EE) : const Color(0xFFF7FBF7),
       successContainer: isDark
-          ? AppColors.successGreen
+          ? AppColors.darkSuccessGreen
           : const Color(0xFFEAF6EE),
       onSuccessContainer: isDark
           ? AppColors.textPrimary
           : const Color(0xFF17391C),
     );
   }
+
+  static Color fixedSuccessGreenFor(Brightness brightness) {
+    return brightness == Brightness.dark
+        ? AppColors.darkSuccessGreen
+        : AppColors.successGreen;
+  }
+
 }
