@@ -32,6 +32,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   bool _facingRight = true;
   Offset? _dragPosition;
   Offset? _lastDragPosition;
+  double _lastDragVelocityDx = 0;
   DateTime? _lastDragAt;
   double _engineBurn = 0;
   double _leftRouteFactor = 0.12;
@@ -73,6 +74,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
         status != AnimationStatus.dismissed) {
       return;
     }
+    if (_isDragging) return;
     _sweepController.duration = _sweepDuration;
     if (mounted) {
       setState(() {
@@ -82,6 +84,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
         _engineBurn = 0;
       });
     }
+    _animateTowardEdge(_facingRight);
   }
 
   double _randomRouteFactor() {
@@ -99,10 +102,21 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _startSweep({bool turbo = false}) {
-    final duration = turbo ? _turboDuration : _sweepDuration;
-    _sweepController
-      ..duration = duration
-      ..repeat(reverse: true, period: duration);
+    _animateTowardEdge(_facingRight, turbo: turbo);
+  }
+
+  void _animateTowardEdge(bool movingRight, {bool turbo = false}) {
+    final baseDuration = turbo ? _turboDuration : _sweepDuration;
+    final remaining = movingRight
+        ? (1 - _sweepController.value).clamp(0.0, 1.0)
+        : _sweepController.value.clamp(0.0, 1.0);
+    final duration = baseDuration * max(0.18, remaining);
+    _sweepController.duration = duration;
+    if (movingRight) {
+      _sweepController.forward();
+    } else {
+      _sweepController.reverse();
+    }
   }
 
   void _activateTurbo() {
@@ -139,30 +153,60 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     final previous = _lastDragPosition ?? next;
     final elapsedMs = max(1, now.difference(_lastDragAt ?? now).inMilliseconds);
     final velocity = (next - previous).distance / elapsedMs * 1000;
+    final velocityDx = (next.dx - previous.dx) / elapsedMs * 1000;
 
     setState(() {
       _dragPosition = next;
       _lastDragPosition = next;
+      _lastDragVelocityDx = velocityDx;
       _lastDragAt = now;
       _engineBurn = (0.22 + velocity / 1800).clamp(0.22, 1.0).toDouble();
     });
   }
 
-  void _endDrag() {
+  void _endDrag([BoxConstraints? constraints]) {
+    final droppedPosition = _dragPosition;
+    if (droppedPosition != null && constraints != null) {
+      _launchFromDrop(droppedPosition, constraints);
+    }
     setState(() {
       _isDragging = false;
+      _dragPosition = null;
       _lastDragPosition = null;
       _lastDragAt = null;
-      _engineBurn = 0.16;
+      _engineBurn = 0.72;
     });
     Timer(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       setState(() {
-        _dragPosition = null;
+        _lastDragVelocityDx = 0;
         _engineBurn = 0;
       });
-      _startSweep();
     });
+  }
+
+  void _launchFromDrop(Offset position, BoxConstraints constraints) {
+    final visibleTravel = max(1, constraints.maxWidth - _planeWidth).toDouble();
+    final progress = (position.dx / visibleTravel).clamp(0.0, 1.0).toDouble();
+    final routeFactor = (position.dy / max(1, constraints.maxHeight))
+        .clamp(0.08, 0.54)
+        .toDouble();
+    final movingRight = _lastDragVelocityDx.abs() < 45
+        ? _facingRight
+        : _lastDragVelocityDx >= 0;
+
+    _sweepController.value = progress;
+    _facingRight = movingRight;
+    if (movingRight) {
+      _leftRouteFactor = routeFactor;
+      _rightRouteFactor = _randomRouteFactor();
+    } else {
+      _rightRouteFactor = routeFactor;
+      _leftRouteFactor = _randomRouteFactor();
+    }
+    _routeWavePhase = _routeRandom.nextDouble() * pi * 2;
+    _routeWaveAmplitude = 10 + _routeRandom.nextDouble() * 18;
+    _animateTowardEdge(movingRight, turbo: true);
   }
 
   _AirplanePhase _phaseFor({
@@ -269,38 +313,35 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                                     onPanStart: (_) => _startDrag(position),
                                     onPanUpdate: (details) =>
                                         _updateDrag(details, constraints),
-                                    onPanEnd: (_) => _endDrag(),
-                                    onPanCancel: _endDrag,
+                                    onPanEnd: (_) => _endDrag(constraints),
+                                    onPanCancel: () => _endDrag(constraints),
                                     child: RotationTransition(
                                       turns: _rollAnimation,
                                       child: Transform.rotate(
                                         angle: _pitchFor(phase),
                                         child: Opacity(
                                           opacity: opacity,
-                                          child: Transform.scale(
-                                            alignment: Alignment.center,
-                                            scaleX: _facingRight ? 1.0 : -1.0,
-                                            child: CustomPaint(
-                                              painter: _Boeing777XPlanePainter(
-                                                airlineName: prefs
-                                                    .airplaneModeAirlineName,
-                                                airlineCode: prefs
-                                                    .airplaneModeAirlineCode,
-                                                phase: phase,
-                                                engineBurn: burn,
-                                                accentColor: Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                                fuselageColor: Colors.white,
-                                                trailColor: Colors.white
-                                                    .withValues(
-                                                      alpha:
-                                                          _isDragging ||
-                                                              _turboActive
-                                                          ? 0.28
-                                                          : 0.14,
-                                                    ),
-                                              ),
+                                          child: CustomPaint(
+                                            painter: _Boeing777XPlanePainter(
+                                              airlineName:
+                                                  prefs.airplaneModeAirlineName,
+                                              airlineCode:
+                                                  prefs.airplaneModeAirlineCode,
+                                              facingRight: _facingRight,
+                                              phase: phase,
+                                              engineBurn: burn,
+                                              accentColor: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                              fuselageColor: Colors.white,
+                                              trailColor: Colors.white
+                                                  .withValues(
+                                                    alpha:
+                                                        _isDragging ||
+                                                            _turboActive
+                                                        ? 0.28
+                                                        : 0.14,
+                                                  ),
                                             ),
                                           ),
                                         ),
@@ -329,6 +370,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
   const _Boeing777XPlanePainter({
     required this.airlineName,
     required this.airlineCode,
+    required this.facingRight,
     required this.phase,
     required this.engineBurn,
     required this.accentColor,
@@ -338,6 +380,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
 
   final String airlineName;
   final String airlineCode;
+  final bool facingRight;
   final _AirplanePhase phase;
   final double engineBurn;
   final Color accentColor;
@@ -382,6 +425,12 @@ class _Boeing777XPlanePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round;
+
+    canvas.save();
+    if (!facingRight) {
+      canvas.translate(size.width, 0);
+      canvas.scale(-1, 1);
+    }
 
     for (final offset in [-11.0, 0.0, 11.0]) {
       canvas.drawLine(
@@ -492,9 +541,11 @@ class _Boeing777XPlanePainter extends CustomPainter {
 
     _drawCockpit(canvas, size, cy, glassPaint);
     _drawDoorsAndWindows(canvas, size, cy, glassPaint, outlinePaint);
+    _drawFlapsAndGear(canvas, size, cy);
+    canvas.restore();
+
     _paintAirlineName(canvas, size, cy, brand);
     _drawBrandMark(canvas, size, cy, brand);
-    _drawFlapsAndGear(canvas, size, cy);
   }
 
   void _paintAirlineName(
@@ -519,7 +570,10 @@ class _Boeing777XPlanePainter extends CustomPainter {
     )..layout(maxWidth: size.width * 0.30);
     textPainter.paint(
       canvas,
-      Offset(size.width * 0.44, cy - 8 - textPainter.height / 2),
+      Offset(
+        facingRight ? size.width * 0.44 : size.width * 0.26 - textPainter.width,
+        cy - 8 - textPainter.height / 2,
+      ),
     );
   }
 
@@ -697,7 +751,10 @@ class _Boeing777XPlanePainter extends CustomPainter {
         : airlineCode.trim().toUpperCase();
     final label = code.length > 3 ? code.substring(0, 3) : code;
     final badge = Rect.fromCircle(
-      center: Offset(size.width * 0.115, cy - 18),
+      center: Offset(
+        facingRight ? size.width * 0.115 : size.width * 0.885,
+        cy - 18,
+      ),
       radius: 9,
     );
     canvas.drawOval(

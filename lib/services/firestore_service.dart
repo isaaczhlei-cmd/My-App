@@ -136,7 +136,7 @@ class FirestoreService {
   String _localFlightsKey(String uid) => 'local_flights_$uid';
 
   Future<void> _addLocalFlight(String uid, Flight flight) async {
-    final flights = await _getLocalFlights(uid);
+    final flights = [...await _getLocalFlights(uid)];
     final localFlight = Flight(
       id: 'local-${DateTime.now().microsecondsSinceEpoch}',
       originCode: flight.originCode,
@@ -155,7 +155,7 @@ class FirestoreService {
   Future<List<Flight>> _getLocalFlights(String uid) async {
     final prefs = await SharedPreferences.getInstance();
     final encoded = prefs.getString(_localFlightsKey(uid));
-    if (encoded == null || encoded.isEmpty) return const <Flight>[];
+    if (encoded == null || encoded.isEmpty) return <Flight>[];
     try {
       final rows = jsonDecode(encoded) as List<dynamic>;
       final flights = rows
@@ -167,7 +167,7 @@ class FirestoreService {
     } catch (e, st) {
       debugPrint('Could not read local flights: $e');
       debugPrintStack(stackTrace: st);
-      return const <Flight>[];
+      return <Flight>[];
     }
   }
 
@@ -178,7 +178,7 @@ class FirestoreService {
   }
 
   Future<void> _deleteLocalFlight(String uid, String flightId) async {
-    final flights = await _getLocalFlights(uid);
+    final flights = [...await _getLocalFlights(uid)];
     flights.removeWhere((flight) => flight.id == flightId);
     await _setLocalFlights(uid, flights);
   }
