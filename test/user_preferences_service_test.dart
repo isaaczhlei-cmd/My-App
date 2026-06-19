@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flightprint/services/airline_directory_service.dart';
 import 'package:flightprint/services/user_preferences_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -53,6 +54,28 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       expect(prefs.getString('airplane_mode_airline_name'), 'flightprint Air');
       expect(service.airplaneModeAirlineName, 'flightprint Air');
+    });
+
+    test('persists selected airplane mode airline profile', () async {
+      final service = UserPreferencesService.instance;
+
+      await service.setAirplaneModeAirline(
+        const AirlineOption(
+          name: 'Qatar Airways',
+          country: 'Qatar',
+          iata: 'QR',
+          icao: 'QTR',
+          active: true,
+        ),
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('airplane_mode_airline_name'), 'Qatar Airways');
+      expect(prefs.getString('airplane_mode_airline_code'), 'QR');
+      expect(prefs.getString('airplane_mode_airline_icao'), 'QTR');
+      expect(prefs.getString('airplane_mode_airline_country'), 'Qatar');
+      expect(service.airplaneModeAirlineName, 'Qatar Airways');
+      expect(service.airplaneModeAirlineCode, 'QR');
     });
   });
 }

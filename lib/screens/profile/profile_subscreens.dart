@@ -758,7 +758,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                             onChanged: prefs.setAirplaneModeAirlineName,
                             onSelected: (airline) {
                               _airplaneAirlineController.text = airline.name;
-                              prefs.setAirplaneModeAirlineName(airline.name);
+                              prefs.setAirplaneModeAirline(airline);
                               _airplaneAirlineFocusNode.unfocus();
                             },
                           ),
@@ -1180,6 +1180,19 @@ class _AirplaneModeAirlineFieldState extends State<_AirplaneModeAirlineField> {
               ),
             ],
           ),
+          if (UserPreferencesService.instance.airplaneModeAirlineCode
+                  .trim()
+                  .isNotEmpty &&
+              UserPreferencesService.instance.airplaneModeAirlineCode !=
+                  'FP') ...[
+            const SizedBox(height: 10),
+            _SelectedAirlinePreview(
+              name: UserPreferencesService.instance.airplaneModeAirlineName,
+              code: UserPreferencesService.instance.airplaneModeAirlineCode,
+              country:
+                  UserPreferencesService.instance.airplaneModeAirlineCountry,
+            ),
+          ],
           if (widget.focusNode.hasFocus) ...[
             const SizedBox(height: 10),
             FutureBuilder<List<AirlineOption>>(
@@ -1199,13 +1212,83 @@ class _AirplaneModeAirlineFieldState extends State<_AirplaneModeAirlineField> {
                 }
                 final airlines = snapshot.data ?? const <AirlineOption>[];
                 return _AirlineDropdown(
-                  airlines: airlines,
+                  airlines: airlines
+                      .where(
+                        (airline) =>
+                            airline.active &&
+                            (airline.iata.isNotEmpty ||
+                                airline.icao.isNotEmpty),
+                      )
+                      .toList(),
                   query: widget.controller.text,
                   onSelected: widget.onSelected,
                 );
               },
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+class _SelectedAirlinePreview extends StatelessWidget {
+  const _SelectedAirlinePreview({
+    required this.name,
+    required this.code,
+    required this.country,
+  });
+
+  final String name;
+  final String code;
+  final String country;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final meta = [
+      if (code.isNotEmpty) code,
+      if (country.isNotEmpty) country,
+    ].join(' • ');
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: themeColors.cardMuted,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      child: Row(
+        children: [
+          _AirlineLogoBadge(code: code, name: name),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: themeColors.onCard,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                if (meta.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    meta,
+                    style: TextStyle(
+                      color: themeColors.onCardMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -1364,25 +1447,91 @@ class _AirlineOptionTile extends StatelessWidget {
       onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(
-              option.name,
-              style: TextStyle(
-                color: themeColors.onCard,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+            _AirlineLogoBadge(code: code, name: option.name),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    option.name,
+                    style: TextStyle(
+                      color: themeColors.onCard,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      meta,
+                      style: TextStyle(
+                        color: themeColors.onCardMuted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            if (meta.isNotEmpty) ...[
-              const SizedBox(height: 2),
-              Text(
-                meta,
-                style: TextStyle(color: themeColors.onCardMuted, fontSize: 12),
-              ),
-            ],
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AirlineLogoBadge extends StatelessWidget {
+  const _AirlineLogoBadge({required this.code, required this.name});
+
+  final String code;
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final label = code.isNotEmpty
+        ? code
+        : name.trim().isEmpty
+        ? '?'
+        : name.trim().characters.first.toUpperCase();
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: themeColors.outlineSoft),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: code.length == 2
+          ? Image.network(
+              'https://www.gstatic.com/flights/airline_logos/70px/$code.png',
+              fit: BoxFit.contain,
+              errorBuilder: (_, _, _) => _AirlineLogoFallback(label: label),
+            )
+          : _AirlineLogoFallback(label: label),
+    );
+  }
+}
+
+class _AirlineLogoFallback extends StatelessWidget {
+  const _AirlineLogoFallback({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.primary,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
         ),
       ),
     );

@@ -21,8 +21,8 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   static const _sweepDuration = Duration(seconds: 9);
   static const _turboDuration = Duration(milliseconds: 1800);
   static const _pauseDuration = Duration(seconds: 7);
-  static const _planeWidth = 190.0;
-  static const _planeHeight = 62.0;
+  static const _planeWidth = 230.0;
+  static const _planeHeight = 74.0;
 
   late final AnimationController _sweepController;
   late final AnimationController _rollController;
@@ -203,10 +203,11 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                         ]),
                         builder: (context, _) {
                           final progress = _sweepController.value;
-                          final x =
-                              -_planeWidth +
-                              (constraints.maxWidth + _planeWidth * 2) *
-                                  progress;
+                          final visibleTravel = max(
+                            0,
+                            constraints.maxWidth - _planeWidth,
+                          ).toDouble();
+                          final x = visibleTravel * progress;
                           final cruiseY =
                               constraints.maxHeight * 0.10 +
                               sin(progress * pi * 2) * 12;
@@ -261,6 +262,8 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                                             painter: _Boeing777XPlanePainter(
                                               airlineName:
                                                   prefs.airplaneModeAirlineName,
+                                              airlineCode:
+                                                  prefs.airplaneModeAirlineCode,
                                               phase: phase,
                                               engineBurn: burn,
                                               accentColor: Theme.of(
@@ -302,6 +305,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
 class _Boeing777XPlanePainter extends CustomPainter {
   const _Boeing777XPlanePainter({
     required this.airlineName,
+    required this.airlineCode,
     required this.phase,
     required this.engineBurn,
     required this.accentColor,
@@ -310,6 +314,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
   });
 
   final String airlineName;
+  final String airlineCode;
   final _AirplanePhase phase;
   final double engineBurn;
   final Color accentColor;
@@ -318,20 +323,36 @@ class _Boeing777XPlanePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final brand = _AirlineBrand.forCode(airlineCode, accentColor);
     final cy = size.height * 0.5;
-    final bodyPaint = Paint()
-      ..color = fuselageColor.withValues(alpha: 0.96)
+    final shadowPaint = Paint()
+      ..color = const Color(0xFF001317).withValues(alpha: 0.20)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    final fuselagePaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          fuselageColor,
+          const Color(0xFFE7EEF1),
+          const Color(0xFFBBC8CF),
+        ],
+        stops: const [0, 0.58, 1],
+      ).createShader(Rect.fromLTWH(0, cy - 15, size.width, 30))
       ..style = PaintingStyle.fill;
     final outlinePaint = Paint()
       ..color = const Color(0xFF0A2733).withValues(alpha: 0.82)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
+      ..strokeWidth = 1.1
       ..strokeJoin = StrokeJoin.round;
-    final accentPaint = Paint()
-      ..color = accentColor.withValues(alpha: 0.96)
+    final primaryPaint = Paint()
+      ..color = brand.primary.withValues(alpha: 0.97)
+      ..style = PaintingStyle.fill;
+    final secondaryPaint = Paint()
+      ..color = brand.secondary.withValues(alpha: 0.95)
       ..style = PaintingStyle.fill;
     final glassPaint = Paint()
-      ..color = const Color(0xFF163E63).withValues(alpha: 0.82)
+      ..color = const Color(0xFF092C42).withValues(alpha: 0.86)
       ..style = PaintingStyle.fill;
     final trailPaint = Paint()
       ..color = trailColor
@@ -339,119 +360,131 @@ class _Boeing777XPlanePainter extends CustomPainter {
       ..strokeWidth = 1.3
       ..strokeCap = StrokeCap.round;
 
-    for (final offset in [-15.0, 0.0, 15.0]) {
+    for (final offset in [-11.0, 0.0, 11.0]) {
       canvas.drawLine(
-        Offset(0, cy + offset),
-        Offset(size.width * 0.18, cy + offset * 0.42),
+        Offset(size.width * 0.01, cy + offset),
+        Offset(size.width * 0.13, cy + offset * 0.36),
         trailPaint,
       );
     }
 
     _drawEngineFlames(canvas, size, cy);
 
-    final upperWing = Path()
-      ..moveTo(size.width * 0.42, cy - 3)
-      ..lineTo(size.width * 0.15, size.height * 0.02)
+    final fuselage = Path()
+      ..moveTo(size.width * 0.13, cy - 12)
       ..cubicTo(
-        size.width * 0.32,
-        size.height * 0.04,
-        size.width * 0.62,
-        cy - 3,
-        size.width * 0.74,
-        cy - 1,
+        size.width * 0.34,
+        cy - 18,
+        size.width * 0.79,
+        cy - 17,
+        size.width * 0.91,
+        cy - 11,
       )
-      ..close();
-    final lowerWing = Path()
-      ..moveTo(size.width * 0.43, cy + 3)
-      ..lineTo(size.width * 0.15, size.height * 0.98)
       ..cubicTo(
-        size.width * 0.32,
-        size.height * 0.96,
-        size.width * 0.62,
-        cy + 3,
-        size.width * 0.74,
-        cy + 1,
-      )
-      ..close();
-    canvas.drawPath(upperWing, bodyPaint);
-    canvas.drawPath(lowerWing, bodyPaint);
-    canvas.drawPath(upperWing, outlinePaint);
-    canvas.drawPath(lowerWing, outlinePaint);
-
-    _drawEngine(canvas, Offset(size.width * 0.38, cy - 13), true);
-    _drawEngine(canvas, Offset(size.width * 0.38, cy + 13), false);
-
-    final fuselage = RRect.fromLTRBR(
-      size.width * 0.16,
-      cy - 9,
-      size.width * 0.90,
-      cy + 9,
-      const Radius.circular(18),
-    );
-    canvas.drawRRect(fuselage, bodyPaint);
-    canvas.drawRRect(fuselage, outlinePaint);
-
-    final nose = Path()
-      ..moveTo(size.width * 0.86, cy - 9)
-      ..cubicTo(
-        size.width * 0.98,
-        cy - 7,
-        size.width * 1.02,
+        size.width * 0.99,
+        cy - 6,
+        size.width * 1.00,
         cy,
-        size.width * 0.86,
-        cy + 9,
+        size.width * 0.91,
+        cy + 11,
+      )
+      ..cubicTo(
+        size.width * 0.73,
+        cy + 18,
+        size.width * 0.31,
+        cy + 16,
+        size.width * 0.13,
+        cy + 11,
+      )
+      ..cubicTo(
+        size.width * 0.08,
+        cy + 8,
+        size.width * 0.08,
+        cy - 8,
+        size.width * 0.13,
+        cy - 12,
       )
       ..close();
-    canvas.drawPath(nose, bodyPaint);
-    canvas.drawPath(nose, outlinePaint);
+    canvas.drawPath(fuselage.shift(const Offset(0, 2.5)), shadowPaint);
 
-    final cockpit = Path()
-      ..moveTo(size.width * 0.84, cy - 6)
-      ..lineTo(size.width * 0.93, cy - 3)
-      ..lineTo(size.width * 0.86, cy + 1)
+    _drawTail(canvas, size, cy, primaryPaint, secondaryPaint, outlinePaint);
+    _drawWing(canvas, size, cy, primaryPaint, secondaryPaint, outlinePaint);
+    _drawEngine(canvas, size, cy, primaryPaint, outlinePaint);
+
+    canvas.drawPath(fuselage, fuselagePaint);
+    canvas.drawPath(fuselage, outlinePaint);
+
+    final bellyStripe = Path()
+      ..moveTo(size.width * 0.16, cy + 5)
+      ..cubicTo(
+        size.width * 0.38,
+        cy + 11,
+        size.width * 0.72,
+        cy + 12,
+        size.width * 0.90,
+        cy + 7,
+      )
+      ..lineTo(size.width * 0.90, cy + 12)
+      ..cubicTo(
+        size.width * 0.70,
+        cy + 17,
+        size.width * 0.33,
+        cy + 15,
+        size.width * 0.15,
+        cy + 10,
+      )
       ..close();
-    canvas.drawPath(cockpit, glassPaint);
+    canvas.drawPath(bellyStripe, primaryPaint);
 
-    final stripe = RRect.fromLTRBR(
-      size.width * 0.25,
-      cy - 3,
-      size.width * 0.78,
-      cy + 3,
-      const Radius.circular(4),
-    );
-    canvas.drawRRect(stripe, accentPaint);
-
-    for (var i = 0; i < 9; i++) {
-      canvas.drawCircle(
-        Offset(size.width * (0.37 + i * 0.045), cy - 5.6),
-        1.25,
-        glassPaint,
+    final thinStripe = Path()
+      ..moveTo(size.width * 0.18, cy + 2)
+      ..cubicTo(
+        size.width * 0.40,
+        cy + 5,
+        size.width * 0.72,
+        cy + 6,
+        size.width * 0.88,
+        cy + 3,
       );
-    }
+    canvas.drawPath(
+      thinStripe,
+      Paint()
+        ..color = brand.secondary.withValues(alpha: 0.95)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4
+        ..strokeCap = StrokeCap.round,
+    );
 
-    _paintAirlineName(canvas, size, cy);
-    _drawTail(canvas, size, cy, bodyPaint, accentPaint, outlinePaint);
+    _drawCockpit(canvas, size, cy, glassPaint);
+    _drawDoorsAndWindows(canvas, size, cy, glassPaint, outlinePaint);
+    _paintAirlineName(canvas, size, cy, brand);
+    _drawBrandMark(canvas, size, cy, brand);
     _drawFlapsAndGear(canvas, size, cy);
   }
 
-  void _paintAirlineName(Canvas canvas, Size size, double cy) {
-    final label = airlineName.trim().isEmpty ? 'flightprint Air' : airlineName;
+  void _paintAirlineName(
+    Canvas canvas,
+    Size size,
+    double cy,
+    _AirlineBrand brand,
+  ) {
+    final label = airlineName.trim().isEmpty ? brand.name : airlineName.trim();
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,
         style: TextStyle(
-          color: const Color(0xFF06242F).withValues(alpha: 0.92),
-          fontSize: 8.5,
+          color: brand.textColor,
+          fontSize: 9.2,
           fontWeight: FontWeight.w900,
         ),
       ),
       textDirection: TextDirection.ltr,
       maxLines: 1,
       ellipsis: '',
-    )..layout(maxWidth: size.width * 0.32);
+    )..layout(maxWidth: size.width * 0.30);
     textPainter.paint(
       canvas,
-      Offset(size.width * 0.48, cy - textPainter.height / 2),
+      Offset(size.width * 0.44, cy - 8 - textPainter.height / 2),
     );
   }
 
@@ -459,48 +492,163 @@ class _Boeing777XPlanePainter extends CustomPainter {
     Canvas canvas,
     Size size,
     double cy,
-    Paint bodyPaint,
-    Paint accentPaint,
+    Paint primaryPaint,
+    Paint secondaryPaint,
     Paint outlinePaint,
   ) {
     final verticalTail = Path()
-      ..moveTo(size.width * 0.18, cy - 7)
-      ..lineTo(size.width * 0.07, cy - 28)
-      ..quadraticBezierTo(size.width * 0.14, cy - 19, size.width * 0.23, cy - 6)
+      ..moveTo(size.width * 0.13, cy - 10)
+      ..lineTo(size.width * 0.06, cy - 33)
+      ..quadraticBezierTo(size.width * 0.13, cy - 30, size.width * 0.21, cy - 8)
       ..close();
-    final upperStab = Path()
-      ..moveTo(size.width * 0.18, cy - 4)
-      ..lineTo(size.width * 0.06, cy - 16)
-      ..lineTo(size.width * 0.22, cy - 2)
+    final horizontalStab = Path()
+      ..moveTo(size.width * 0.14, cy - 2)
+      ..lineTo(size.width * 0.03, cy - 13)
+      ..lineTo(size.width * 0.20, cy)
       ..close();
-    final lowerStab = Path()
-      ..moveTo(size.width * 0.18, cy + 4)
-      ..lineTo(size.width * 0.06, cy + 16)
-      ..lineTo(size.width * 0.22, cy + 2)
-      ..close();
-    canvas.drawPath(verticalTail, accentPaint);
-    canvas.drawPath(upperStab, bodyPaint);
-    canvas.drawPath(lowerStab, bodyPaint);
+    canvas.drawPath(verticalTail, primaryPaint);
+    canvas.drawPath(horizontalStab, secondaryPaint);
     canvas.drawPath(verticalTail, outlinePaint);
-    canvas.drawPath(upperStab, outlinePaint);
-    canvas.drawPath(lowerStab, outlinePaint);
+    canvas.drawPath(horizontalStab, outlinePaint);
   }
 
-  void _drawEngine(Canvas canvas, Offset center, bool upper) {
+  void _drawWing(
+    Canvas canvas,
+    Size size,
+    double cy,
+    Paint primaryPaint,
+    Paint secondaryPaint,
+    Paint outlinePaint,
+  ) {
+    final wing = Path()
+      ..moveTo(size.width * 0.46, cy + 3)
+      ..lineTo(size.width * 0.25, cy + 33)
+      ..quadraticBezierTo(size.width * 0.41, cy + 26, size.width * 0.63, cy + 7)
+      ..lineTo(size.width * 0.56, cy + 3)
+      ..close();
+    final foldedTip = Path()
+      ..moveTo(size.width * 0.25, cy + 33)
+      ..lineTo(size.width * 0.20, cy + 25)
+      ..lineTo(size.width * 0.30, cy + 31)
+      ..close();
+    canvas.drawPath(wing, secondaryPaint);
+    canvas.drawPath(foldedTip, primaryPaint);
+    canvas.drawPath(wing, outlinePaint);
+    canvas.drawPath(foldedTip, outlinePaint);
+  }
+
+  void _drawEngine(
+    Canvas canvas,
+    Size size,
+    double cy,
+    Paint primaryPaint,
+    Paint outlinePaint,
+  ) {
+    final center = Offset(size.width * 0.43, cy + 18);
     final enginePaint = Paint()
-      ..color = const Color(0xFFE8F3F7)
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFF8FBFC), Color(0xFFBBC7CD)],
+      ).createShader(Rect.fromCenter(center: center, width: 38, height: 20))
       ..style = PaintingStyle.fill;
-    final rimPaint = Paint()
-      ..color = const Color(0xFF0A2733).withValues(alpha: 0.78)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
     final fanPaint = Paint()
       ..color = const Color(0xFF163E63).withValues(alpha: 0.78)
       ..style = PaintingStyle.fill;
-    final rect = Rect.fromCenter(center: center, width: 17, height: 9);
+    final rect = Rect.fromCenter(center: center, width: 38, height: 20);
     canvas.drawOval(rect, enginePaint);
-    canvas.drawOval(rect, rimPaint);
-    canvas.drawCircle(center.translate(2, 0), 2.2, fanPaint);
+    canvas.drawOval(rect, outlinePaint);
+    canvas.drawOval(
+      Rect.fromCenter(center: center.translate(9, 0), width: 12, height: 12),
+      fanPaint,
+    );
+    canvas.drawArc(rect.deflate(3), 1.0, 1.7, false, primaryPaint);
+  }
+
+  void _drawCockpit(Canvas canvas, Size size, double cy, Paint glassPaint) {
+    final cockpit = Path()
+      ..moveTo(size.width * 0.86, cy - 9)
+      ..lineTo(size.width * 0.94, cy - 6)
+      ..quadraticBezierTo(size.width * 0.91, cy - 2, size.width * 0.84, cy - 3)
+      ..close();
+    canvas.drawPath(cockpit, glassPaint);
+  }
+
+  void _drawDoorsAndWindows(
+    Canvas canvas,
+    Size size,
+    double cy,
+    Paint glassPaint,
+    Paint outlinePaint,
+  ) {
+    final doorPaint = Paint()
+      ..color = const Color(0xFF102F3C).withValues(alpha: 0.44)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (final x in [0.22, 0.39, 0.70, 0.82]) {
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(size.width * x, cy - 10, 5, 10),
+          const Radius.circular(1.5),
+        ),
+        doorPaint,
+      );
+    }
+    for (var i = 0; i < 28; i++) {
+      final gap = i > 10 && i < 14 ? 0.011 : 0;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(
+            center: Offset(size.width * (0.27 + i * 0.018 + gap), cy - 7.7),
+            width: 2.6,
+            height: 2.2,
+          ),
+          const Radius.circular(1),
+        ),
+        glassPaint,
+      );
+    }
+  }
+
+  void _drawBrandMark(
+    Canvas canvas,
+    Size size,
+    double cy,
+    _AirlineBrand brand,
+  ) {
+    final code = airlineCode.trim().isEmpty
+        ? brand.code
+        : airlineCode.trim().toUpperCase();
+    final label = code.length > 3 ? code.substring(0, 3) : code;
+    final badge = Rect.fromCircle(
+      center: Offset(size.width * 0.115, cy - 18),
+      radius: 9,
+    );
+    canvas.drawOval(
+      badge,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.92)
+        ..style = PaintingStyle.fill,
+    );
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: brand.primary,
+          fontSize: 7.5,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout(maxWidth: 20);
+    textPainter.paint(
+      canvas,
+      Offset(
+        badge.center.dx - textPainter.width / 2,
+        badge.center.dy - textPainter.height / 2,
+      ),
+    );
   }
 
   void _drawFlapsAndGear(Canvas canvas, Size size, double cy) {
@@ -521,13 +669,8 @@ class _Boeing777XPlanePainter extends CustomPainter {
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(
-        Offset(size.width * 0.32, cy - 15),
-        Offset(size.width * (0.43 + flapExtension * 0.04), cy - 17),
-        flapPaint,
-      );
-      canvas.drawLine(
-        Offset(size.width * 0.32, cy + 15),
-        Offset(size.width * (0.43 + flapExtension * 0.04), cy + 17),
+        Offset(size.width * 0.35, cy + 25),
+        Offset(size.width * (0.48 + flapExtension * 0.03), cy + 18),
         flapPaint,
       );
     }
@@ -540,10 +683,15 @@ class _Boeing777XPlanePainter extends CustomPainter {
       final wheelPaint = Paint()
         ..color = const Color(0xFF0A2733).withValues(alpha: 0.74)
         ..style = PaintingStyle.fill;
-      final drop = 7 * gearExtension;
-      for (final x in [size.width * 0.46, size.width * 0.70]) {
-        canvas.drawLine(Offset(x, cy + 8), Offset(x, cy + 8 + drop), gearPaint);
-        canvas.drawCircle(Offset(x, cy + 10 + drop), 2.1, wheelPaint);
+      final drop = 9 * gearExtension;
+      for (final x in [size.width * 0.54, size.width * 0.78]) {
+        canvas.drawLine(
+          Offset(x, cy + 11),
+          Offset(x, cy + 11 + drop),
+          gearPaint,
+        );
+        canvas.drawCircle(Offset(x - 2, cy + 14 + drop), 2.2, wheelPaint);
+        canvas.drawCircle(Offset(x + 2, cy + 14 + drop), 2.2, wheelPaint);
       }
     }
   }
@@ -552,33 +700,160 @@ class _Boeing777XPlanePainter extends CustomPainter {
     if (engineBurn <= 0) return;
     final burn = engineBurn.clamp(0.0, 1.0);
     final flamePaint = Paint()..style = PaintingStyle.fill;
-    for (final offset in [-13.0, 13.0]) {
-      final base = Offset(size.width * 0.29, cy + offset);
-      final flame = Path()
-        ..moveTo(base.dx, base.dy - 4)
-        ..quadraticBezierTo(
-          base.dx - 18 - burn * 26,
-          base.dy,
-          base.dx,
-          base.dy + 4,
-        )
-        ..close();
-      flamePaint.color = Color.lerp(
-        const Color(0xFFFFE082),
-        const Color(0xFFFF4D1D),
-        burn,
-      )!.withValues(alpha: 0.78);
-      canvas.drawPath(flame, flamePaint);
-    }
+    final base = Offset(size.width * 0.36, cy + 18);
+    final flame = Path()
+      ..moveTo(base.dx, base.dy - 5)
+      ..quadraticBezierTo(
+        base.dx - 20 - burn * 28,
+        base.dy,
+        base.dx,
+        base.dy + 5,
+      )
+      ..close();
+    flamePaint.color = Color.lerp(
+      const Color(0xFFFFE082),
+      const Color(0xFFFF4D1D),
+      burn,
+    )!.withValues(alpha: 0.78);
+    canvas.drawPath(flame, flamePaint);
   }
 
   @override
   bool shouldRepaint(covariant _Boeing777XPlanePainter oldDelegate) {
     return airlineName != oldDelegate.airlineName ||
+        airlineCode != oldDelegate.airlineCode ||
         phase != oldDelegate.phase ||
         engineBurn != oldDelegate.engineBurn ||
         accentColor != oldDelegate.accentColor ||
         fuselageColor != oldDelegate.fuselageColor ||
         trailColor != oldDelegate.trailColor;
+  }
+}
+
+class _AirlineBrand {
+  const _AirlineBrand({
+    required this.name,
+    required this.code,
+    required this.primary,
+    required this.secondary,
+    required this.textColor,
+  });
+
+  final String name;
+  final String code;
+  final Color primary;
+  final Color secondary;
+  final Color textColor;
+
+  static _AirlineBrand forCode(String rawCode, Color fallback) {
+    final code = rawCode.trim().toUpperCase();
+    final overrides = <String, _AirlineBrand>{
+      'AA': _AirlineBrand(
+        name: 'American Airlines',
+        code: 'AA',
+        primary: Color(0xFF1F4E79),
+        secondary: Color(0xFFC9002B),
+        textColor: Color(0xFF17324D),
+      ),
+      'AC': _AirlineBrand(
+        name: 'Air Canada',
+        code: 'AC',
+        primary: Color(0xFF101820),
+        secondary: Color(0xFFE31B23),
+        textColor: Color(0xFF101820),
+      ),
+      'AF': _AirlineBrand(
+        name: 'Air France',
+        code: 'AF',
+        primary: Color(0xFF002157),
+        secondary: Color(0xFFE31B23),
+        textColor: Color(0xFF002157),
+      ),
+      'AS': _AirlineBrand(
+        name: 'Alaska Airlines',
+        code: 'AS',
+        primary: Color(0xFF004B7A),
+        secondary: Color(0xFF69BE28),
+        textColor: Color(0xFF004B7A),
+      ),
+      'BA': _AirlineBrand(
+        name: 'British Airways',
+        code: 'BA',
+        primary: Color(0xFF075AAA),
+        secondary: Color(0xFFC8102E),
+        textColor: Color(0xFF075AAA),
+      ),
+      'B6': _AirlineBrand(
+        name: 'JetBlue',
+        code: 'B6',
+        primary: Color(0xFF00205B),
+        secondary: Color(0xFF00A3E0),
+        textColor: Color(0xFF00205B),
+      ),
+      'CX': _AirlineBrand(
+        name: 'Cathay Pacific',
+        code: 'CX',
+        primary: Color(0xFF006564),
+        secondary: Color(0xFFA7A8AA),
+        textColor: Color(0xFF006564),
+      ),
+      'DL': _AirlineBrand(
+        name: 'Delta Air Lines',
+        code: 'DL',
+        primary: Color(0xFF862633),
+        secondary: Color(0xFF003A70),
+        textColor: Color(0xFF003A70),
+      ),
+      'EK': _AirlineBrand(
+        name: 'Emirates',
+        code: 'EK',
+        primary: Color(0xFFD71920),
+        secondary: Color(0xFF007A3D),
+        textColor: Color(0xFFD71920),
+      ),
+      'LH': _AirlineBrand(
+        name: 'Lufthansa',
+        code: 'LH',
+        primary: Color(0xFF05164D),
+        secondary: Color(0xFFFFCC00),
+        textColor: Color(0xFF05164D),
+      ),
+      'QR': _AirlineBrand(
+        name: 'Qatar Airways',
+        code: 'QR',
+        primary: Color(0xFF5C0632),
+        secondary: Color(0xFF8A1538),
+        textColor: Color(0xFF5C0632),
+      ),
+      'SQ': _AirlineBrand(
+        name: 'Singapore Airlines',
+        code: 'SQ',
+        primary: Color(0xFF002F6C),
+        secondary: Color(0xFFFFB81C),
+        textColor: Color(0xFF002F6C),
+      ),
+      'UA': _AirlineBrand(
+        name: 'United Airlines',
+        code: 'UA',
+        primary: Color(0xFF002244),
+        secondary: Color(0xFF00A3E0),
+        textColor: Color(0xFF002244),
+      ),
+      'WN': _AirlineBrand(
+        name: 'Southwest Airlines',
+        code: 'WN',
+        primary: Color(0xFF304CB2),
+        secondary: Color(0xFFEAAA00),
+        textColor: Color(0xFF304CB2),
+      ),
+    };
+    return overrides[code] ??
+        _AirlineBrand(
+          name: 'flightprint Air',
+          code: code.isEmpty ? 'FP' : code,
+          primary: fallback,
+          secondary: const Color(0xFF0E766E),
+          textColor: const Color(0xFF06242F),
+        );
   }
 }

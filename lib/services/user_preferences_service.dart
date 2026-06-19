@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'airline_directory_service.dart';
 import 'emissions_service.dart';
 
 enum Co2Unit { metricTons, kg }
@@ -25,6 +26,9 @@ class UserPreferencesService extends ChangeNotifier {
   static const _keyEcoTipsEnabled = 'eco_tips_enabled';
   static const _keyTinyFlightAnimationEnabled = 'tiny_flight_animation_enabled';
   static const _keyAirplaneModeAirlineName = 'airplane_mode_airline_name';
+  static const _keyAirplaneModeAirlineCode = 'airplane_mode_airline_code';
+  static const _keyAirplaneModeAirlineIcao = 'airplane_mode_airline_icao';
+  static const _keyAirplaneModeAirlineCountry = 'airplane_mode_airline_country';
   static const _keyWeeklyDigestEnabled = 'weekly_digest_enabled';
   static const _keyAnnualCo2GoalTons = 'annual_co2_goal_tons';
 
@@ -46,6 +50,9 @@ class UserPreferencesService extends ChangeNotifier {
   bool _ecoTipsEnabled = true;
   bool _tinyFlightAnimationEnabled = true;
   String _airplaneModeAirlineName = 'flightprint Air';
+  String _airplaneModeAirlineCode = 'FP';
+  String _airplaneModeAirlineIcao = '';
+  String _airplaneModeAirlineCountry = '';
   bool _weeklyDigestEnabled = true;
   double? _annualCo2GoalTons;
 
@@ -57,6 +64,9 @@ class UserPreferencesService extends ChangeNotifier {
   bool get ecoTipsEnabled => _ecoTipsEnabled;
   bool get tinyFlightAnimationEnabled => _tinyFlightAnimationEnabled;
   String get airplaneModeAirlineName => _airplaneModeAirlineName;
+  String get airplaneModeAirlineCode => _airplaneModeAirlineCode;
+  String get airplaneModeAirlineIcao => _airplaneModeAirlineIcao;
+  String get airplaneModeAirlineCountry => _airplaneModeAirlineCountry;
   bool get weeklyDigestEnabled => _weeklyDigestEnabled;
   double? get annualCo2GoalTons => _annualCo2GoalTons;
 
@@ -111,6 +121,15 @@ class UserPreferencesService extends ChangeNotifier {
     if (airplaneModeAirline != null && airplaneModeAirline.trim().isNotEmpty) {
       _airplaneModeAirlineName = airplaneModeAirline.trim();
     }
+    _airplaneModeAirlineCode =
+        prefs.getString(_keyAirplaneModeAirlineCode)?.trim().toUpperCase() ??
+        _airplaneModeAirlineCode;
+    _airplaneModeAirlineIcao =
+        prefs.getString(_keyAirplaneModeAirlineIcao)?.trim().toUpperCase() ??
+        _airplaneModeAirlineIcao;
+    _airplaneModeAirlineCountry =
+        prefs.getString(_keyAirplaneModeAirlineCountry)?.trim() ??
+        _airplaneModeAirlineCountry;
 
     final weeklyDigest = prefs.getBool(_keyWeeklyDigestEnabled);
     if (weeklyDigest != null) _weeklyDigestEnabled = weeklyDigest;
@@ -190,11 +209,57 @@ class UserPreferencesService extends ChangeNotifier {
     _airplaneModeAirlineName = normalized.isEmpty
         ? 'flightprint Air'
         : normalized;
+    if (normalized.isEmpty || normalized == 'flightprint Air') {
+      _airplaneModeAirlineCode = 'FP';
+      _airplaneModeAirlineIcao = '';
+      _airplaneModeAirlineCountry = '';
+    }
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _keyAirplaneModeAirlineName,
       _airplaneModeAirlineName,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineCode,
+      _airplaneModeAirlineCode,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineIcao,
+      _airplaneModeAirlineIcao,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineCountry,
+      _airplaneModeAirlineCountry,
+    );
+  }
+
+  Future<void> setAirplaneModeAirline(AirlineOption airline) async {
+    _airplaneModeAirlineName = airline.name.trim().isEmpty
+        ? 'flightprint Air'
+        : airline.name.trim();
+    _airplaneModeAirlineCode = airline.iata.trim().isNotEmpty
+        ? airline.iata.trim().toUpperCase()
+        : airline.icao.trim().toUpperCase();
+    _airplaneModeAirlineIcao = airline.icao.trim().toUpperCase();
+    _airplaneModeAirlineCountry = airline.country.trim();
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _keyAirplaneModeAirlineName,
+      _airplaneModeAirlineName,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineCode,
+      _airplaneModeAirlineCode,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineIcao,
+      _airplaneModeAirlineIcao,
+    );
+    await prefs.setString(
+      _keyAirplaneModeAirlineCountry,
+      _airplaneModeAirlineCountry,
     );
   }
 
