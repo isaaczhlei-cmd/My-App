@@ -45,12 +45,22 @@ class FirestoreService {
   }
 
   /// Stream all flights for the current user, ordered by date descending
-  Stream<List<Flight>> getFlightsStream() {
+  Stream<List<Flight>> getFlightsStream() async* {
     final uid = _uid;
-    if (uid == null) return Stream.value([]);
-    return _flightsRef(
-      uid,
-    ).orderBy('date', descending: true).snapshots().map(_flightsFromSnapshot);
+    if (uid == null) {
+      yield const <Flight>[];
+      return;
+    }
+
+    try {
+      yield* _flightsRef(
+        uid,
+      ).orderBy('date', descending: true).snapshots().map(_flightsFromSnapshot);
+    } catch (e, st) {
+      debugPrint('Flight log stream failed: $e');
+      debugPrintStack(stackTrace: st);
+      yield const <Flight>[];
+    }
   }
 
   /// Get all flights once (not a stream)
