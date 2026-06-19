@@ -98,23 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    'Could not load your flight log. Please try again.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: context.appColors.onCard,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              );
-            }
-
+            final hasFlightLogWarning = snapshot.hasError;
             final flights = [...(snapshot.data ?? <Flight>[])]
               ..sort((a, b) => b.date.compareTo(a.date));
             final now = DateTime.now();
@@ -163,6 +147,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _buildHeader(),
                   _buildEmailVerificationBanner(),
+                  if (hasFlightLogWarning) ...[
+                    const SizedBox(height: 12),
+                    _buildFlightLogWarning(),
+                  ],
                   const SizedBox(height: 24),
                   _buildFootprintCard(totalCO2Tons),
                   const SizedBox(height: 20),
@@ -192,6 +180,39 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       bottomNavigationBar: const AppBottomNav(currentIndex: 0),
+    );
+  }
+
+  Widget _buildFlightLogWarning() {
+    final themeColors = context.appColors;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: themeColors.card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.warningAmber.withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.warningAmber.withValues(alpha: 0.95),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Flight log sync is unavailable right now.',
+              style: TextStyle(
+                color: themeColors.onCard,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
