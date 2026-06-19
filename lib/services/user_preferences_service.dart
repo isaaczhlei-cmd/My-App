@@ -45,7 +45,7 @@ class UserPreferencesService extends ChangeNotifier {
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
   bool _tinyFlightAnimationEnabled = true;
-  String _airplaneModeAirlineName = 'FlightPrint Air';
+  String _airplaneModeAirlineName = 'flightprint Air';
   bool _weeklyDigestEnabled = true;
   double? _annualCo2GoalTons;
 
@@ -188,7 +188,7 @@ class UserPreferencesService extends ChangeNotifier {
   Future<void> setAirplaneModeAirlineName(String airlineName) async {
     final normalized = airlineName.trim();
     _airplaneModeAirlineName = normalized.isEmpty
-        ? 'FlightPrint Air'
+        ? 'flightprint Air'
         : normalized;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();

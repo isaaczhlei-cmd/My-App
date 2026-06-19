@@ -1,11 +1,11 @@
 {
-    "name": "my_app",
-    "short_name": "my_app",
+    "name": "flightprint",
+    "short_name": "flightprint",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Track your flights and estimate CO2 impact.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

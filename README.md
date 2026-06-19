@@ -1,6 +1,6 @@
-# my_app
+# flightprint
 
-A new Flutter project.
+Track your flights and estimate CO2 impact.
 
 ## Getting Started
 

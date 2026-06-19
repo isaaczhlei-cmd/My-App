@@ -424,7 +424,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
   }
 
   void _paintAirlineName(Canvas canvas, Size size, double cy) {
-    final label = airlineName.trim().isEmpty ? 'FlightPrint Air' : airlineName;
+    final label = airlineName.trim().isEmpty ? 'flightprint Air' : airlineName;
     final textPainter = TextPainter(
       text: TextSpan(
         text: label,

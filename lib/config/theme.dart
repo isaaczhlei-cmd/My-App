@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Centralized color constants for the Flight Carbon Tracker app.
+/// Centralized color constants for the flightprint app.
 /// Accent color is runtime-dynamic via UserPreferencesService + buildTheme().
 class AppColors {
   // Primary brand color — kept as const fallback for const-constructor contexts.

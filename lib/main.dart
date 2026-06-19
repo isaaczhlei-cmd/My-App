@@ -128,7 +128,7 @@ class MyApp extends StatelessWidget {
       builder: (context, _) {
         final prefs = UserPreferencesService.instance;
         return MaterialApp(
-          title: 'FlightPrint',
+          title: 'flightprint',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.buildTheme(prefs.accentColor, Brightness.light),
           darkTheme: AppTheme.buildTheme(prefs.accentColor, Brightness.dark),

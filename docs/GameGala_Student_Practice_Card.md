@@ -1,7 +1,7 @@
 # GameGala 2026 Student Practice Card
 
 ## Intro
-"Hi, my name is Isaac Lei, and my project is called Flight Carbon Tracker. I designed it because people can see the price of a flight, but they usually cannot see the carbon impact. I wanted to turn an invisible problem into something people can actually see."
+"Hi, my name is Isaac Lei, and my project is called flightprint. I designed it because people can see the price of a flight, but they usually cannot see the carbon impact. I wanted to turn an invisible problem into something people can actually see."
 
 ## Demo Order
 1. `Home`

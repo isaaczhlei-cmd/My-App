@@ -27,7 +27,7 @@ class ErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flight Carbon Tracker',
+      title: 'flightprint',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: ErrorScreen(

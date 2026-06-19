@@ -51,8 +51,8 @@ void main() {
       await service.setAirplaneModeAirlineName('   ');
 
       final prefs = await SharedPreferences.getInstance();
-      expect(prefs.getString('airplane_mode_airline_name'), 'FlightPrint Air');
-      expect(service.airplaneModeAirlineName, 'FlightPrint Air');
+      expect(prefs.getString('airplane_mode_airline_name'), 'flightprint Air');
+      expect(service.airplaneModeAirlineName, 'flightprint Air');
     });
   });
 }

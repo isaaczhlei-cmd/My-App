@@ -1,7 +1,7 @@
 # GameGala 2026 Coach Sheet
 
 ## Student Goal
-Help the student sound clear, calm, and confident while showing ownership of `Flight Carbon Tracker`.
+Help the student sound clear, calm, and confident while showing ownership of `flightprint`.
 
 ## Winning Formula
 - Clear idea
@@ -11,7 +11,7 @@ Help the student sound clear, calm, and confident while showing ownership of `Fl
 - Calm recovery if anything breaks
 
 ## Core Story
-`Flight Carbon Tracker` helps people see the carbon impact of flights, not just the price.
+`flightprint` helps people see the carbon impact of flights, not just the price.
 
 Main message:
 - "I wanted to turn an invisible problem into something people can actually see."

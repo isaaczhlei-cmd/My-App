@@ -482,8 +482,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
       final box = context.findRenderObject() as RenderBox?;
       await SharePlus.instance.share(
         ShareParams(
-          subject: 'FlightPrint flight history',
-          text: 'Sharing my FlightPrint flight history.',
+          subject: 'flightprint flight history',
+          text: 'Sharing my flightprint flight history.',
           files: [file],
           fileNameOverrides: const ['flightprint-history.csv'],
           sharePositionOrigin: box == null
@@ -1144,8 +1144,8 @@ class _AirplaneModeAirlineFieldState extends State<_AirplaneModeAirlineField> {
                         ? null
                         : IconButton(
                             onPressed: () {
-                              widget.controller.text = 'FlightPrint Air';
-                              widget.onChanged('FlightPrint Air');
+                              widget.controller.text = 'flightprint Air';
+                              widget.onChanged('flightprint Air');
                               widget.controller.selection =
                                   TextSelection.collapsed(
                                     offset: widget.controller.text.length,
@@ -1474,7 +1474,7 @@ class AboutScreen extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'FlightPrint',
+                          'flightprint',
                           style: TextStyle(
                             color: themeColors.onCard,
                             fontSize: 24,
@@ -1496,15 +1496,15 @@ class AboutScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               _AboutSection(
-                title: 'What FlightPrint Does',
+                title: 'What flightprint Does',
                 body:
-                    'FlightPrint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
+                    'flightprint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
               ),
               const SizedBox(height: 14),
               _AboutSection(
                 title: 'How Emissions Work',
                 body:
-                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, FlightPrint uses a local distance-based estimate so you can still compare trips consistently.',
+                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, flightprint uses a local distance-based estimate so you can still compare trips consistently.',
               ),
               const SizedBox(height: 14),
               _AboutSection(

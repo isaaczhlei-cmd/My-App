@@ -1,4 +1,4 @@
-# Flight Carbon Tracker — Completion Roadmap
+# flightprint Completion Roadmap
 
 **Date:** 2026-05-19
 **Source:** Full repo code review (lib/, test/, pubspec.yaml, docs/app-completion-audit.md)
@@ -32,7 +32,7 @@
 | R11 | P2 | `lib/screens/home/widgets/flight_card.dart` | No tap action / detail view; can't edit or inspect a logged flight. | Add `FlightDetailScreen` with edit + re-compute emissions + delete. |
 | R12 | P2 | `lib/models/flight.dart` | `AirlineCode` / `AirlineNumber` PascalCase on Dart vs camelCase on wire — confusing, lint-noisy. | Rename to lowerCamelCase, keep wire names. |
 | R13 | P2 | `test/` | Only `widget_test.dart` and `eco_tip_service_test.dart`. No tests for `AuthService` mock, `FirestoreService`, `BookFlightScreen` URL builder, signup form validation. | Add unit tests for `_buildFlightSearchUri`, `SignupForm._isFormValid`, `AuthService` error-code mapping. |
-| R14 | P2 | `pubspec.yaml:2` | Default description `"A new Flutter project."`. | Replace with real description (used by stores). |
+| R14 | P2 | `pubspec.yaml:2` | Store description should stay app-specific. | Keep real description current for store metadata. |
 | R15 | P3 | repo root | No CI workflow; `flutter analyze` / `flutter test` not gated on PR. | Add `.github/workflows/ci.yml` running analyze + test on push. |
 | R16 | P3 | `lib/main.dart:11-14` | No error handling around `dotenv.load` or `Firebase.initializeApp`. App crashes silently if `.env` missing. | Wrap in `runZonedGuarded` + show fallback `ErrorScreen` widget. |
 | R17 | P3 | repo | No app icon configuration (`flutter_launcher_icons`) and no splash (`flutter_native_splash`). | Add both before store submission. |
