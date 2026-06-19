@@ -1,5 +1,9 @@
 # FlightPrint
 
+<p align="center">
+  <img src="assets/icon/app_icon.png" width="120" alt="FlightPrint logo" />
+</p>
+
 > Track your flights. Understand your carbon footprint. Fly more consciously.
 
 FlightPrint is an iOS app built with Flutter and Firebase that lets travelers log flights, estimate CO₂ emissions, and compare the environmental impact of their trips over time.
