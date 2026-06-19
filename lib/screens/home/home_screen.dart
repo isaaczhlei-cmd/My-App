@@ -191,13 +191,15 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: themeColors.card,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warningAmber.withValues(alpha: 0.5)),
+        border: Border.all(
+          color: AppColors.warningOrange.withValues(alpha: 0.5),
+        ),
       ),
       child: Row(
         children: [
           Icon(
             Icons.info_outline_rounded,
-            color: AppColors.warningAmber.withValues(alpha: 0.95),
+            color: AppColors.warningOrange.withValues(alpha: 0.95),
             size: 20,
           ),
           const SizedBox(width: 10),
