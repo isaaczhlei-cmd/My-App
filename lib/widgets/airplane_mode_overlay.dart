@@ -20,20 +20,24 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     with TickerProviderStateMixin {
   static const _sweepDuration = Duration(seconds: 9);
   static const _turboDuration = Duration(milliseconds: 1800);
-  static const _pauseDuration = Duration(seconds: 7);
-  static const _planeWidth = 230.0;
-  static const _planeHeight = 74.0;
+  static const _planeWidth = 250.0;
+  static const _planeHeight = 82.0;
 
   late final AnimationController _sweepController;
   late final AnimationController _rollController;
   late final Animation<double> _rollAnimation;
-  Timer? _pauseTimer;
+  final Random _routeRandom = Random();
   bool _turboActive = false;
   bool _isDragging = false;
+  bool _facingRight = true;
   Offset? _dragPosition;
   Offset? _lastDragPosition;
   DateTime? _lastDragAt;
   double _engineBurn = 0;
+  double _leftRouteFactor = 0.12;
+  double _rightRouteFactor = 0.28;
+  double _routeWavePhase = 0;
+  double _routeWaveAmplitude = 12;
 
   @override
   void initState() {
@@ -57,7 +61,6 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
 
   @override
   void dispose() {
-    _pauseTimer?.cancel();
     _sweepController
       ..removeStatusListener(_handleSweepStatus)
       ..dispose();
@@ -66,24 +69,40 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _handleSweepStatus(AnimationStatus status) {
-    if (status != AnimationStatus.completed) return;
+    if (status != AnimationStatus.completed &&
+        status != AnimationStatus.dismissed) {
+      return;
+    }
     _sweepController.duration = _sweepDuration;
     if (mounted) {
       setState(() {
         _turboActive = false;
+        _facingRight = status == AnimationStatus.dismissed;
+        _chooseNextRoute(status);
         _engineBurn = 0;
       });
     }
-    _pauseTimer?.cancel();
-    _pauseTimer = Timer(_pauseDuration, () {
-      if (mounted) _startSweep();
-    });
+  }
+
+  double _randomRouteFactor() {
+    return 0.08 + _routeRandom.nextDouble() * 0.46;
+  }
+
+  void _chooseNextRoute(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _leftRouteFactor = _randomRouteFactor();
+    } else if (status == AnimationStatus.dismissed) {
+      _rightRouteFactor = _randomRouteFactor();
+    }
+    _routeWavePhase = _routeRandom.nextDouble() * pi * 2;
+    _routeWaveAmplitude = 6 + _routeRandom.nextDouble() * 16;
   }
 
   void _startSweep({bool turbo = false}) {
-    _pauseTimer?.cancel();
-    _sweepController.duration = turbo ? _turboDuration : _sweepDuration;
-    _sweepController.forward(from: 0);
+    final duration = turbo ? _turboDuration : _sweepDuration;
+    _sweepController
+      ..duration = duration
+      ..repeat(reverse: true, period: duration);
   }
 
   void _activateTurbo() {
@@ -91,11 +110,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
       _turboActive = true;
       _engineBurn = 0.9;
     });
-    _pauseTimer?.cancel();
-    _sweepController.duration = _turboDuration;
-    _sweepController.forward(
-      from: _sweepController.isAnimating ? _sweepController.value : 0,
-    );
+    _startSweep(turbo: true);
   }
 
   void _triggerRoll() {
@@ -103,7 +118,6 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _startDrag(Offset position) {
-    _pauseTimer?.cancel();
     _sweepController.stop();
     setState(() {
       _isDragging = true;
@@ -141,8 +155,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
       _lastDragAt = null;
       _engineBurn = 0.16;
     });
-    _pauseTimer?.cancel();
-    _pauseTimer = Timer(const Duration(milliseconds: 700), () {
+    Timer(const Duration(milliseconds: 700), () {
       if (!mounted) return;
       setState(() {
         _dragPosition = null;
@@ -208,9 +221,15 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                             constraints.maxWidth - _planeWidth,
                           ).toDouble();
                           final x = visibleTravel * progress;
+                          final leftY =
+                              constraints.maxHeight * _leftRouteFactor;
+                          final rightY =
+                              constraints.maxHeight * _rightRouteFactor;
+                          final routeY = leftY + (rightY - leftY) * progress;
                           final cruiseY =
-                              constraints.maxHeight * 0.10 +
-                              sin(progress * pi * 2) * 12;
+                              routeY +
+                              sin(progress * pi * 2 + _routeWavePhase) *
+                                  _routeWaveAmplitude;
                           final y = cruiseY.clamp(
                             0,
                             max(0, constraints.maxHeight - _planeHeight),
@@ -223,8 +242,8 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                             constraints: constraints,
                           );
                           final opacity = _isDragging || _turboActive
-                              ? 0.96
-                              : 0.78;
+                              ? 1.0
+                              : 0.92;
                           final burn = max(
                             _engineBurn,
                             _turboActive ? 0.9 : 0,
@@ -258,26 +277,30 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                                         angle: _pitchFor(phase),
                                         child: Opacity(
                                           opacity: opacity,
-                                          child: CustomPaint(
-                                            painter: _Boeing777XPlanePainter(
-                                              airlineName:
-                                                  prefs.airplaneModeAirlineName,
-                                              airlineCode:
-                                                  prefs.airplaneModeAirlineCode,
-                                              phase: phase,
-                                              engineBurn: burn,
-                                              accentColor: Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                              fuselageColor: Colors.white,
-                                              trailColor: Colors.white
-                                                  .withValues(
-                                                    alpha:
-                                                        _isDragging ||
-                                                            _turboActive
-                                                        ? 0.28
-                                                        : 0.14,
-                                                  ),
+                                          child: Transform.scale(
+                                            alignment: Alignment.center,
+                                            scaleX: _facingRight ? 1.0 : -1.0,
+                                            child: CustomPaint(
+                                              painter: _Boeing777XPlanePainter(
+                                                airlineName: prefs
+                                                    .airplaneModeAirlineName,
+                                                airlineCode: prefs
+                                                    .airplaneModeAirlineCode,
+                                                phase: phase,
+                                                engineBurn: burn,
+                                                accentColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                fuselageColor: Colors.white,
+                                                trailColor: Colors.white
+                                                    .withValues(
+                                                      alpha:
+                                                          _isDragging ||
+                                                              _turboActive
+                                                          ? 0.28
+                                                          : 0.14,
+                                                    ),
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -455,6 +478,18 @@ class _Boeing777XPlanePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
 
+    final panelPaint = Paint()
+      ..color = const Color(0xFF35515A).withValues(alpha: 0.26)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    for (final x in [0.20, 0.39, 0.56, 0.74, 0.86]) {
+      canvas.drawLine(
+        Offset(size.width * x, cy - 11),
+        Offset(size.width * x, cy + 11),
+        panelPaint,
+      );
+    }
+
     _drawCockpit(canvas, size, cy, glassPaint);
     _drawDoorsAndWindows(canvas, size, cy, glassPaint, outlinePaint);
     _paintAirlineName(canvas, size, cy, brand);
@@ -535,6 +570,22 @@ class _Boeing777XPlanePainter extends CustomPainter {
     canvas.drawPath(foldedTip, primaryPaint);
     canvas.drawPath(wing, outlinePaint);
     canvas.drawPath(foldedTip, outlinePaint);
+    final hingePaint = Paint()
+      ..color = const Color(0xFF0A2733).withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    canvas.drawLine(
+      Offset(size.width * 0.28, cy + 31),
+      Offset(size.width * 0.24, cy + 26),
+      hingePaint,
+    );
+    for (final x in [0.39, 0.46, 0.53]) {
+      canvas.drawLine(
+        Offset(size.width * x, cy + 8),
+        Offset(size.width * (x - 0.07), cy + 23),
+        hingePaint,
+      );
+    }
   }
 
   void _drawEngine(
@@ -544,24 +595,40 @@ class _Boeing777XPlanePainter extends CustomPainter {
     Paint primaryPaint,
     Paint outlinePaint,
   ) {
-    final center = Offset(size.width * 0.43, cy + 18);
+    final center = Offset(size.width * 0.43, cy + 19);
     final enginePaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [Color(0xFFF8FBFC), Color(0xFFBBC7CD)],
-      ).createShader(Rect.fromCenter(center: center, width: 38, height: 20))
+      ).createShader(Rect.fromCenter(center: center, width: 46, height: 25))
       ..style = PaintingStyle.fill;
     final fanPaint = Paint()
       ..color = const Color(0xFF163E63).withValues(alpha: 0.78)
       ..style = PaintingStyle.fill;
-    final rect = Rect.fromCenter(center: center, width: 38, height: 20);
+    final rect = Rect.fromCenter(center: center, width: 46, height: 25);
     canvas.drawOval(rect, enginePaint);
     canvas.drawOval(rect, outlinePaint);
+    final intakePaint = Paint()
+      ..color = const Color(0xFF163E63).withValues(alpha: 0.18)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(rect.deflate(4), intakePaint);
     canvas.drawOval(
-      Rect.fromCenter(center: center.translate(9, 0), width: 12, height: 12),
+      Rect.fromCenter(center: center.translate(10, 0), width: 15, height: 15),
       fanPaint,
     );
+    final bladePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.38)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8;
+    for (var i = 0; i < 8; i++) {
+      final angle = i * pi / 4;
+      canvas.drawLine(
+        center.translate(10, 0),
+        center.translate(10 + cos(angle) * 7, sin(angle) * 7),
+        bladePaint,
+      );
+    }
     canvas.drawArc(rect.deflate(3), 1.0, 1.7, false, primaryPaint);
   }
 
@@ -572,6 +639,15 @@ class _Boeing777XPlanePainter extends CustomPainter {
       ..quadraticBezierTo(size.width * 0.91, cy - 2, size.width * 0.84, cy - 3)
       ..close();
     canvas.drawPath(cockpit, glassPaint);
+    final framePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.45)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.7;
+    canvas.drawLine(
+      Offset(size.width * 0.885, cy - 8),
+      Offset(size.width * 0.885, cy - 2.5),
+      framePaint,
+    );
   }
 
   void _drawDoorsAndWindows(
@@ -594,12 +670,12 @@ class _Boeing777XPlanePainter extends CustomPainter {
         doorPaint,
       );
     }
-    for (var i = 0; i < 28; i++) {
+    for (var i = 0; i < 34; i++) {
       final gap = i > 10 && i < 14 ? 0.011 : 0;
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
-            center: Offset(size.width * (0.27 + i * 0.018 + gap), cy - 7.7),
+            center: Offset(size.width * (0.25 + i * 0.016 + gap), cy - 7.7),
             width: 2.6,
             height: 2.2,
           ),
@@ -684,14 +760,26 @@ class _Boeing777XPlanePainter extends CustomPainter {
         ..color = const Color(0xFF0A2733).withValues(alpha: 0.74)
         ..style = PaintingStyle.fill;
       final drop = 9 * gearExtension;
-      for (final x in [size.width * 0.54, size.width * 0.78]) {
+      final noseX = size.width * 0.86;
+      canvas.drawLine(
+        Offset(noseX, cy + 10),
+        Offset(noseX, cy + 10 + drop),
+        gearPaint,
+      );
+      canvas.drawCircle(Offset(noseX, cy + 13 + drop), 2.0, wheelPaint);
+      for (final x in [size.width * 0.52, size.width * 0.59]) {
         canvas.drawLine(
           Offset(x, cy + 11),
           Offset(x, cy + 11 + drop),
           gearPaint,
         );
-        canvas.drawCircle(Offset(x - 2, cy + 14 + drop), 2.2, wheelPaint);
-        canvas.drawCircle(Offset(x + 2, cy + 14 + drop), 2.2, wheelPaint);
+        for (final wheelX in [-4.5, -1.5, 1.5, 4.5]) {
+          canvas.drawCircle(
+            Offset(x + wheelX, cy + 14 + drop),
+            1.8,
+            wheelPaint,
+          );
+        }
       }
     }
   }

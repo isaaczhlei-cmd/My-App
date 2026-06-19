@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/flight.dart';
 
 class FlightLogException implements Exception {
@@ -36,10 +38,13 @@ class FirestoreService {
     try {
       await _flightsRef(uid).add(flight.toFirestore()).timeout(_writeTimeout);
     } on TimeoutException {
-      throw const FlightLogException(
-        'Saving is taking too long. Check your connection and try again.',
-      );
+      await _addLocalFlight(uid, flight);
     } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied' || e.code == 'unavailable') {
+        debugPrint('Saving flight locally after Firestore ${e.code}: $e');
+        await _addLocalFlight(uid, flight);
+        return;
+      }
       throw FlightLogException(_flightLogErrorMessage(e));
     }
   }
@@ -52,14 +57,21 @@ class FirestoreService {
       return;
     }
 
+    final localFlights = await _getLocalFlights(uid);
+    yield localFlights;
+
     try {
-      yield* _flightsRef(
-        uid,
-      ).orderBy('date', descending: true).snapshots().map(_flightsFromSnapshot);
+      yield* _flightsRef(uid)
+          .orderBy('date', descending: true)
+          .snapshots()
+          .map(
+            (snapshot) =>
+                _mergeFlights(_flightsFromSnapshot(snapshot), localFlights),
+          );
     } catch (e, st) {
       debugPrint('Flight log stream failed: $e');
       debugPrintStack(stackTrace: st);
-      yield const <Flight>[];
+      yield localFlights;
     }
   }
 
@@ -67,16 +79,26 @@ class FirestoreService {
   Future<List<Flight>> getFlights() async {
     final uid = _uid;
     if (uid == null) return [];
-    final snapshot = await _flightsRef(
-      uid,
-    ).orderBy('date', descending: true).get();
-    return _flightsFromSnapshot(snapshot);
+    final localFlights = await _getLocalFlights(uid);
+    try {
+      final snapshot = await _flightsRef(
+        uid,
+      ).orderBy('date', descending: true).get();
+      return _mergeFlights(_flightsFromSnapshot(snapshot), localFlights);
+    } on FirebaseException catch (e) {
+      debugPrint('Using local flight history after Firestore ${e.code}: $e');
+      return localFlights;
+    }
   }
 
   /// Delete a flight by ID
   Future<void> deleteFlight(String flightId) async {
     final uid = _uid;
     if (uid == null) return;
+    if (flightId.startsWith('local-')) {
+      await _deleteLocalFlight(uid, flightId);
+      return;
+    }
     if (_auth.currentUser?.isAnonymous == true) return;
     await _flightsRef(uid).doc(flightId).delete();
   }
@@ -109,6 +131,76 @@ class FirestoreService {
       }
     }
     return flights;
+  }
+
+  String _localFlightsKey(String uid) => 'local_flights_$uid';
+
+  Future<void> _addLocalFlight(String uid, Flight flight) async {
+    final flights = await _getLocalFlights(uid);
+    final localFlight = Flight(
+      id: 'local-${DateTime.now().microsecondsSinceEpoch}',
+      originCode: flight.originCode,
+      destinationCode: flight.destinationCode,
+      date: flight.date,
+      travelClass: flight.travelClass,
+      emissionsKg: flight.emissionsKg,
+      createdAt: flight.createdAt,
+      AirlineCode: flight.AirlineCode,
+      AirlineNumber: flight.AirlineNumber,
+    );
+    flights.insert(0, localFlight);
+    await _setLocalFlights(uid, flights);
+  }
+
+  Future<List<Flight>> _getLocalFlights(String uid) async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = prefs.getString(_localFlightsKey(uid));
+    if (encoded == null || encoded.isEmpty) return const <Flight>[];
+    try {
+      final rows = jsonDecode(encoded) as List<dynamic>;
+      final flights = rows
+          .whereType<Map<String, dynamic>>()
+          .map((data) => Flight.fromMap(id: data['id'] ?? '', data: data))
+          .toList();
+      flights.sort((a, b) => b.date.compareTo(a.date));
+      return flights;
+    } catch (e, st) {
+      debugPrint('Could not read local flights: $e');
+      debugPrintStack(stackTrace: st);
+      return const <Flight>[];
+    }
+  }
+
+  Future<void> _setLocalFlights(String uid, List<Flight> flights) async {
+    final prefs = await SharedPreferences.getInstance();
+    final encoded = jsonEncode(flights.map(_flightToLocalJson).toList());
+    await prefs.setString(_localFlightsKey(uid), encoded);
+  }
+
+  Future<void> _deleteLocalFlight(String uid, String flightId) async {
+    final flights = await _getLocalFlights(uid);
+    flights.removeWhere((flight) => flight.id == flightId);
+    await _setLocalFlights(uid, flights);
+  }
+
+  List<Flight> _mergeFlights(List<Flight> remote, List<Flight> local) {
+    final flights = [...remote, ...local]
+      ..sort((a, b) => b.date.compareTo(a.date));
+    return flights;
+  }
+
+  Map<String, dynamic> _flightToLocalJson(Flight flight) {
+    return {
+      'id': flight.id,
+      'originCode': flight.originCode,
+      'destinationCode': flight.destinationCode,
+      'date': flight.date.toIso8601String(),
+      'travelClass': flight.travelClass,
+      'emissionsKg': flight.emissionsKg,
+      'createdAt': flight.createdAt.toIso8601String(),
+      'airlineCode': flight.AirlineCode,
+      'airlineNumber': flight.AirlineNumber,
+    };
   }
 }
 

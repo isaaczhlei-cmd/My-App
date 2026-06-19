@@ -4,6 +4,7 @@ import '../screens/add_flight/add_flight_screen.dart';
 import '../screens/compare/compare_screen.dart';
 import '../screens/reports/reports_screen.dart';
 import '../screens/book_flight/book_flight_screen.dart';
+import 'airplane_mode_overlay.dart';
 
 /// Shared bottom navigation bar used across all main screens.
 /// Profile is accessed via the header icon button on the Home screen.
@@ -33,7 +34,8 @@ class AppBottomNav extends StatelessWidget {
 
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => screen,
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                AirplaneModeOverlay(child: screen),
             transitionDuration: Duration.zero,
           ),
         );
