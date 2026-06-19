@@ -48,6 +48,12 @@ lib/
 
 ---
 
+## Privacy Policy
+
+[Privacy Policy](https://www.termsfeed.com/live/dc705239-ff72-4c21-ba92-7d8ef653262c)
+
+---
+
 ## iOS Requirements
 
 - iOS 15.0+
