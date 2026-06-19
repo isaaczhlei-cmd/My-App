@@ -1177,6 +1177,12 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                     ).copyWith(color: textColor),
                     decoration: InputDecoration(
                       border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      filled: false,
                       hintText: hintText,
                       hintStyle: TextStyle(color: hintColor),
                     ),
