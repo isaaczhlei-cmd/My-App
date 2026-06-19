@@ -556,7 +556,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Future<void> _addToFlightLog() async {
-    if (_authService.isGuest) {
+    if (_authService.currentUser == null || _authService.isGuest) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -581,32 +581,43 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       AirlineNumber: _flightNum > 0 ? _flightNum.toString() : '',
     );
 
-    await _firestoreService.addFlight(flight);
+    try {
+      await _firestoreService.addFlight(flight);
+      if (!mounted) return;
 
-    if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Flight added to your log!'),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
 
-    setState(() => _isSaving = false);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('Flight added to your log!'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
-
-    setState(() {
-      _clearLookupResult();
-      _selectedCatalogEntry = null;
-      _heroSearchController.clear();
-      _flightNumberController.clear();
-      _originController.clear();
-      _destinationController.clear();
-      _originMatches = const [];
-      _destinationMatches = const [];
-      _passengerCountController.text = '1';
-      _flightEmission = null;
-      _errorMessage = null;
-    });
+      setState(() {
+        _clearLookupResult();
+        _selectedCatalogEntry = null;
+        _heroSearchController.clear();
+        _flightNumberController.clear();
+        _originController.clear();
+        _destinationController.clear();
+        _originMatches = const [];
+        _destinationMatches = const [];
+        _passengerCountController.text = '1';
+        _flightEmission = null;
+        _errorMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   @override

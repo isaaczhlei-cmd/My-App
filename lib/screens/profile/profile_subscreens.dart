@@ -35,6 +35,23 @@ class FlightHistoryScreen extends StatelessWidget {
               return const Center(child: CircularProgressIndicator());
             }
 
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Could not load your flight history. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: themeColors.onCard,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            }
+
             final flights = snapshot.data ?? [];
 
             if (flights.isEmpty) {

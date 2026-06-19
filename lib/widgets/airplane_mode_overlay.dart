@@ -182,106 +182,117 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     return Stack(
       children: [
         widget.child,
-        AnimatedBuilder(
-          animation: UserPreferencesService.instance,
-          builder: (context, _) {
-            final prefs = UserPreferencesService.instance;
-            if (!prefs.tinyFlightAnimationEnabled) {
-              return const SizedBox.shrink();
-            }
+        Positioned.fill(
+          child: AnimatedBuilder(
+            animation: UserPreferencesService.instance,
+            builder: (context, _) {
+              final prefs = UserPreferencesService.instance;
+              if (!prefs.tinyFlightAnimationEnabled) {
+                return const SizedBox.shrink();
+              }
 
-            return IgnorePointer(
-              ignoring: false,
-              child: SafeArea(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return AnimatedBuilder(
-                      animation: Listenable.merge([
-                        _sweepController,
-                        _rollController,
-                      ]),
-                      builder: (context, _) {
-                        final progress = _sweepController.value;
-                        final x =
-                            -_planeWidth +
-                            (constraints.maxWidth + _planeWidth * 2) * progress;
-                        final cruiseY =
-                            constraints.maxHeight * 0.10 +
-                            sin(progress * pi * 2) * 12;
-                        final y = cruiseY.clamp(
-                          0,
-                          max(0, constraints.maxHeight - _planeHeight),
-                        );
-                        final position =
-                            _dragPosition ?? Offset(x, y.toDouble());
-                        final phase = _phaseFor(
-                          progress: progress,
-                          position: position,
-                          constraints: constraints,
-                        );
-                        final opacity = _isDragging || _turboActive
-                            ? 0.96
-                            : 0.78;
-                        final burn = max(
-                          _engineBurn,
-                          _turboActive ? 0.9 : 0,
-                        ).toDouble();
+              return IgnorePointer(
+                ignoring: false,
+                child: SafeArea(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _sweepController,
+                          _rollController,
+                        ]),
+                        builder: (context, _) {
+                          final progress = _sweepController.value;
+                          final x =
+                              -_planeWidth +
+                              (constraints.maxWidth + _planeWidth * 2) *
+                                  progress;
+                          final cruiseY =
+                              constraints.maxHeight * 0.10 +
+                              sin(progress * pi * 2) * 12;
+                          final y = cruiseY.clamp(
+                            0,
+                            max(0, constraints.maxHeight - _planeHeight),
+                          );
+                          final position =
+                              _dragPosition ?? Offset(x, y.toDouble());
+                          final phase = _phaseFor(
+                            progress: progress,
+                            position: position,
+                            constraints: constraints,
+                          );
+                          final opacity = _isDragging || _turboActive
+                              ? 0.96
+                              : 0.78;
+                          final burn = max(
+                            _engineBurn,
+                            _turboActive ? 0.9 : 0,
+                          ).toDouble();
 
-                        return Positioned(
-                          left: position.dx,
-                          top: position.dy,
-                          width: _planeWidth,
-                          height: _planeHeight,
-                          child: Semantics(
-                            button: true,
-                            label: 'Boeing 777-9 airplane mode',
-                            hint:
-                                'Tap for faster flight, double tap for a roll, or drag the plane',
-                            child: GestureDetector(
-                              behavior: HitTestBehavior.translucent,
-                              onTap: _activateTurbo,
-                              onDoubleTap: _triggerRoll,
-                              onPanStart: (_) => _startDrag(position),
-                              onPanUpdate: (details) =>
-                                  _updateDrag(details, constraints),
-                              onPanEnd: (_) => _endDrag(),
-                              onPanCancel: _endDrag,
-                              child: RotationTransition(
-                                turns: _rollAnimation,
-                                child: Transform.rotate(
-                                  angle: _pitchFor(phase),
-                                  child: Opacity(
-                                    opacity: opacity,
-                                    child: CustomPaint(
-                                      painter: _Boeing777XPlanePainter(
-                                        airlineName:
-                                            prefs.airplaneModeAirlineName,
-                                        phase: phase,
-                                        engineBurn: burn,
-                                        accentColor: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                        fuselageColor: Colors.white,
-                                        trailColor: Colors.white.withValues(
-                                          alpha: _isDragging || _turboActive
-                                              ? 0.28
-                                              : 0.14,
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                left: position.dx,
+                                top: position.dy,
+                                width: _planeWidth,
+                                height: _planeHeight,
+                                child: Semantics(
+                                  button: true,
+                                  label: 'Boeing 777-9 airplane mode',
+                                  hint:
+                                      'Tap for faster flight, double tap for a roll, or drag the plane',
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.translucent,
+                                    onTap: _activateTurbo,
+                                    onDoubleTap: _triggerRoll,
+                                    onPanStart: (_) => _startDrag(position),
+                                    onPanUpdate: (details) =>
+                                        _updateDrag(details, constraints),
+                                    onPanEnd: (_) => _endDrag(),
+                                    onPanCancel: _endDrag,
+                                    child: RotationTransition(
+                                      turns: _rollAnimation,
+                                      child: Transform.rotate(
+                                        angle: _pitchFor(phase),
+                                        child: Opacity(
+                                          opacity: opacity,
+                                          child: CustomPaint(
+                                            painter: _Boeing777XPlanePainter(
+                                              airlineName:
+                                                  prefs.airplaneModeAirlineName,
+                                              phase: phase,
+                                              engineBurn: burn,
+                                              accentColor: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                              fuselageColor: Colors.white,
+                                              trailColor: Colors.white
+                                                  .withValues(
+                                                    alpha:
+                                                        _isDragging ||
+                                                            _turboActive
+                                                        ? 0.28
+                                                        : 0.14,
+                                                  ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
+                            ],
+                          );
+                        },
+                      );
+                    },
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ],
     );

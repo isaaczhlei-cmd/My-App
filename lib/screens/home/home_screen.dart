@@ -98,6 +98,23 @@ class _HomeScreenState extends State<HomeScreen> {
         child: StreamBuilder<List<Flight>>(
           stream: _firestoreService.getFlightsStream(),
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Text(
+                    'Could not load your flight log. Please try again.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: context.appColors.onCard,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              );
+            }
+
             final flights = [...(snapshot.data ?? <Flight>[])]
               ..sort((a, b) => b.date.compareTo(a.date));
             final now = DateTime.now();

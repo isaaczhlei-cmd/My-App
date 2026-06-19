@@ -42,16 +42,40 @@ class Flight {
   /// Create from Firestore document
   factory Flight.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    return Flight.fromMap(id: doc.id, data: data);
+  }
+
+  factory Flight.fromMap({
+    required String id,
+    required Map<String, dynamic> data,
+  }) {
+    final createdAt = _dateTimeFromFirestore(data['createdAt']);
     return Flight(
-      id: doc.id,
+      id: id,
       originCode: data['originCode'] ?? '',
       destinationCode: data['destinationCode'] ?? '',
-      date: (data['date'] as Timestamp).toDate(),
+      date: _dateTimeFromFirestore(data['date'], fallback: createdAt),
       travelClass: data['travelClass'] ?? 'economy',
-      emissionsKg: (data['emissionsKg'] ?? 0).toDouble(),
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      emissionsKg: _doubleFromFirestore(data['emissionsKg']),
+      createdAt: createdAt,
       AirlineCode: data['airlineCode'] ?? '',
       AirlineNumber: data['airlineNumber'] ?? '',
     );
+  }
+
+  static DateTime _dateTimeFromFirestore(Object? value, {DateTime? fallback}) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed;
+    }
+    return fallback ?? DateTime.now();
+  }
+
+  static double _doubleFromFirestore(Object? value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0;
+    return 0;
   }
 }
