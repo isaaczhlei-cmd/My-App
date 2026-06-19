@@ -475,8 +475,10 @@ class _HomeScreenState extends State<HomeScreen> {
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                Theme.of(context).colorScheme.primary.withAlpha(177),
-                Theme.of(context).colorScheme.primary,
+                AppTheme.fixedSuccessGreenFor(
+                  Theme.of(context).brightness,
+                ).withAlpha(177),
+                AppTheme.fixedSuccessGreenFor(Theme.of(context).brightness),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -668,7 +670,9 @@ class _HomeScreenState extends State<HomeScreen> {
         Expanded(
           child: _buildStatItem(
             icon: Icons.speed,
-            iconColor: Theme.of(context).colorScheme.primary,
+            iconColor: AppTheme.fixedSuccessGreenFor(
+              Theme.of(context).brightness,
+            ),
             iconBgColor: const Color(0xFFE8F5E9),
             value: UserPreferencesService.instance.co2Unit == Co2Unit.kg
                 ? '${avgKgPerFlight}kg'

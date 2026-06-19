@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../config/theme.dart';
+
 class CarbonFootprintCard extends StatelessWidget {
   final double totalTonsCO2;
   final int percentChange;
@@ -15,7 +17,7 @@ class CarbonFootprintCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDown = percentChange <= 0;
-    final primary = Theme.of(context).colorScheme.primary;
+    final green = AppTheme.fixedSuccessGreenFor(Theme.of(context).brightness);
 
     return Container(
       width: double.infinity,
@@ -23,7 +25,10 @@ class CarbonFootprintCard extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
-          colors: [primary.withValues(alpha: 0.92), primary.withValues(alpha: 0.72)],
+          colors: [
+            green.withValues(alpha: 0.92),
+            green.withValues(alpha: 0.72),
+          ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
