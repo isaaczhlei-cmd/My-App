@@ -334,17 +334,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                 ),
-                // Show total notifications count on the avatar corner.
-                // We use `notifications.length` (total stored notifications)
-                // rather than `unreadCount` because the Notifications screen
-                // marks items read on open — the user expects the red dot
-                // to reflect that there are (total) notifications available.
-                if (_notificationInbox.notifications.isNotEmpty)
+                if (_notificationInbox.unreadCount > 0)
                   Positioned(
                     top: -6,
                     right: -6,
                     child: NotificationBadge(
-                      count: _notificationInbox.notifications.length,
+                      count: _notificationInbox.unreadCount,
                     ),
                   ),
               ],
