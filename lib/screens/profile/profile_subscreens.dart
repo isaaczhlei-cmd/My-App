@@ -611,12 +611,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                           child: LayoutBuilder(
                             builder: (context, constraints) {
                               final cabinSegment = _InlineSegmented(
-                                options: const [
-                                  'Economy',
-                                  'Premium',
-                                  'Business',
-                                  'First',
-                                ],
+                                options: const ['Econ', 'Prem', 'Biz', '1st'],
                                 selected: switch (prefs.defaultCabinClass) {
                                   CabinClass.premiumEconomy => 1,
                                   CabinClass.business => 2,
@@ -653,7 +648,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                                 ],
                               );
 
-                              if (constraints.maxWidth < 360) {
+                              if (constraints.maxWidth < 520) {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
