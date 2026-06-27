@@ -20,6 +20,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     with TickerProviderStateMixin {
   static const _sweepDuration = Duration(seconds: 9);
   static const _turboDuration = Duration(milliseconds: 1800);
+  static const _landingPauseDuration = Duration(seconds: 8);
   static const _planeWidth = 250.0;
   static const _planeHeight = 82.0;
 
@@ -27,8 +28,10 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   late final AnimationController _rollController;
   late final Animation<double> _rollAnimation;
   final Random _routeRandom = Random();
+  Timer? _landingPauseTimer;
   bool _turboActive = false;
   bool _isDragging = false;
+  bool _isLandingPaused = false;
   bool _facingRight = true;
   Offset? _dragPosition;
   Offset? _lastDragPosition;
@@ -39,14 +42,16 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   double _rightRouteFactor = 0.28;
   double _routeWavePhase = 0;
   double _routeWaveAmplitude = 12;
+  double? _inputStopoverProgress;
+  bool _inputStopoverConsumed = false;
 
   @override
   void initState() {
     super.initState();
-    _sweepController = AnimationController(
-      vsync: this,
-      duration: _sweepDuration,
-    )..addStatusListener(_handleSweepStatus);
+    _sweepController =
+        AnimationController(vsync: this, duration: _sweepDuration)
+          ..addListener(_handleSweepTick)
+          ..addStatusListener(_handleSweepStatus);
     _rollController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 850),
@@ -62,7 +67,9 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
 
   @override
   void dispose() {
+    _landingPauseTimer?.cancel();
     _sweepController
+      ..removeListener(_handleSweepTick)
       ..removeStatusListener(_handleSweepStatus)
       ..dispose();
     _rollController.dispose();
@@ -70,6 +77,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _handleSweepStatus(AnimationStatus status) {
+    if (_isLandingPaused) return;
     if (status != AnimationStatus.completed &&
         status != AnimationStatus.dismissed) {
       return;
@@ -87,6 +95,25 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     _animateTowardEdge(_facingRight);
   }
 
+  void _handleSweepTick() {
+    final stopover = _inputStopoverProgress;
+    if (stopover == null ||
+        _inputStopoverConsumed ||
+        _isDragging ||
+        _isLandingPaused ||
+        _turboActive ||
+        !_sweepController.isAnimating) {
+      return;
+    }
+
+    final reachedStopover = _facingRight
+        ? _sweepController.value >= stopover
+        : _sweepController.value <= stopover;
+    if (reachedStopover) {
+      _pauseOnInputBox();
+    }
+  }
+
   double _randomRouteFactor() {
     return 0.08 + _routeRandom.nextDouble() * 0.46;
   }
@@ -101,11 +128,25 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     _routeWaveAmplitude = 6 + _routeRandom.nextDouble() * 16;
   }
 
+  void _prepareInputStopover(bool movingRight) {
+    _inputStopoverConsumed = false;
+    _inputStopoverProgress = movingRight
+        ? 0.30 + _routeRandom.nextDouble() * 0.34
+        : 0.70 - _routeRandom.nextDouble() * 0.34;
+  }
+
   void _startSweep({bool turbo = false}) {
     _animateTowardEdge(_facingRight, turbo: turbo);
   }
 
-  void _animateTowardEdge(bool movingRight, {bool turbo = false}) {
+  void _animateTowardEdge(
+    bool movingRight, {
+    bool turbo = false,
+    bool keepStopover = false,
+  }) {
+    if (!turbo && !keepStopover) {
+      _prepareInputStopover(movingRight);
+    }
     final baseDuration = turbo ? _turboDuration : _sweepDuration;
     final remaining = movingRight
         ? (1 - _sweepController.value).clamp(0.0, 1.0)
@@ -120,6 +161,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _activateTurbo() {
+    _cancelLandingPause();
     setState(() {
       _turboActive = true;
       _engineBurn = 0.9;
@@ -131,7 +173,37 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     _rollController.forward(from: 0);
   }
 
+  void _pauseOnInputBox() {
+    _landingPauseTimer?.cancel();
+    _sweepController.stop();
+    setState(() {
+      _isLandingPaused = true;
+      _inputStopoverConsumed = true;
+      _turboActive = false;
+      _engineBurn = 0.10;
+    });
+
+    _landingPauseTimer = Timer(_landingPauseDuration, () {
+      if (!mounted || _isDragging) return;
+      setState(() {
+        _isLandingPaused = false;
+        _engineBurn = 0.38;
+      });
+      _animateTowardEdge(_facingRight, keepStopover: true);
+    });
+  }
+
+  void _cancelLandingPause() {
+    _landingPauseTimer?.cancel();
+    _landingPauseTimer = null;
+    if (_isLandingPaused) {
+      _isLandingPaused = false;
+      _inputStopoverConsumed = true;
+    }
+  }
+
   void _startDrag(Offset position) {
+    _cancelLandingPause();
     _sweepController.stop();
     setState(() {
       _isDragging = true;
@@ -206,6 +278,8 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     }
     _routeWavePhase = _routeRandom.nextDouble() * pi * 2;
     _routeWaveAmplitude = 10 + _routeRandom.nextDouble() * 18;
+    _inputStopoverConsumed = true;
+    _inputStopoverProgress = null;
     _animateTowardEdge(movingRight, turbo: true);
   }
 
@@ -214,6 +288,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     required Offset position,
     required BoxConstraints constraints,
   }) {
+    if (_isLandingPaused) return _AirplanePhase.landing;
     if (_isDragging) {
       if (position.dy > constraints.maxHeight * 0.62) {
         return _AirplanePhase.landing;

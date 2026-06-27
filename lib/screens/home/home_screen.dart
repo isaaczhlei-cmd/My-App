@@ -23,6 +23,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+enum _FlightMapStyle { standard, satellite }
+
 class _HomeScreenState extends State<HomeScreen> {
   static const int _recentFlightsLimit = 4;
   final _authService = AuthService();
@@ -30,6 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final _ecoTipService = EcoTipService();
   final _notificationInbox = NotificationInboxService.instance;
   final Set<String> _queuedEcoTipDeliveryKeys = <String>{};
+  _FlightMapStyle _flightMapStyle = _FlightMapStyle.standard;
   bool _isSendingVerification = false;
   bool _isRefreshingVerification = false;
 
@@ -773,6 +776,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildJourneyMapCard(List<Flight> flights) {
     final themeColors = context.appColors;
     final mappedFlights = flights.take(5).toList();
+    final brightness = Theme.of(context).brightness;
+    final standardLabel = brightness == Brightness.dark ? 'Dark' : 'Light';
 
     return Container(
       width: double.infinity,
@@ -801,18 +806,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              const Spacer(),
+              _MapStyleToggle(
+                selected: _flightMapStyle,
+                standardLabel: standardLabel,
+                onChanged: (style) {
+                  setState(() {
+                    _flightMapStyle = style;
+                  });
+                },
+              ),
             ],
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            height: 148,
-            width: double.infinity,
-            child: CustomPaint(
-              painter: _JourneyMapPainter(
-                flights: mappedFlights,
-                accent: Theme.of(context).colorScheme.primary,
-                muted: themeColors.onCardMuted,
-                outline: themeColors.outlineSoft,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 176,
+              width: double.infinity,
+              child: CustomPaint(
+                painter: _JourneyMapPainter(
+                  flights: mappedFlights,
+                  accent: Theme.of(context).colorScheme.primary,
+                  muted: themeColors.onCardMuted,
+                  outline: themeColors.outlineSoft,
+                  style: _flightMapStyle,
+                  brightness: brightness,
+                ),
               ),
             ),
           ),
@@ -1225,6 +1245,90 @@ class _RouteChip extends StatelessWidget {
   }
 }
 
+class _MapStyleToggle extends StatelessWidget {
+  const _MapStyleToggle({
+    required this.selected,
+    required this.standardLabel,
+    required this.onChanged,
+  });
+
+  final _FlightMapStyle selected;
+  final String standardLabel;
+  final ValueChanged<_FlightMapStyle> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      width: 148,
+      height: 30,
+      decoration: BoxDecoration(
+        color: themeColors.cardMuted,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        children: [
+          _MapStyleOption(
+            label: 'Satellite',
+            selected: selected == _FlightMapStyle.satellite,
+            accent: accent,
+            onTap: () => onChanged(_FlightMapStyle.satellite),
+          ),
+          _MapStyleOption(
+            label: standardLabel,
+            selected: selected == _FlightMapStyle.standard,
+            accent: accent,
+            onTap: () => onChanged(_FlightMapStyle.standard),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MapStyleOption extends StatelessWidget {
+  const _MapStyleOption({
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final Color accent;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final themeColors = context.appColors;
+
+    return Expanded(
+      child: Material(
+        color: selected ? accent : Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: selected ? Colors.white : themeColors.onCard,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ImpactRing extends StatelessWidget {
   const _ImpactRing({required this.totalKg, required this.co2Unit});
 
@@ -1354,35 +1458,38 @@ class _JourneyMapPainter extends CustomPainter {
     required this.accent,
     required this.muted,
     required this.outline,
+    required this.style,
+    required this.brightness,
   });
 
   final List<Flight> flights;
   final Color accent;
   final Color muted;
   final Color outline;
+  final _FlightMapStyle style;
+  final Brightness brightness;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final landPaint = Paint()
-      ..color = outline.withValues(alpha: 0.34)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+    final palette = _MapPalette.forStyle(style, brightness, accent);
+    canvas.drawRect(Offset.zero & size, Paint()..color = palette.ocean);
+    _drawGraticule(canvas, size, palette);
+    _drawContinents(canvas, size, palette);
+
     final routePaint = Paint()
-      ..color = accent
+      ..color = palette.route
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4
+      ..strokeWidth = 2.8
       ..strokeCap = StrokeCap.round;
     final routeShadowPaint = Paint()
-      ..color = accent.withValues(alpha: 0.16)
+      ..color = palette.route.withValues(alpha: 0.22)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
+      ..strokeWidth = 9
       ..strokeCap = StrokeCap.round;
-
-    _drawWorldHint(canvas, size, landPaint);
 
     if (flights.isEmpty) {
       final emptyPaint = Paint()
-        ..color = muted.withValues(alpha: 0.42)
+        ..color = palette.label.withValues(alpha: 0.55)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round;
@@ -1395,82 +1502,189 @@ class _JourneyMapPainter extends CustomPainter {
     }
 
     for (var i = 0; i < flights.length; i++) {
-      final start = _pointForCode(flights[i].originCode, size);
-      final end = _pointForCode(flights[i].destinationCode, size);
-      final control = Offset(
-        (start.dx + end.dx) / 2,
-        math.min(start.dy, end.dy) - 26 - (i % 2) * 8,
+      final flight = flights[i];
+      final start = _pointForCode(flight.originCode, size);
+      final end = _pointForCode(flight.destinationCode, size);
+      _drawRoute(canvas, start, end, size, routeShadowPaint, i);
+      _drawRoute(canvas, start, end, size, routePaint, i);
+      _drawAirportMarker(
+        canvas,
+        start,
+        flight.originCode,
+        palette,
+        false,
+        size,
       );
-      final path = Path()
-        ..moveTo(start.dx, start.dy)
-        ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
-      canvas.drawPath(path, routeShadowPaint);
-      canvas.drawPath(path, routePaint);
-      _drawDot(canvas, start, muted);
-      _drawDot(canvas, end, accent);
+      _drawAirportMarker(
+        canvas,
+        end,
+        flight.destinationCode,
+        palette,
+        true,
+        size,
+      );
     }
   }
 
-  void _drawWorldHint(Canvas canvas, Size size, Paint paint) {
-    final americas = Rect.fromLTWH(
-      size.width * 0.07,
-      size.height * 0.20,
-      size.width * 0.25,
-      size.height * 0.46,
-    );
-    final europeAfrica = Rect.fromLTWH(
-      size.width * 0.42,
-      size.height * 0.18,
-      size.width * 0.20,
-      size.height * 0.50,
-    );
-    final asia = Rect.fromLTWH(
-      size.width * 0.62,
-      size.height * 0.22,
-      size.width * 0.30,
-      size.height * 0.38,
-    );
+  void _drawGraticule(Canvas canvas, Size size, _MapPalette palette) {
+    final paint = Paint()
+      ..color = palette.grid
+      ..strokeWidth = 0.7
+      ..style = PaintingStyle.stroke;
 
-    canvas.drawOval(americas, paint);
-    canvas.drawOval(europeAfrica, paint);
-    canvas.drawOval(asia, paint);
-    canvas.drawLine(
-      Offset(size.width * 0.03, size.height * 0.74),
-      Offset(size.width * 0.97, size.height * 0.74),
-      paint,
-    );
+    for (final lon in [-120.0, -60.0, 0.0, 60.0, 120.0]) {
+      final x = _project(0, lon, size).dx;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+    for (final lat in [-45.0, 0.0, 45.0]) {
+      final y = _project(lat, 0, size).dy;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
   }
 
-  void _drawDot(Canvas canvas, Offset offset, Color color) {
-    final paint = Paint()..color = color;
-    final halo = Paint()..color = color.withValues(alpha: 0.18);
+  void _drawContinents(Canvas canvas, Size size, _MapPalette palette) {
+    final stroke = Paint()
+      ..color = palette.coast
+      ..strokeWidth = 1.0
+      ..style = PaintingStyle.stroke;
+
+    for (final shape in _continentShapes) {
+      final path = Path();
+      for (var i = 0; i < shape.length; i++) {
+        final point = _project(shape[i].lat, shape[i].lon, size);
+        if (i == 0) {
+          path.moveTo(point.dx, point.dy);
+        } else {
+          path.lineTo(point.dx, point.dy);
+        }
+      }
+      path.close();
+      canvas.drawPath(path, Paint()..color = palette.land);
+      canvas.drawPath(path, stroke);
+    }
+  }
+
+  void _drawRoute(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Size size,
+    Paint paint,
+    int index,
+  ) {
+    final crossesDateline = (end.dx - start.dx).abs() > size.width * 0.52;
+    if (!crossesDateline) {
+      _drawRouteSegment(canvas, start, end, size, paint, index);
+      return;
+    }
+
+    if (start.dx < end.dx) {
+      _drawRouteSegment(
+        canvas,
+        start,
+        Offset(end.dx - size.width, end.dy),
+        size,
+        paint,
+        index,
+      );
+      _drawRouteSegment(
+        canvas,
+        Offset(start.dx + size.width, start.dy),
+        end,
+        size,
+        paint,
+        index,
+      );
+    } else {
+      _drawRouteSegment(
+        canvas,
+        start,
+        Offset(end.dx + size.width, end.dy),
+        size,
+        paint,
+        index,
+      );
+      _drawRouteSegment(
+        canvas,
+        Offset(start.dx - size.width, start.dy),
+        end,
+        size,
+        paint,
+        index,
+      );
+    }
+  }
+
+  void _drawRouteSegment(
+    Canvas canvas,
+    Offset start,
+    Offset end,
+    Size size,
+    Paint paint,
+    int index,
+  ) {
+    final distance = (end - start).distance;
+    final lift = (distance * 0.16).clamp(18.0, 42.0) + (index % 2) * 8;
+    final control = Offset(
+      (start.dx + end.dx) / 2,
+      math.min(start.dy, end.dy) - lift,
+    );
+    final path = Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawAirportMarker(
+    Canvas canvas,
+    Offset offset,
+    String code,
+    _MapPalette palette,
+    bool destination,
+    Size size,
+  ) {
+    final markerColor = destination ? palette.route : palette.marker;
+    final halo = Paint()..color = markerColor.withValues(alpha: 0.22);
+    final dot = Paint()..color = markerColor;
     canvas.drawCircle(offset, 7, halo);
-    canvas.drawCircle(offset, 3.5, paint);
+    canvas.drawCircle(offset, 3.5, dot);
+
+    final trimmed = code.trim().toUpperCase();
+    if (trimmed.isEmpty) return;
+
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: trimmed,
+        style: TextStyle(
+          color: palette.label,
+          fontSize: 9,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final labelOffset = Offset(
+      (offset.dx + 8).clamp(2.0, size.width - textPainter.width - 2),
+      (offset.dy - 18).clamp(2.0, size.height - textPainter.height - 2),
+    );
+    textPainter.paint(canvas, labelOffset);
   }
 
   Offset _pointForCode(String code, Size size) {
     final hash = code.codeUnits.fold<int>(0, (sum, value) => sum + value);
     final normalized = code.toUpperCase();
-    final known = <String, Offset>{
-      'LAX': const Offset(0.16, 0.50),
-      'SFO': const Offset(0.15, 0.42),
-      'SEA': const Offset(0.15, 0.31),
-      'JFK': const Offset(0.29, 0.43),
-      'EWR': const Offset(0.29, 0.44),
-      'ATL': const Offset(0.25, 0.54),
-      'ORD': const Offset(0.23, 0.40),
-      'DFW': const Offset(0.20, 0.56),
-      'HND': const Offset(0.79, 0.47),
-      'NRT': const Offset(0.80, 0.45),
-      'SIN': const Offset(0.72, 0.68),
-      'LHR': const Offset(0.48, 0.36),
-      'CDG': const Offset(0.50, 0.39),
-      'DXB': const Offset(0.58, 0.54),
-      'SYD': const Offset(0.84, 0.78),
-    }[normalized];
-    final fallback = Offset(0.12 + (hash % 73) / 100, 0.28 + (hash % 41) / 100);
-    final unit = known ?? fallback;
-    return Offset(unit.dx * size.width, unit.dy * size.height);
+    final known = _airportCoordinates[normalized];
+    if (known != null) {
+      return _project(known.lat, known.lon, size);
+    }
+    return _project(58 - (hash % 116), -170 + (hash * 37 % 340), size);
+  }
+
+  Offset _project(double lat, double lon, Size size) {
+    final x = ((lon + 180) / 360).clamp(0.0, 1.0) * size.width;
+    final y =
+        ((78 - lat.clamp(-56.0, 78.0)) / 134).clamp(0.0, 1.0) * size.height;
+    return Offset(x.toDouble(), y.toDouble());
   }
 
   @override
@@ -1478,6 +1692,151 @@ class _JourneyMapPainter extends CustomPainter {
     return flights != oldDelegate.flights ||
         accent != oldDelegate.accent ||
         muted != oldDelegate.muted ||
-        outline != oldDelegate.outline;
+        outline != oldDelegate.outline ||
+        style != oldDelegate.style ||
+        brightness != oldDelegate.brightness;
   }
 }
+
+class _MapPalette {
+  const _MapPalette({
+    required this.ocean,
+    required this.land,
+    required this.coast,
+    required this.grid,
+    required this.route,
+    required this.marker,
+    required this.label,
+  });
+
+  final Color ocean;
+  final Color land;
+  final Color coast;
+  final Color grid;
+  final Color route;
+  final Color marker;
+  final Color label;
+
+  static _MapPalette forStyle(
+    _FlightMapStyle style,
+    Brightness brightness,
+    Color accent,
+  ) {
+    if (style == _FlightMapStyle.satellite) {
+      return _MapPalette(
+        ocean: const Color(0xFF092839),
+        land: const Color(0xFF315B34),
+        coast: const Color(0xFF76A06F).withValues(alpha: 0.55),
+        grid: Colors.white.withValues(alpha: 0.08),
+        route: accent,
+        marker: const Color(0xFFD6E8E5),
+        label: const Color(0xFFEAF5EF),
+      );
+    }
+
+    final isDark = brightness == Brightness.dark;
+    return _MapPalette(
+      ocean: isDark ? const Color(0xFF061820) : const Color(0xFFE8F1F4),
+      land: isDark ? const Color(0xFF12323C) : const Color(0xFFD2E0D5),
+      coast: isDark
+          ? const Color(0xFF4C7A86).withValues(alpha: 0.72)
+          : const Color(0xFF7EA0A5).withValues(alpha: 0.78),
+      grid: isDark
+          ? Colors.white.withValues(alpha: 0.08)
+          : const Color(0xFF557278).withValues(alpha: 0.16),
+      route: accent,
+      marker: isDark ? const Color(0xFFB8C7CA) : const Color(0xFF456166),
+      label: isDark ? const Color(0xFFE1EFF0) : const Color(0xFF243B40),
+    );
+  }
+}
+
+class _GeoPoint {
+  const _GeoPoint(this.lat, this.lon);
+
+  final double lat;
+  final double lon;
+}
+
+const _airportCoordinates = <String, _GeoPoint>{
+  'ATL': _GeoPoint(33.6407, -84.4277),
+  'CDG': _GeoPoint(49.0097, 2.5479),
+  'DFW': _GeoPoint(32.8998, -97.0403),
+  'DXB': _GeoPoint(25.2532, 55.3657),
+  'EWR': _GeoPoint(40.6895, -74.1745),
+  'HKG': _GeoPoint(22.3080, 113.9185),
+  'HND': _GeoPoint(35.5494, 139.7798),
+  'JFK': _GeoPoint(40.6413, -73.7781),
+  'LAX': _GeoPoint(33.9416, -118.4085),
+  'LHR': _GeoPoint(51.4700, -0.4543),
+  'NRT': _GeoPoint(35.7720, 140.3929),
+  'ORD': _GeoPoint(41.9742, -87.9073),
+  'SEA': _GeoPoint(47.4502, -122.3088),
+  'SFO': _GeoPoint(37.6213, -122.3790),
+  'SIN': _GeoPoint(1.3644, 103.9915),
+  'SYD': _GeoPoint(-33.9399, 151.1753),
+};
+
+const _continentShapes = <List<_GeoPoint>>[
+  [
+    _GeoPoint(70, -166),
+    _GeoPoint(62, -132),
+    _GeoPoint(51, -124),
+    _GeoPoint(32, -117),
+    _GeoPoint(19, -103),
+    _GeoPoint(8, -83),
+    _GeoPoint(18, -65),
+    _GeoPoint(31, -80),
+    _GeoPoint(45, -63),
+    _GeoPoint(55, -78),
+    _GeoPoint(70, -95),
+  ],
+  [
+    _GeoPoint(12, -79),
+    _GeoPoint(5, -66),
+    _GeoPoint(-8, -49),
+    _GeoPoint(-24, -45),
+    _GeoPoint(-53, -70),
+    _GeoPoint(-33, -77),
+    _GeoPoint(-10, -79),
+  ],
+  [
+    _GeoPoint(72, -52),
+    _GeoPoint(75, -22),
+    _GeoPoint(62, -17),
+    _GeoPoint(59, -44),
+  ],
+  [
+    _GeoPoint(72, -10),
+    _GeoPoint(64, 30),
+    _GeoPoint(52, 48),
+    _GeoPoint(40, 30),
+    _GeoPoint(36, 5),
+    _GeoPoint(45, -8),
+  ],
+  [
+    _GeoPoint(36, -17),
+    _GeoPoint(31, 31),
+    _GeoPoint(7, 45),
+    _GeoPoint(-35, 21),
+    _GeoPoint(-30, 12),
+    _GeoPoint(3, 8),
+    _GeoPoint(19, -16),
+  ],
+  [
+    _GeoPoint(67, 36),
+    _GeoPoint(71, 92),
+    _GeoPoint(58, 146),
+    _GeoPoint(41, 143),
+    _GeoPoint(20, 106),
+    _GeoPoint(9, 79),
+    _GeoPoint(25, 57),
+    _GeoPoint(45, 64),
+  ],
+  [
+    _GeoPoint(-10, 112),
+    _GeoPoint(-16, 151),
+    _GeoPoint(-39, 145),
+    _GeoPoint(-35, 116),
+  ],
+];

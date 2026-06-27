@@ -689,7 +689,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['Kg', 'Tons'],
+                                options: const ['Kg', 'T'],
                                 selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
                                 onSelect: (i) => prefs.setCo2Unit(
                                   i == 0 ? Co2Unit.kg : Co2Unit.metricTons,
