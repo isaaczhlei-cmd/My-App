@@ -1678,19 +1678,19 @@ class AboutScreen extends StatelessWidget {
               _AboutSection(
                 title: 'What FlightPrint Does',
                 body:
-                    'FlightPrint helps travelers log flights, estimate carbon impact, compare cleaner route options, and understand aviation emissions in plain language.',
+                    'FlightPrint helps travelers better understand the environmental impact of their flights. You can log trips, estimate carbon emissions, compare cleaner route options, and track how your footprint changes over time. Instead of showing only raw numbers, FlightPrint turns flight emissions into simple, readable insights that are easier to understand and act on.',
               ),
               const SizedBox(height: 14),
               _AboutSection(
                 title: 'How Emissions Work',
                 body:
-                    'Calculations combine available flight data, cabin class, passenger count, and route distance. When exact model data is unavailable, FlightPrint uses a local distance-based estimate so you can still compare trips consistently.',
+                    'FlightPrint estimates emissions using available flight details such as route, cabin class, passenger count, aircraft data when available, and total distance traveled. When exact flight model data is not available, the app uses a route-distance based estimate so trips can still be compared consistently. This helps keep your flight history useful even when some data sources are limited.',
               ),
               const SizedBox(height: 14),
               _AboutSection(
                 title: 'Why It Matters',
                 body:
-                    'Carbon numbers can feel abstract, so the app translates totals into trends, milestones, and real-world equivalents like driving distance and home energy use.',
+                    'Aviation emissions can be difficult to picture because carbon numbers often feel abstract. FlightPrint makes those numbers clearer by showing trends, monthly totals, averages, and real-world comparisons such as driving distance or home energy use. The goal is not to make travel feel impossible, but to help travelers make more informed choices.',
               ),
               const SizedBox(height: 18),
               Container(
