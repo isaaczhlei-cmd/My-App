@@ -213,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 icon: Icons.notifications_outlined,
                                 label: 'Notifications',
                                 badgeCount:
-                                    _notificationInbox.notifications.length,
+                                    _notificationInbox.unreadCount,
                                 onTap: () {
                                   if (isGuest) {
                                     _openGuestPrompt('Notifications');
