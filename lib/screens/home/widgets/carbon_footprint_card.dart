@@ -59,7 +59,7 @@ class CarbonFootprintCard extends StatelessWidget {
             textBaseline: TextBaseline.alphabetic,
             children: [
               Text(
-                totalTonsCO2.toStringAsFixed(1),
+                totalTonsCO2.toStringAsFixed(2),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 40,

@@ -13,6 +13,7 @@ import '../../services/flight_number_parser.dart';
 import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../../widgets/airport_autocomplete_field.dart';
+import '../../widgets/airplane_mode_overlay.dart';
 import '../book_flight/airport_directory.dart';
 import 'flight_catalog.dart';
 
@@ -903,46 +904,48 @@ class _AddFlightScreenState extends State<AddFlightScreen>
     final themeColors = context.appColors;
     final accent = Theme.of(context).colorScheme.primary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: themeColors.cardMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: themeColors.outlineSoft),
-      ),
-      child: TextField(
-        controller: _heroSearchController,
-        cursorColor: accent,
-        textCapitalization: TextCapitalization.characters,
-        style: TextStyle(
-          color: accent,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+    return AirplaneStopoverRegion(
+      child: Container(
+        decoration: BoxDecoration(
+          color: themeColors.cardMuted,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: themeColors.outlineSoft),
         ),
-        decoration: InputDecoration(
-          border: InputBorder.none,
-          hintText: 'Search airline, flight, or route',
-          hintStyle: TextStyle(color: themeColors.onCardMuted),
-          prefixIcon: Icon(Icons.search, color: themeColors.onCardMuted),
-          suffixIcon: _heroSearchController.text.isEmpty
-              ? null
-              : IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _heroSearchController.clear();
-                      _selectedCatalogEntry = null;
-                      _errorMessage = null;
-                      _clearLookupResult();
-                    });
-                    _verifyVisibleCatalogEntries();
-                  },
-                  icon: Icon(Icons.close, color: themeColors.onCardMuted),
-                ),
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 16,
+        child: TextField(
+          controller: _heroSearchController,
+          cursorColor: accent,
+          textCapitalization: TextCapitalization.characters,
+          style: TextStyle(
+            color: accent,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
           ),
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            hintText: 'Search airline, flight, or route',
+            hintStyle: TextStyle(color: themeColors.onCardMuted),
+            prefixIcon: Icon(Icons.search, color: themeColors.onCardMuted),
+            suffixIcon: _heroSearchController.text.isEmpty
+                ? null
+                : IconButton(
+                    onPressed: () {
+                      setState(() {
+                        _heroSearchController.clear();
+                        _selectedCatalogEntry = null;
+                        _errorMessage = null;
+                        _clearLookupResult();
+                      });
+                      _verifyVisibleCatalogEntries();
+                    },
+                    icon: Icon(Icons.close, color: themeColors.onCardMuted),
+                  ),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+          onChanged: _onHeroQueryChanged,
         ),
-        onChanged: _onHeroQueryChanged,
       ),
     );
   }
@@ -1224,90 +1227,92 @@ class _AddFlightScreenState extends State<AddFlightScreen>
           style: TextStyle(fontSize: 14, color: themeColors.onCardMuted),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
-          clipBehavior: Clip.hardEdge,
-          decoration: BoxDecoration(
-            color: themeColors.cardMuted,
-            border: Border.all(color: themeColors.outlineSoft),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                Icons.person_outline,
-                size: 22,
-                color: themeColors.onCardMuted,
-              ),
-              const SizedBox(width: 12),
-              // Compact stepper: minus, count, plus (compact width)
-              SizedBox(
-                width: 120,
-                height: 48,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Minus button
-                    GestureDetector(
-                      onTap: canDecrease
-                          ? () => _setPassengerCount(currentPassengers - 1)
-                          : null,
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: themeColors.card,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: themeColors.outlineSoft),
-                        ),
-                        child: Icon(
-                          Icons.remove,
-                          color: canDecrease
-                              ? themeColors.onCard
-                              : themeColors.onCardMuted,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                    // Count display
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      alignment: Alignment.center,
-                      child: Text(
-                        currentPassengers.toString(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: themeColors.onCard,
-                        ),
-                      ),
-                    ),
-                    // Plus button
-                    GestureDetector(
-                      onTap: canIncrease
-                          ? () => _setPassengerCount(currentPassengers + 1)
-                          : null,
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: themeColors.card,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: themeColors.outlineSoft),
-                        ),
-                        child: Icon(
-                          Icons.add,
-                          color: canIncrease
-                              ? themeColors.onCard
-                              : themeColors.onCardMuted,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ],
+        AirplaneStopoverRegion(
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+            clipBehavior: Clip.hardEdge,
+            decoration: BoxDecoration(
+              color: themeColors.cardMuted,
+              border: Border.all(color: themeColors.outlineSoft),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.person_outline,
+                  size: 22,
+                  color: themeColors.onCardMuted,
                 ),
-              ),
-            ],
+                const SizedBox(width: 12),
+                // Compact stepper: minus, count, plus (compact width)
+                SizedBox(
+                  width: 120,
+                  height: 48,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Minus button
+                      GestureDetector(
+                        onTap: canDecrease
+                            ? () => _setPassengerCount(currentPassengers - 1)
+                            : null,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: themeColors.card,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: themeColors.outlineSoft),
+                          ),
+                          child: Icon(
+                            Icons.remove,
+                            color: canDecrease
+                                ? themeColors.onCard
+                                : themeColors.onCardMuted,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      // Count display
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        alignment: Alignment.center,
+                        child: Text(
+                          currentPassengers.toString(),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: themeColors.onCard,
+                          ),
+                        ),
+                      ),
+                      // Plus button
+                      GestureDetector(
+                        onTap: canIncrease
+                            ? () => _setPassengerCount(currentPassengers + 1)
+                            : null,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: themeColors.card,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: themeColors.outlineSoft),
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            color: canIncrease
+                                ? themeColors.onCard
+                                : themeColors.onCardMuted,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -1374,29 +1379,31 @@ class _AddFlightScreenState extends State<AddFlightScreen>
       children: [
         Text('Flight Date', style: TextStyle(fontSize: 14, color: labelColor)),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: _pickDate,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: backgroundColor,
-              border: Border.all(color: borderColor),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today, size: 18, color: accent),
-                const SizedBox(width: 12),
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
+        AirplaneStopoverRegion(
+          child: GestureDetector(
+            onTap: _pickDate,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                border: Border.all(color: borderColor),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 18, color: accent),
+                  const SizedBox(width: 12),
+                  Text(
+                    dateStr,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: textColor,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

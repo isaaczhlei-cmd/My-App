@@ -11,6 +11,7 @@ import '../../services/emissions_service.dart';
 import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../../widgets/airport_autocomplete_field.dart';
+import '../../widgets/airplane_mode_overlay.dart';
 import '../add_flight/flight_catalog.dart';
 import '../profile/guest_sign_in_prompt_screen.dart';
 import 'airport_directory.dart';
@@ -873,52 +874,54 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        TextField(
-          controller: _airlineController,
-          cursorColor: accent,
-          textCapitalization: TextCapitalization.words,
-          style: TextStyle(
-            color: accent,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
+        AirplaneStopoverRegion(
+          child: TextField(
+            controller: _airlineController,
+            cursorColor: accent,
+            textCapitalization: TextCapitalization.words,
+            style: TextStyle(
+              color: accent,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Type airline name',
+              hintStyle: TextStyle(color: themeColors.onCardMuted),
+              filled: true,
+              fillColor: themeColors.cardMuted,
+              prefixIcon: Icon(Icons.search, color: themeColors.onCardMuted),
+              suffixIcon: _airlineController.text.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: () {
+                        setState(() {
+                          _airlineController.clear();
+                          _selectedAirlineFilter = null;
+                        });
+                        _refreshCatalogResults();
+                      },
+                      icon: Icon(Icons.close, color: themeColors.onCardMuted),
+                    ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: themeColors.outlineSoft),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: accent, width: 1.5),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: BorderSide(color: themeColors.outlineSoft),
+              ),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _selectedAirlineFilter = null;
+              });
+              _refreshCatalogResults();
+            },
           ),
-          decoration: InputDecoration(
-            hintText: 'Type airline name',
-            hintStyle: TextStyle(color: themeColors.onCardMuted),
-            filled: true,
-            fillColor: themeColors.cardMuted,
-            prefixIcon: Icon(Icons.search, color: themeColors.onCardMuted),
-            suffixIcon: _airlineController.text.isEmpty
-                ? null
-                : IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _airlineController.clear();
-                        _selectedAirlineFilter = null;
-                      });
-                      _refreshCatalogResults();
-                    },
-                    icon: Icon(Icons.close, color: themeColors.onCardMuted),
-                  ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: themeColors.outlineSoft),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: accent, width: 1.5),
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(14),
-              borderSide: BorderSide(color: themeColors.outlineSoft),
-            ),
-          ),
-          onChanged: (value) {
-            setState(() {
-              _selectedAirlineFilter = null;
-            });
-            _refreshCatalogResults();
-          },
         ),
         const SizedBox(height: 10),
         SizedBox(
@@ -974,34 +977,36 @@ class _BookFlightScreenState extends State<BookFlightScreen>
       children: [
         _buildFieldLabel(Icons.calendar_today_outlined, label),
         const SizedBox(height: 8),
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-            decoration: BoxDecoration(
-              color: themeColors.cardMuted,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: themeColors.outlineSoft),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    selected ? _formatDate(date) : 'Select',
-                    style: TextStyle(
-                      color: selected ? accent : themeColors.onCardMuted,
-                      fontSize: selected ? 15 : 14,
-                      fontWeight: FontWeight.w600,
+        AirplaneStopoverRegion(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+              decoration: BoxDecoration(
+                color: themeColors.cardMuted,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: themeColors.outlineSoft),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      selected ? _formatDate(date) : 'Select',
+                      style: TextStyle(
+                        color: selected ? accent : themeColors.onCardMuted,
+                        fontSize: selected ? 15 : 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                ),
-                Icon(
-                  Icons.arrow_drop_down,
-                  size: 20,
-                  color: themeColors.onCardMuted,
-                ),
-              ],
+                  Icon(
+                    Icons.arrow_drop_down,
+                    size: 20,
+                    color: themeColors.onCardMuted,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1015,71 +1020,73 @@ class _BookFlightScreenState extends State<BookFlightScreen>
     final maxPassengers = _maxPassengersForCurrentSearch;
     final canAdd = maxPassengers == 0 || _passengers < maxPassengers;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: themeColors.cardMuted,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: themeColors.outlineSoft),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                key: const ValueKey('decrement-passengers'),
-                onPressed: _passengers > 1
-                    ? () {
-                        setState(() {
-                          _passengers -= 1;
-                        });
-                        _refreshCatalogResults();
-                      }
-                    : null,
-                icon: const Icon(Icons.remove_circle_outline),
-                color: accent,
-              ),
-              Expanded(
-                child: Text(
-                  '$_passengers',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: accent,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+    return AirplaneStopoverRegion(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: themeColors.cardMuted,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: themeColors.outlineSoft),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  key: const ValueKey('decrement-passengers'),
+                  onPressed: _passengers > 1
+                      ? () {
+                          setState(() {
+                            _passengers -= 1;
+                          });
+                          _refreshCatalogResults();
+                        }
+                      : null,
+                  icon: const Icon(Icons.remove_circle_outline),
+                  color: accent,
+                ),
+                Expanded(
+                  child: Text(
+                    '$_passengers',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                key: const ValueKey('increment-passengers'),
-                onPressed: canAdd
-                    ? () {
-                        setState(() {
-                          _passengers = maxPassengers == 0
-                              ? _passengers + 1
-                              : min(_passengers + 1, maxPassengers);
-                        });
-                        _refreshCatalogResults();
-                      }
-                    : null,
-                icon: const Icon(Icons.add_circle_outline),
-                color: accent,
+                IconButton(
+                  key: const ValueKey('increment-passengers'),
+                  onPressed: canAdd
+                      ? () {
+                          setState(() {
+                            _passengers = maxPassengers == 0
+                                ? _passengers + 1
+                                : min(_passengers + 1, maxPassengers);
+                          });
+                          _refreshCatalogResults();
+                        }
+                      : null,
+                  icon: const Icon(Icons.add_circle_outline),
+                  color: accent,
+                ),
+              ],
+            ),
+            if (maxPassengers > 0 && _passengers >= maxPassengers) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Max $maxPassengers for ${_selectedCabin.displayName}',
+                style: TextStyle(
+                  color: themeColors.onCardMuted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
-          ),
-          if (maxPassengers > 0 && _passengers >= maxPassengers) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Max $maxPassengers for ${_selectedCabin.displayName}',
-              style: TextStyle(
-                color: themeColors.onCardMuted,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ],
-        ],
+        ),
       ),
     );
   }

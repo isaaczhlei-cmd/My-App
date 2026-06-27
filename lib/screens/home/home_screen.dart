@@ -507,7 +507,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final displayValue = co2Unit.formatTons(
           totalCO2Tons,
           kgDecimals: 0,
-          tonDecimals: 1,
+          tonDecimals: 2,
           includeUnit: false,
         );
         final displayUnit = '${co2Unit.longLabel} CO';
@@ -631,7 +631,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final barColor = isOver ? AppColors.errorRed : Colors.white;
 
     String fmt(double tons) =>
-        co2Unit.formatTons(tons, kgDecimals: 0, tonDecimals: 1, compact: true);
+        co2Unit.formatTons(tons, kgDecimals: 0, tonDecimals: 2, compact: true);
 
     final statusText = isOver
         ? '${fmt(currentTons - goalTons)} over goal'

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config/theme.dart';
 import '../screens/book_flight/airport_directory.dart';
+import 'airplane_mode_overlay.dart';
 
 class AirportAutocompleteField extends StatelessWidget {
   const AirportAutocompleteField({
@@ -75,43 +76,45 @@ class AirportAutocompleteField extends StatelessWidget {
 
     return Column(
       children: [
-        TextField(
-          controller: controller,
-          focusNode: focusNode,
-          textCapitalization: textCapitalization,
-          onChanged: onChanged,
-          cursorColor: accent,
-          style: effectiveTextStyle,
-          decoration: InputDecoration(
-            hintText: hintText,
-            hintStyle: effectiveHintStyle,
-            filled: true,
-            fillColor: effectiveFillColor,
-            prefixIcon: prefixIcon == null
-                ? null
-                : Icon(prefixIcon, color: themeColors.onCardMuted),
-            suffixIcon: showClearButton && controller.text.isNotEmpty
-                ? IconButton(
-                    onPressed: () {
-                      controller.clear();
-                      onChanged('');
-                    },
-                    icon: Icon(Icons.close, color: themeColors.onCardMuted),
-                  )
-                : null,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide.none,
+        AirplaneStopoverRegion(
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            textCapitalization: textCapitalization,
+            onChanged: onChanged,
+            cursorColor: accent,
+            style: effectiveTextStyle,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: effectiveHintStyle,
+              filled: true,
+              fillColor: effectiveFillColor,
+              prefixIcon: prefixIcon == null
+                  ? null
+                  : Icon(prefixIcon, color: themeColors.onCardMuted),
+              suffixIcon: showClearButton && controller.text.isNotEmpty
+                  ? IconButton(
+                      onPressed: () {
+                        controller.clear();
+                        onChanged('');
+                      },
+                      icon: Icon(Icons.close, color: themeColors.onCardMuted),
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(color: effectiveBorderColor),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(borderRadius),
+                borderSide: BorderSide(color: accent, width: 1.5),
+              ),
+              contentPadding: contentPadding,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: effectiveBorderColor),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(borderRadius),
-              borderSide: BorderSide(color: accent, width: 1.5),
-            ),
-            contentPadding: contentPadding,
           ),
         ),
         if (focusNode.hasFocus) ...[

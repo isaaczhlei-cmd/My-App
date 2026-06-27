@@ -2,10 +2,38 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../services/user_preferences_service.dart';
 
 enum _AirplanePhase { takeoff, cruise, landing }
+
+class AirplaneStopoverRegion extends SingleChildRenderObjectWidget {
+  const AirplaneStopoverRegion({required super.child, super.key});
+
+  @override
+  RenderObject createRenderObject(BuildContext context) {
+    return _AirplaneStopoverRenderBox();
+  }
+}
+
+class _AirplaneStopoverRenderBox extends RenderProxyBox {
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _AirplaneStopoverRegistry.regions.add(this);
+  }
+
+  @override
+  void detach() {
+    _AirplaneStopoverRegistry.regions.remove(this);
+    super.detach();
+  }
+}
+
+class _AirplaneStopoverRegistry {
+  static final regions = <_AirplaneStopoverRenderBox>{};
+}
 
 class AirplaneModeOverlay extends StatefulWidget {
   const AirplaneModeOverlay({required this.child, super.key});
@@ -42,8 +70,10 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   double _rightRouteFactor = 0.28;
   double _routeWavePhase = 0;
   double _routeWaveAmplitude = 12;
-  double? _inputStopoverProgress;
   bool _inputStopoverConsumed = false;
+  bool _stopoverRouteAligned = false;
+  Rect? _activeStopoverRect;
+  String? _visibleStopoverSignature;
 
   @override
   void initState() {
@@ -96,22 +126,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
   }
 
   void _handleSweepTick() {
-    final stopover = _inputStopoverProgress;
-    if (stopover == null ||
-        _inputStopoverConsumed ||
-        _isDragging ||
-        _isLandingPaused ||
-        _turboActive ||
-        !_sweepController.isAnimating) {
-      return;
-    }
-
-    final reachedStopover = _facingRight
-        ? _sweepController.value >= stopover
-        : _sweepController.value <= stopover;
-    if (reachedStopover) {
-      _pauseOnInputBox();
-    }
+    // Stopovers are based on real registered field rectangles in the build pass.
   }
 
   double _randomRouteFactor() {
@@ -128,11 +143,11 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     _routeWaveAmplitude = 6 + _routeRandom.nextDouble() * 16;
   }
 
-  void _prepareInputStopover(bool movingRight) {
+  void _prepareInputStopover() {
     _inputStopoverConsumed = false;
-    _inputStopoverProgress = movingRight
-        ? 0.30 + _routeRandom.nextDouble() * 0.34
-        : 0.70 - _routeRandom.nextDouble() * 0.34;
+    _stopoverRouteAligned = false;
+    _activeStopoverRect = null;
+    _visibleStopoverSignature = null;
   }
 
   void _startSweep({bool turbo = false}) {
@@ -145,7 +160,7 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     bool keepStopover = false,
   }) {
     if (!turbo && !keepStopover) {
-      _prepareInputStopover(movingRight);
+      _prepareInputStopover();
     }
     final baseDuration = turbo ? _turboDuration : _sweepDuration;
     final remaining = movingRight
@@ -288,8 +303,147 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     _routeWavePhase = _routeRandom.nextDouble() * pi * 2;
     _routeWaveAmplitude = 10 + _routeRandom.nextDouble() * 18;
     _inputStopoverConsumed = true;
-    _inputStopoverProgress = null;
+    _stopoverRouteAligned = true;
+    _activeStopoverRect = null;
     _animateTowardEdge(movingRight, turbo: true);
+  }
+
+  void _alignRouteToVisibleStopover({
+    required BuildContext overlayContext,
+    required BoxConstraints constraints,
+    required Offset position,
+  }) {
+    if (_isDragging ||
+        _isLandingPaused ||
+        _turboActive ||
+        !_sweepController.isAnimating) {
+      return;
+    }
+
+    final regions = _visibleStopoverRects(overlayContext, constraints);
+    final signature = _stopoverSignature(regions);
+    if (signature != _visibleStopoverSignature) {
+      _visibleStopoverSignature = signature;
+      _stopoverRouteAligned = false;
+      _inputStopoverConsumed = false;
+      _activeStopoverRect = null;
+    }
+    if (regions.isEmpty || _stopoverRouteAligned || _inputStopoverConsumed) {
+      return;
+    }
+
+    final target = _chooseStopoverRegion(regions, position);
+    final targetY = (target.center.dy - _planeHeight * 0.5)
+        .clamp(0.0, max(0, constraints.maxHeight - _planeHeight))
+        .toDouble();
+    final routeFactor = (targetY / max(1, constraints.maxHeight))
+        .clamp(0.08, 0.54)
+        .toDouble();
+
+    setState(() {
+      _activeStopoverRect = target;
+      _leftRouteFactor = routeFactor;
+      _rightRouteFactor = routeFactor;
+      _routeWaveAmplitude = 0;
+      _stopoverRouteAligned = true;
+    });
+  }
+
+  Rect _chooseStopoverRegion(List<Rect> regions, Offset position) {
+    final planeCenterX = position.dx + _planeWidth * 0.5;
+    final candidates = regions.where((rect) {
+      return _facingRight
+          ? rect.center.dx >= planeCenterX - _planeWidth * 0.18
+          : rect.center.dx <= planeCenterX + _planeWidth * 0.18;
+    }).toList();
+    final pool = candidates.isEmpty ? regions : candidates;
+    pool.sort((a, b) {
+      final ax = (a.center.dx - planeCenterX).abs();
+      final bx = (b.center.dx - planeCenterX).abs();
+      final areaCompare = (b.width * b.height).compareTo(a.width * a.height);
+      final distanceCompare = ax.compareTo(bx);
+      return distanceCompare == 0 ? areaCompare : distanceCompare;
+    });
+    return pool.first;
+  }
+
+  String _stopoverSignature(List<Rect> regions) {
+    if (regions.isEmpty) return 'none';
+    final sorted = [...regions]
+      ..sort((a, b) {
+        final yCompare = a.center.dy.compareTo(b.center.dy);
+        return yCompare == 0 ? a.center.dx.compareTo(b.center.dx) : yCompare;
+      });
+    return sorted
+        .map(
+          (rect) =>
+              '${rect.center.dx.round()},${rect.center.dy.round()},${rect.width.round()},${rect.height.round()}',
+        )
+        .join('|');
+  }
+
+  void _pauseIfOverStopover({
+    required BuildContext overlayContext,
+    required BoxConstraints constraints,
+    required Offset position,
+  }) {
+    if (_inputStopoverConsumed ||
+        _isDragging ||
+        _isLandingPaused ||
+        _turboActive ||
+        !_sweepController.isAnimating) {
+      return;
+    }
+
+    final planeRect = Rect.fromLTWH(
+      position.dx + _planeWidth * 0.12,
+      position.dy + _planeHeight * 0.18,
+      _planeWidth * 0.76,
+      _planeHeight * 0.64,
+    );
+    final regions = _activeStopoverRect == null
+        ? _visibleStopoverRects(overlayContext, constraints)
+        : <Rect>[_activeStopoverRect!];
+    for (final region in regions) {
+      final overlap = planeRect.intersect(region);
+      if (overlap.isEmpty) continue;
+      final overlapArea = overlap.width * overlap.height;
+      final minArea = min(
+        planeRect.width * planeRect.height,
+        region.width * region.height,
+      );
+      if (overlapArea / max(1, minArea) >= 0.18) {
+        _pauseOnInputBox();
+        return;
+      }
+    }
+  }
+
+  List<Rect> _visibleStopoverRects(
+    BuildContext overlayContext,
+    BoxConstraints constraints,
+  ) {
+    final overlayObject = overlayContext.findRenderObject();
+    if (overlayObject is! RenderBox || !overlayObject.hasSize) {
+      return const <Rect>[];
+    }
+
+    final overlayOrigin = overlayObject.localToGlobal(Offset.zero);
+    final viewport =
+        Offset.zero & Size(constraints.maxWidth, constraints.maxHeight);
+
+    final rects = <Rect>[];
+    for (final region in _AirplaneStopoverRegistry.regions) {
+      if (!region.attached || !region.hasSize) continue;
+      final globalOffset = region.localToGlobal(Offset.zero);
+      final localOffset = globalOffset - overlayOrigin;
+      final rect = localOffset & region.size;
+      if (rect.width < 60 || rect.height < 36 || !rect.overlaps(viewport)) {
+        continue;
+      }
+      rects.add(rect.intersect(viewport));
+    }
+    return rects;
   }
 
   _AirplanePhase _phaseFor({
@@ -376,6 +530,20 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
                             _engineBurn,
                             _turboActive ? 0.9 : 0,
                           ).toDouble();
+
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            _alignRouteToVisibleStopover(
+                              overlayContext: context,
+                              constraints: constraints,
+                              position: position,
+                            );
+                            _pauseIfOverStopover(
+                              overlayContext: context,
+                              constraints: constraints,
+                              position: position,
+                            );
+                          });
 
                           return Stack(
                             clipBehavior: Clip.none,
