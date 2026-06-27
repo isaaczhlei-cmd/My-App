@@ -616,22 +616,25 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
                           child: Builder(
                             builder: (context) {
-                              final cabinSegment = _InlineSegmented(
-                                options: const ['Econ', 'Prem', 'Biz', '1st'],
-                                selected: switch (prefs.defaultCabinClass) {
-                                  CabinClass.premiumEconomy => 1,
-                                  CabinClass.business => 2,
-                                  CabinClass.first => 3,
-                                  _ => 0,
-                                },
-                                onSelect: (i) =>
-                                    prefs.setDefaultCabinClass(switch (i) {
-                                      1 => CabinClass.premiumEconomy,
-                                      2 => CabinClass.business,
-                                      3 => CabinClass.first,
-                                      _ => CabinClass.economy,
-                                    }),
-                                activeColor: accent,
+                              final cabinSegment = SizedBox(
+                                width: double.infinity,
+                                child: _InlineSegmented(
+                                  options: const ['Econ', 'Prem', 'Biz', '1st'],
+                                  selected: switch (prefs.defaultCabinClass) {
+                                    CabinClass.premiumEconomy => 1,
+                                    CabinClass.business => 2,
+                                    CabinClass.first => 3,
+                                    _ => 0,
+                                  },
+                                  onSelect: (i) =>
+                                      prefs.setDefaultCabinClass(switch (i) {
+                                        1 => CabinClass.premiumEconomy,
+                                        2 => CabinClass.business,
+                                        3 => CabinClass.first,
+                                        _ => CabinClass.economy,
+                                      }),
+                                  activeColor: accent,
+                                ),
                               );
 
                               final label = Row(
