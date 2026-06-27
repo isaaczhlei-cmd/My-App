@@ -97,86 +97,92 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: StreamBuilder<List<Flight>>(
-          stream: _firestoreService.getFlightsStream(),
-          builder: (context, snapshot) {
-            final hasFlightLogWarning = snapshot.hasError;
-            final flights = [...(snapshot.data ?? <Flight>[])]
-              ..sort((a, b) => b.date.compareTo(a.date));
-            final now = DateTime.now();
-            final currentMonthFlights = flights
-                .where((flight) => _isInCurrentMonth(flight.date, now))
-                .toList();
+        child: ListenableBuilder(
+          listenable: UserPreferencesService.instance,
+          builder: (context, _) {
+            return StreamBuilder<List<Flight>>(
+              stream: _firestoreService.getFlightsStream(),
+              builder: (context, snapshot) {
+                final hasFlightLogWarning = snapshot.hasError;
+                final flights = [...(snapshot.data ?? <Flight>[])]
+                  ..sort((a, b) => b.date.compareTo(a.date));
+                final now = DateTime.now();
+                final currentMonthFlights = flights
+                    .where((flight) => _isInCurrentMonth(flight.date, now))
+                    .toList();
 
-            // Calculate real stats from flight data
-            final totalFlights = flights.length;
-            final totalEmissionsKg = flights.fold<double>(
-              0,
-              (sum, f) => sum + f.emissionsKg,
-            );
-            final totalCO2Tons = totalEmissionsKg / 1000;
-            final avgKgPerFlight = totalFlights > 0
-                ? (totalEmissionsKg / totalFlights).round()
-                : 0;
-            // Rough estimate: 1 kg CO2 ≈ 2.51 miles; convert to km if needed
-            final distKm =
-                UserPreferencesService.instance.distanceUnit == DistanceUnit.km;
-            final totalDistK = distKm
-                ? (totalEmissionsKg * 2.51 * 1.60934 / 1000)
-                : (totalEmissionsKg * 2.51 / 1000);
-            final totalMilesK =
-                totalDistK; // variable kept for call-site compat
+                // Calculate real stats from flight data
+                final totalFlights = flights.length;
+                final totalEmissionsKg = flights.fold<double>(
+                  0,
+                  (sum, f) => sum + f.emissionsKg,
+                );
+                final totalCO2Tons = totalEmissionsKg / 1000;
+                final avgKgPerFlight = totalFlights > 0
+                    ? (totalEmissionsKg / totalFlights).round()
+                    : 0;
+                // Rough estimate: 1 kg CO2 ≈ 2.51 miles; convert to km if needed
+                final distKm =
+                    UserPreferencesService.instance.distanceUnit ==
+                    DistanceUnit.km;
+                final totalDistK = distKm
+                    ? (totalEmissionsKg * 2.51 * 1.60934 / 1000)
+                    : (totalEmissionsKg * 2.51 / 1000);
+                final totalMilesK =
+                    totalDistK; // variable kept for call-site compat
 
-            final recentFlights = currentMonthFlights
-                .take(_recentFlightsLimit)
-                .toList();
-            final recentTravelPattern = _buildRecentTravelPattern(
-              recentFlights,
-            );
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _queueEcoTipNotification(
-                flightCount: totalFlights,
-                totalEmissionsKg: totalEmissionsKg,
-                recentTravelPattern: recentTravelPattern,
-              );
-            });
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  _buildEmailVerificationBanner(),
-                  if (hasFlightLogWarning) ...[
-                    const SizedBox(height: 12),
-                    _buildFlightLogWarning(),
-                  ],
-                  const SizedBox(height: 24),
-                  _buildFootprintCard(totalCO2Tons),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(
-                    context,
-                    totalFlights,
-                    totalMilesK,
-                    avgKgPerFlight,
-                  ),
-                  const SizedBox(height: 20),
-                  _buildJourneyMapCard(flights),
-                  const SizedBox(height: 20),
-                  _buildMonthlyTrends(flights),
-                  const SizedBox(height: 20),
-                  _buildImpactStories(
-                    flights: flights,
+                final recentFlights = currentMonthFlights
+                    .take(_recentFlightsLimit)
+                    .toList();
+                final recentTravelPattern = _buildRecentTravelPattern(
+                  recentFlights,
+                );
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  _queueEcoTipNotification(
+                    flightCount: totalFlights,
                     totalEmissionsKg: totalEmissionsKg,
-                    avgKgPerFlight: avgKgPerFlight,
+                    recentTravelPattern: recentTravelPattern,
+                  );
+                });
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildHeader(),
+                      _buildEmailVerificationBanner(),
+                      if (hasFlightLogWarning) ...[
+                        const SizedBox(height: 12),
+                        _buildFlightLogWarning(),
+                      ],
+                      const SizedBox(height: 24),
+                      _buildFootprintCard(totalCO2Tons),
+                      const SizedBox(height: 20),
+                      _buildStatsRow(
+                        context,
+                        totalFlights,
+                        totalMilesK,
+                        avgKgPerFlight,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildJourneyMapCard(flights),
+                      const SizedBox(height: 20),
+                      _buildMonthlyTrends(flights),
+                      const SizedBox(height: 20),
+                      _buildImpactStories(
+                        flights: flights,
+                        totalEmissionsKg: totalEmissionsKg,
+                        avgKgPerFlight: avgKgPerFlight,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildRecentFlights(recentFlights),
+                      const SizedBox(height: 20),
+                    ],
                   ),
-                  const SizedBox(height: 24),
-                  _buildRecentFlights(recentFlights),
-                  const SizedBox(height: 20),
-                ],
-              ),
+                );
+              },
             );
           },
         ),
@@ -500,16 +506,13 @@ class _HomeScreenState extends State<HomeScreen> {
         final goalTons = prefs.annualCo2GoalTons;
         final co2Unit = prefs.co2Unit;
 
-        // Format display value respecting unit setting
-        final String displayValue;
-        final String displayUnit;
-        if (co2Unit == Co2Unit.kg) {
-          displayValue = (totalCO2Tons * 1000).toStringAsFixed(0);
-          displayUnit = 'kg CO';
-        } else {
-          displayValue = totalCO2Tons.toStringAsFixed(1);
-          displayUnit = 'tons CO';
-        }
+        final displayValue = co2Unit.formatTons(
+          totalCO2Tons,
+          kgDecimals: 0,
+          tonDecimals: 1,
+          includeUnit: false,
+        );
+        final displayUnit = '${co2Unit.longLabel} CO';
 
         return Container(
           width: double.infinity,
@@ -629,12 +632,8 @@ class _HomeScreenState extends State<HomeScreen> {
         : 0.0;
     final barColor = isOver ? AppColors.errorRed : Colors.white;
 
-    String fmt(double tons) {
-      if (co2Unit == Co2Unit.kg) {
-        return '${(tons * 1000).toStringAsFixed(0)} kg';
-      }
-      return '${tons.toStringAsFixed(1)} t';
-    }
+    String fmt(double tons) =>
+        co2Unit.formatTons(tons, kgDecimals: 0, tonDecimals: 1, compact: true);
 
     final statusText = isOver
         ? '${fmt(currentTons - goalTons)} over goal'
@@ -716,9 +715,12 @@ class _HomeScreenState extends State<HomeScreen> {
               Theme.of(context).brightness,
             ),
             iconBgColor: const Color(0xFFE8F5E9),
-            value: UserPreferencesService.instance.co2Unit == Co2Unit.kg
-                ? '${avgKgPerFlight}kg'
-                : '${(avgKgPerFlight / 1000).toStringAsFixed(2)}t',
+            value: UserPreferencesService.instance.co2Unit.formatKg(
+              avgKgPerFlight.toDouble(),
+              kgDecimals: 0,
+              tonDecimals: 2,
+              compact: true,
+            ),
             label: 'Avg/Flight',
           ),
         ),
@@ -845,6 +847,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildMonthlyTrends(List<Flight> flights) {
     final themeColors = context.appColors;
+    final co2Unit = UserPreferencesService.instance.co2Unit;
     final buckets = _monthlyEmissionBuckets(flights);
     final maxKg = buckets.fold<double>(
       0,
@@ -894,7 +897,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _MonthlyTrendBar(point: point, ratio: ratio),
+                    child: _MonthlyTrendBar(
+                      point: point,
+                      ratio: ratio,
+                      co2Unit: co2Unit,
+                    ),
                   ),
                 );
               }).toList(),
@@ -904,7 +911,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             bestMonth == null
                 ? 'No yearly trend yet'
-                : 'Greenest month: ${bestMonth.label} at ${bestMonth.emissionsKg.round()} kg CO2.',
+                : 'Greenest month: ${bestMonth.label} at ${co2Unit.formatKg(bestMonth.emissionsKg, kgDecimals: 0, tonDecimals: 2, compact: false)} CO2.',
             style: TextStyle(color: themeColors.onCardMuted, fontSize: 14),
           ),
         ],
@@ -918,6 +925,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required int avgKgPerFlight,
   }) {
     final themeColors = context.appColors;
+    final co2Unit = UserPreferencesService.instance.co2Unit;
     final milesDriven = (totalEmissionsKg * 2.51).round();
     final homeMonths = totalEmissionsKg <= 0 ? 0.0 : totalEmissionsKg / 280;
     final efficientFlight = flights
@@ -939,7 +947,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Row(
         children: [
-          _ImpactRing(totalKg: totalEmissionsKg),
+          _ImpactRing(totalKg: totalEmissionsKg, co2Unit: co2Unit),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -976,7 +984,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.speed,
                   label: avgKgPerFlight == 0
                       ? 'Average unlocks after logging'
-                      : 'Average: ${_formatInt(avgKgPerFlight)} kg per flight',
+                      : 'Average: ${co2Unit.formatKg(avgKgPerFlight.toDouble(), kgDecimals: 0, tonDecimals: 2, compact: false)} per flight',
                 ),
               ],
             ),
@@ -1138,10 +1146,15 @@ class _MonthlyEmissionPoint {
 }
 
 class _MonthlyTrendBar extends StatelessWidget {
-  const _MonthlyTrendBar({required this.point, required this.ratio});
+  const _MonthlyTrendBar({
+    required this.point,
+    required this.ratio,
+    required this.co2Unit,
+  });
 
   final _MonthlyEmissionPoint point;
   final double ratio;
+  final Co2Unit co2Unit;
 
   @override
   Widget build(BuildContext context) {
@@ -1153,7 +1166,14 @@ class _MonthlyTrendBar extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Text(
-          point.emissionsKg == 0 ? '-' : point.emissionsKg.round().toString(),
+          point.emissionsKg == 0
+              ? '-'
+              : co2Unit.formatKg(
+                  point.emissionsKg,
+                  kgDecimals: 0,
+                  tonDecimals: 2,
+                  includeUnit: false,
+                ),
           style: TextStyle(color: themeColors.onCardMuted, fontSize: 11),
         ),
         const SizedBox(height: 6),
@@ -1211,9 +1231,10 @@ class _RouteChip extends StatelessWidget {
 }
 
 class _ImpactRing extends StatelessWidget {
-  const _ImpactRing({required this.totalKg});
+  const _ImpactRing({required this.totalKg, required this.co2Unit});
 
   final double totalKg;
+  final Co2Unit co2Unit;
 
   @override
   Widget build(BuildContext context) {
@@ -1233,9 +1254,12 @@ class _ImpactRing extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                totalKg < 1000
-                    ? totalKg.round().toString()
-                    : (totalKg / 1000).toStringAsFixed(1),
+                co2Unit.formatKg(
+                  totalKg,
+                  kgDecimals: 0,
+                  tonDecimals: 2,
+                  includeUnit: false,
+                ),
                 style: TextStyle(
                   color: themeColors.onCard,
                   fontSize: 20,
@@ -1243,7 +1267,7 @@ class _ImpactRing extends StatelessWidget {
                 ),
               ),
               Text(
-                totalKg < 1000 ? 'kg' : 'tons',
+                co2Unit.longLabel,
                 style: TextStyle(color: themeColors.onCardMuted, fontSize: 11),
               ),
             ],

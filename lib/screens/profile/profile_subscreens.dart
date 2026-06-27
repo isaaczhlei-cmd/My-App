@@ -523,13 +523,14 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   }
 
   String _buildFlightHistoryCsv(List<Flight> flights) {
+    final co2Unit = UserPreferencesService.instance.co2Unit;
     final rows = <List<Object?>>[
       [
         'Date',
         'Origin',
         'Destination',
         'Cabin',
-        'Emissions kg CO2',
+        'Emissions ${co2Unit.longLabel} CO2',
         'Airline',
         'Flight number',
       ],
@@ -539,7 +540,12 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           flight.originCode,
           flight.destinationCode,
           flight.travelClass,
-          flight.emissionsKg.toStringAsFixed(1),
+          co2Unit.formatKg(
+            flight.emissionsKg,
+            kgDecimals: 1,
+            tonDecimals: 3,
+            includeUnit: false,
+          ),
           flight.AirlineCode,
           flight.AirlineNumber,
         ],
@@ -608,8 +614,8 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
+                          child: Builder(
+                            builder: (context) {
                               final cabinSegment = _InlineSegmented(
                                 options: const ['Econ', 'Prem', 'Biz', '1st'],
                                 selected: switch (prefs.defaultCabinClass) {
@@ -648,19 +654,13 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                                 ],
                               );
 
-                              if (constraints.maxWidth < 520) {
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    label,
-                                    const SizedBox(height: 12),
-                                    cabinSegment,
-                                  ],
-                                );
-                              }
-
-                              return Row(
-                                children: [label, const Spacer(), cabinSegment],
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  label,
+                                  const SizedBox(height: 12),
+                                  cabinSegment,
+                                ],
                               );
                             },
                           ),
@@ -686,7 +686,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
                               ),
                               const Spacer(),
                               _InlineSegmented(
-                                options: const ['Kg', 'T'],
+                                options: const ['Kg', 'Tons'],
                                 selected: prefs.co2Unit == Co2Unit.kg ? 0 : 1,
                                 onSelect: (i) => prefs.setCo2Unit(
                                   i == 0 ? Co2Unit.kg : Co2Unit.metricTons,

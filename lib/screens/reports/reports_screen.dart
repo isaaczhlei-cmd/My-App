@@ -91,14 +91,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   _buildSummaryCard(
                     title: 'This Month',
                     flights: thisMonthFlights.length,
-                    emissions: thisMonthKg / 1000,
+                    emissionsKg: thisMonthKg,
                     icon: Icons.calendar_today,
                   ),
                   const SizedBox(height: 12),
                   _buildSummaryCard(
                     title: 'This Year',
                     flights: thisYearFlights.length,
-                    emissions: thisYearKg / 1000,
+                    emissionsKg: thisYearKg,
                     icon: Icons.date_range,
                   ),
                   const SizedBox(height: 24),
@@ -148,10 +148,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
   Widget _buildSummaryCard({
     required String title,
     required int flights,
-    required double emissions,
+    required double emissionsKg,
     required IconData icon,
   }) {
     final themeColors = context.appColors;
+    final co2Unit = UserPreferencesService.instance.co2Unit;
 
     return Container(
       width: double.infinity,
@@ -206,9 +207,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                UserPreferencesService.instance.co2Unit == Co2Unit.kg
-                    ? '${(emissions * 1000).toStringAsFixed(0)} kg'
-                    : '${emissions.toStringAsFixed(2)}t',
+                co2Unit.formatKg(
+                  emissionsKg,
+                  kgDecimals: 0,
+                  tonDecimals: 2,
+                  compact: true,
+                ),
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -228,6 +232,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildTopRoutesCard(List<_RouteData> routes) {
     final themeColors = context.appColors;
+    final co2Unit = UserPreferencesService.instance.co2Unit;
 
     return Container(
       width: double.infinity,
@@ -292,7 +297,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${route.flightCount} flight${route.flightCount == 1 ? '' : 's'} • ${(route.emissionsKg / 1000).toStringAsFixed(2)}t CO\u2082',
+                            '${route.flightCount} flight${route.flightCount == 1 ? '' : 's'} • ${co2Unit.formatKg(route.emissionsKg, kgDecimals: 0, tonDecimals: 2)} CO\u2082',
                             style: TextStyle(
                               fontSize: 13,
                               color: themeColors.onCardMuted,
@@ -312,6 +317,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Widget _buildMonthlyChart(List<_MonthData> monthlyData) {
     final themeColors = context.appColors;
+    final co2Unit = UserPreferencesService.instance.co2Unit;
     final maxKg = monthlyData.fold<double>(
       0,
       (m, d) => d.emissionsKg > m ? d.emissionsKg : m,
@@ -380,7 +386,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
                         children: [
                           if (data.emissionsKg > 0)
                             Text(
-                              '${(data.emissionsKg / 1000).toStringAsFixed(1)}t',
+                              co2Unit.formatKg(
+                                data.emissionsKg,
+                                kgDecimals: 0,
+                                tonDecimals: 2,
+                                compact: true,
+                              ),
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,

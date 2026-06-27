@@ -8,6 +8,7 @@ import '../../services/auth_service.dart';
 import '../../services/booking_link_service.dart';
 import '../../services/booking_provider_service.dart';
 import '../../services/emissions_service.dart';
+import '../../services/user_preferences_service.dart';
 import '../../widgets/app_bottom_nav.dart';
 import '../../widgets/airport_autocomplete_field.dart';
 import '../add_flight/flight_catalog.dart';
@@ -1299,7 +1300,11 @@ class _BookFlightScreenState extends State<BookFlightScreen>
               Expanded(
                 child: _buildMetric(
                   'CO₂',
-                  '${result.emissionsKg.round()} kg',
+                  UserPreferencesService.instance.co2Unit.formatKg(
+                    result.emissionsKg,
+                    kgDecimals: 0,
+                    tonDecimals: 2,
+                  ),
                   Theme.of(context).colorScheme.primary,
                 ),
               ),

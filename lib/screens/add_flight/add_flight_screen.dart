@@ -1717,7 +1717,13 @@ class _AddFlightScreenState extends State<AddFlightScreen>
   }
 
   Widget _buildEmissionsCard() {
-    final tons = (_emissionsKg / 1000).toStringAsFixed(2);
+    final co2Unit = UserPreferencesService.instance.co2Unit;
+    final emissionsValue = co2Unit.formatKg(
+      _emissionsKg,
+      kgDecimals: 0,
+      tonDecimals: 2,
+      includeUnit: false,
+    );
     final equivalentMiles = (_emissionsKg * 2.51).round();
     final passengerCount = _parsePassengerCount() ?? 1;
     final themeColors = context.appColors;
@@ -1750,7 +1756,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
             text: TextSpan(
               children: [
                 TextSpan(
-                  text: tons,
+                  text: emissionsValue,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -1758,7 +1764,7 @@ class _AddFlightScreenState extends State<AddFlightScreen>
                   ),
                 ),
                 TextSpan(
-                  text: ' tons CO\u2082',
+                  text: ' ${co2Unit.longLabel} CO\u2082',
                   style: TextStyle(
                     fontSize: 18,
                     color: themeColors.onSuccessContainer,

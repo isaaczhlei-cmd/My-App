@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../config/theme.dart';
 import '../../../models/flight.dart';
+import '../../../services/user_preferences_service.dart';
 
 class FlightCard extends StatelessWidget {
   final Flight flight;
@@ -19,7 +20,12 @@ class FlightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateStr = DateFormat('MMM d').format(flight.date);
-    final emissionsTons = (flight.emissionsKg / 1000).toStringAsFixed(2);
+    final emissions = UserPreferencesService.instance.co2Unit.formatKg(
+      flight.emissionsKg,
+      kgDecimals: 0,
+      tonDecimals: 2,
+      compact: true,
+    );
     final airlineInfo = _airlineCode.isNotEmpty
         ? '$_airlineCode ${flight.AirlineNumber}'
         : 'Unknown';
@@ -63,7 +69,7 @@ class FlightCard extends StatelessWidget {
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.bold,
-                          color: Color(0xFF616161),
+                              color: Color(0xFF616161),
                             ),
                           ),
                         );
@@ -117,7 +123,7 @@ class FlightCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  '${emissionsTons}t',
+                  emissions.replaceAll(' ', ''),
                   style: TextStyle(
                     fontSize: compact ? 14 : 17,
                     fontWeight: FontWeight.bold,
@@ -126,7 +132,10 @@ class FlightCard extends StatelessWidget {
                 ),
                 Text(
                   'CO\u2082',
-                  style: TextStyle(fontSize: 12, color: themeColors.onCardMuted),
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: themeColors.onCardMuted,
+                  ),
                 ),
               ],
             ),

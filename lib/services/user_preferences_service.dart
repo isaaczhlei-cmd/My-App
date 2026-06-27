@@ -6,6 +6,55 @@ import 'emissions_service.dart';
 
 enum Co2Unit { metricTons, kg }
 
+extension Co2UnitDisplay on Co2Unit {
+  double valueFromKg(double kg) => switch (this) {
+    Co2Unit.kg => kg,
+    Co2Unit.metricTons => kg / 1000,
+  };
+
+  String get shortLabel => switch (this) {
+    Co2Unit.kg => 'kg',
+    Co2Unit.metricTons => 't',
+  };
+
+  String get longLabel => switch (this) {
+    Co2Unit.kg => 'kg',
+    Co2Unit.metricTons => 'tons',
+  };
+
+  String formatKg(
+    double kg, {
+    int kgDecimals = 0,
+    int tonDecimals = 2,
+    bool includeUnit = true,
+    bool compact = true,
+  }) {
+    final value = valueFromKg(kg);
+    final decimals = this == Co2Unit.kg ? kgDecimals : tonDecimals;
+    final formatted = value.toStringAsFixed(decimals);
+    if (!includeUnit) return formatted;
+
+    final unit = compact ? shortLabel : longLabel;
+    return '$formatted $unit';
+  }
+
+  String formatTons(
+    double tons, {
+    int kgDecimals = 0,
+    int tonDecimals = 2,
+    bool includeUnit = true,
+    bool compact = true,
+  }) {
+    return formatKg(
+      tons * 1000,
+      kgDecimals: kgDecimals,
+      tonDecimals: tonDecimals,
+      includeUnit: includeUnit,
+      compact: compact,
+    );
+  }
+}
+
 enum DistanceUnit { miles, km }
 
 class AccentPreset {
