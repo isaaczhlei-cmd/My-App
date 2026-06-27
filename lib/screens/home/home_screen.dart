@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../services/eco_tip_service.dart';
 import '../../services/firestore_service.dart';
+import '../../services/daily_push_scheduler_service.dart';
 import '../../services/notification_inbox_service.dart';
 import '../../services/user_preferences_service.dart';
 import '../../config/theme.dart';
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _notificationInbox.load();
+    DailyPushSchedulerService.instance.ensureScheduled();
   }
 
   @override
