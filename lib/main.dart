@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'firebase_options.dart';
 import 'config/theme.dart';
 import 'screens/auth/login_screen.dart';
@@ -34,6 +37,15 @@ Future<void> _bootstrap() async {
   } catch (e, st) {
     _logBootstrapError(e, st, stage: BootstrapStage.dotenv.name);
     throw _BootstrapException(BootstrapStage.dotenv, e, st);
+  }
+
+  try {
+    tz.initializeTimeZones();
+    final localTimezone = await FlutterTimezone.getLocalTimezone();
+    tz.setLocalLocation(tz.getLocation(localTimezone));
+  } catch (e, st) {
+    _logBootstrapError(e, st, stage: 'timezone');
+    // Non-fatal: daily push scheduler degrades gracefully without local tz
   }
 
   try {
@@ -158,12 +170,10 @@ class AuthWrapper extends StatelessWidget {
 
         final user = snapshot.data;
 
-        // Only fully signed-in accounts should reach the app home.
-        if (user != null && !user.isAnonymous) {
+        if (user != null) {
           return const AirplaneModeOverlay(child: HomeScreen());
         }
 
-        // Signed out or anonymous users go to the auth flow.
         return const LoginScreen();
       },
     );

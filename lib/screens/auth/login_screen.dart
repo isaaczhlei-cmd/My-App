@@ -142,6 +142,24 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _continueAsGuest() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final result = await _authService.signInAsGuest();
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (result.error != null) {
+          _errorMessage = result.error;
+        }
+      });
+    }
+  }
+
   void _handleForgotPasswordTap() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -557,6 +575,18 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
           ],
+
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: _isLoading ? null : _continueAsGuest,
+            child: Text(
+              'Continue as Guest',
+              style: TextStyle(
+                color: themeColors.onCardMuted,
+                fontSize: 14,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -601,6 +631,17 @@ class _LoginScreenState extends State<LoginScreen> {
             });
           },
           onGoogleSignIn: _signInWithGoogle,
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: _isLoading ? null : _continueAsGuest,
+          child: Text(
+            'Continue as Guest',
+            style: TextStyle(
+              color: context.appColors.onCardMuted,
+              fontSize: 14,
+            ),
+          ),
         ),
       ],
     );
