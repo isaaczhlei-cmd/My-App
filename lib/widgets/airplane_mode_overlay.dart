@@ -225,7 +225,11 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     final previous = _lastDragPosition ?? next;
     final elapsedMs = max(1, now.difference(_lastDragAt ?? now).inMilliseconds);
     final velocity = (next - previous).distance / elapsedMs * 1000;
-    final velocityDx = (next.dx - previous.dx) / elapsedMs * 1000;
+    final movedVelocityDx = (next.dx - previous.dx) / elapsedMs * 1000;
+    final gestureVelocityDx = details.delta.dx / elapsedMs * 1000;
+    final velocityDx = movedVelocityDx.abs() < 1
+        ? gestureVelocityDx
+        : movedVelocityDx;
 
     setState(() {
       _dragPosition = next;
@@ -263,11 +267,16 @@ class _AirplaneModeOverlayState extends State<AirplaneModeOverlay>
     final routeFactor = (position.dy / max(1, constraints.maxHeight))
         .clamp(0.08, 0.54)
         .toDouble();
-    final movingRight = _lastDragVelocityDx.abs() < 45
+    var movingRight = _lastDragVelocityDx.abs() < 45
         ? _facingRight
         : _lastDragVelocityDx >= 0;
+    if (progress >= 0.98 && movingRight) {
+      movingRight = false;
+    } else if (progress <= 0.02 && !movingRight) {
+      movingRight = true;
+    }
 
-    _sweepController.value = progress;
+    _sweepController.value = progress.clamp(0.02, 0.98).toDouble();
     _facingRight = movingRight;
     if (movingRight) {
       _leftRouteFactor = routeFactor;
@@ -617,10 +626,9 @@ class _Boeing777XPlanePainter extends CustomPainter {
     _drawCockpit(canvas, size, cy, glassPaint);
     _drawDoorsAndWindows(canvas, size, cy, glassPaint, outlinePaint);
     _drawFlapsAndGear(canvas, size, cy);
-    canvas.restore();
-
     _paintAirlineName(canvas, size, cy, brand);
     _drawBrandMark(canvas, size, cy, brand);
+    canvas.restore();
   }
 
   void _paintAirlineName(
@@ -643,13 +651,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
       maxLines: 1,
       ellipsis: '',
     )..layout(maxWidth: size.width * 0.30);
-    textPainter.paint(
-      canvas,
-      Offset(
-        facingRight ? size.width * 0.44 : size.width * 0.26 - textPainter.width,
-        cy - 8 - textPainter.height / 2,
-      ),
-    );
+    _paintReadableText(canvas, textPainter, Offset(size.width * 0.59, cy - 8));
   }
 
   void _drawTail(
@@ -826,10 +828,7 @@ class _Boeing777XPlanePainter extends CustomPainter {
         : airlineCode.trim().toUpperCase();
     final label = code.length > 3 ? code.substring(0, 3) : code;
     final badge = Rect.fromCircle(
-      center: Offset(
-        facingRight ? size.width * 0.115 : size.width * 0.885,
-        cy - 18,
-      ),
+      center: Offset(size.width * 0.115, cy - 18),
       radius: 9,
     );
     canvas.drawOval(
@@ -850,13 +849,33 @@ class _Boeing777XPlanePainter extends CustomPainter {
       textDirection: TextDirection.ltr,
       maxLines: 1,
     )..layout(maxWidth: 20);
+    _paintReadableText(canvas, textPainter, badge.center);
+  }
+
+  void _paintReadableText(
+    Canvas canvas,
+    TextPainter textPainter,
+    Offset center,
+  ) {
+    if (facingRight) {
+      textPainter.paint(
+        canvas,
+        Offset(
+          center.dx - textPainter.width / 2,
+          center.dy - textPainter.height / 2,
+        ),
+      );
+      return;
+    }
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.scale(-1, 1);
     textPainter.paint(
       canvas,
-      Offset(
-        badge.center.dx - textPainter.width / 2,
-        badge.center.dy - textPainter.height / 2,
-      ),
+      Offset(-textPainter.width / 2, -textPainter.height / 2),
     );
+    canvas.restore();
   }
 
   void _drawFlapsAndGear(Canvas canvas, Size size, double cy) {
