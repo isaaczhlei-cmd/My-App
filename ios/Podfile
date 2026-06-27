@@ -42,6 +42,10 @@ post_install do |installer|
     target.build_configurations.each do |config|
       # Match platform :ios and satisfy Firebase iOS SDK minimum
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      # Suppress dSYM upload warnings from Firebase prebuilt frameworks in release
+      if config.name != 'Debug'
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
+      end
     end
   end
 end

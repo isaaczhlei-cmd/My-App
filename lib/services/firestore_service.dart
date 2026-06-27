@@ -61,13 +61,15 @@ class FirestoreService {
     yield List<Flight>.of(localFlights);
 
     try {
-      yield* _flightsRef(uid)
+      await for (final flights in _flightsRef(uid)
           .orderBy('date', descending: true)
           .snapshots()
           .map(
             (snapshot) =>
                 _mergeFlights(_flightsFromSnapshot(snapshot), localFlights),
-          );
+          )) {
+        yield flights;
+      }
     } catch (e, st) {
       debugPrint('Flight log stream failed: $e');
       debugPrintStack(stackTrace: st);
