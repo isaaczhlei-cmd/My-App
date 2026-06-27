@@ -237,15 +237,8 @@ class AuthService implements AuthServiceLike {
       await _initializeGoogleSignIn(googleSignIn);
       final account = await googleSignIn.authenticate();
 
-      final authentication = account.authentication;
-      final authorization = await account.authorizationClient.authorizeScopes([
-        'email',
-        'profile',
-      ]);
-
       final credential = GoogleAuthProvider.credential(
-        accessToken: authorization.accessToken,
-        idToken: authentication.idToken,
+        idToken: account.authentication.idToken,
       );
 
       // Sign in to Firebase
@@ -278,7 +271,6 @@ class AuthService implements AuthServiceLike {
 
     return _googleSignInInitialization = googleSignIn.initialize(
       serverClientId: DefaultFirebaseOptions.ios.iosClientId,
-      scopes: ['email', 'profile'],
     );
   }
 
@@ -574,14 +566,8 @@ class FirebaseAccountDeletionStore implements AccountDeletionStore {
     final googleSignIn = GoogleSignIn.instance;
     await _initGoogleSignIn(googleSignIn);
     final account = await googleSignIn.authenticate();
-    final auth = account.authentication;
-    final authorization = await account.authorizationClient.authorizeScopes([
-      'email',
-      'profile',
-    ]);
     final cred = GoogleAuthProvider.credential(
-      accessToken: authorization.accessToken,
-      idToken: auth.idToken,
+      idToken: account.authentication.idToken,
     );
     await _user.reauthenticateWithCredential(cred);
   }
