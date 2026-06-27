@@ -237,16 +237,12 @@ class AuthService implements AuthServiceLike {
       await _initializeGoogleSignIn(googleSignIn);
       final account = await googleSignIn.authenticate();
 
-      // Get authentication tokens (idToken)
       final authentication = account.authentication;
-
-      // Get authorization for access token
       final authorization = await account.authorizationClient.authorizeScopes([
         'email',
         'profile',
       ]);
 
-      // Create credential using the tokens
       final credential = GoogleAuthProvider.credential(
         accessToken: authorization.accessToken,
         idToken: authentication.idToken,
@@ -282,6 +278,7 @@ class AuthService implements AuthServiceLike {
 
     return _googleSignInInitialization = googleSignIn.initialize(
       serverClientId: DefaultFirebaseOptions.ios.iosClientId,
+      scopes: ['email', 'profile'],
     );
   }
 
