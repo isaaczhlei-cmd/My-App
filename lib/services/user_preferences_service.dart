@@ -97,7 +97,7 @@ class UserPreferencesService extends ChangeNotifier {
   Co2Unit _co2Unit = Co2Unit.metricTons;
   DistanceUnit _distanceUnit = DistanceUnit.miles;
   bool _ecoTipsEnabled = true;
-  bool _tinyFlightAnimationEnabled = true;
+  bool _tinyFlightAnimationEnabled = false;
   String _airplaneModeAirlineName = 'FlightPrint Air';
   String _airplaneModeAirlineCode = 'FP';
   String _airplaneModeAirlineIcao = '';

@@ -10,7 +10,14 @@ void main() {
     });
 
     tearDown(() async {
-      await UserPreferencesService.instance.setTinyFlightAnimationEnabled(true);
+      await UserPreferencesService.instance.setTinyFlightAnimationEnabled(false);
+    });
+
+    test('defaults airplane mode preference off', () async {
+      final service = UserPreferencesService.instance;
+      await service.load();
+
+      expect(service.tinyFlightAnimationEnabled, isFalse);
     });
 
     test('persists airplane mode preference', () async {
