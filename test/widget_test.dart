@@ -7,7 +7,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flightprint/screens/auth/login_screen.dart';
+import 'package:flightprint/screens/profile/profile_screen.dart';
 import 'package:flightprint/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -115,6 +117,56 @@ void main() {
 
       expect(fakeAuthService.resetEmails, ['user@example.com']);
       expect(find.text('Some error'), findsOneWidget);
+    });
+  });
+
+  group('Profile sign out', () {
+    testWidgets('calls sign out service and shows progress', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final signOutCompleter = Completer<void>();
+      final fakeAuthService = FakeAuthService(
+        signOutCompleter: signOutCompleter,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(authService: fakeAuthService)),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Sign Out'));
+      await tester.pump();
+
+      expect(fakeAuthService.signOutCount, 1);
+      expect(find.text('Signing Out...'), findsOneWidget);
+
+      signOutCompleter.complete();
+      await tester.pump();
+    });
+
+    testWidgets('shows retry message when sign out fails', (
+      WidgetTester tester,
+    ) async {
+      SharedPreferences.setMockInitialValues({});
+      final fakeAuthService = FakeAuthService(
+        signOutError: Exception('sign out failed'),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(home: ProfileScreen(authService: fakeAuthService)),
+      );
+      await tester.pump();
+
+      await tester.tap(find.text('Sign Out'));
+      await tester.pumpAndSettle();
+
+      expect(fakeAuthService.signOutCount, 1);
+      expect(find.text('Sign Out'), findsOneWidget);
+      expect(
+        find.text('Could not sign out. Please try again.'),
+        findsOneWidget,
+      );
     });
   });
 
@@ -232,15 +284,20 @@ void main() {
 class FakeAuthService implements AuthServiceLike {
   FakeAuthService({
     this.passwordResetResult = const (success: true, error: null),
+    this.signOutCompleter,
+    this.signOutError,
   });
 
   final ({bool success, String? error}) passwordResetResult;
+  final Completer<void>? signOutCompleter;
+  final Object? signOutError;
   final List<String> resetEmails = <String>[];
   final List<({String email, String password})> emailSignIns =
       <({String email, String password})>[];
   final List<({String displayName, String email, String password})>
   registrations = <({String displayName, String email, String password})>[];
   int googleSignInCount = 0;
+  int signOutCount = 0;
 
   @override
   Stream<User?> get authStateChanges => const Stream<User?>.empty();
@@ -292,7 +349,13 @@ class FakeAuthService implements AuthServiceLike {
 
   @override
   Future<void> signOut() async {
-    throw UnimplementedError();
+    signOutCount++;
+    if (signOutError != null) {
+      throw signOutError!;
+    }
+    if (signOutCompleter != null) {
+      return signOutCompleter!.future;
+    }
   }
 
   @override

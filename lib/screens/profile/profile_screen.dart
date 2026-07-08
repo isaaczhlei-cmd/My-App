@@ -12,20 +12,24 @@ import 'guest_sign_in_prompt_screen.dart';
 import 'profile_subscreens.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.authService});
+
+  final AuthServiceLike? authService;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _authService = AuthService();
   final _notificationInbox = NotificationInboxService.instance;
+  late final AuthServiceLike _authService;
   bool _uploadingPhoto = false;
+  bool _signingOut = false;
 
   @override
   void initState() {
     super.initState();
+    _authService = widget.authService ?? AuthService();
     _notificationInbox.load();
   }
 
@@ -157,6 +161,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return password;
   }
 
+  Future<void> _onSignOutTap() async {
+    if (_signingOut) return;
+
+    setState(() => _signingOut = true);
+    try {
+      await _authService.signOut();
+      if (!mounted) return;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _signingOut = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not sign out. Please try again.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
@@ -212,8 +237,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               return _buildMenuRow(
                                 icon: Icons.notifications_outlined,
                                 label: 'Notifications',
-                                badgeCount:
-                                    _notificationInbox.unreadCount,
+                                badgeCount: _notificationInbox.unreadCount,
                                 onTap: () {
                                   if (isGuest) {
                                     _openGuestPrompt('Notifications');
@@ -415,11 +439,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 )
               : OutlinedButton.icon(
-                  onPressed: () async {
-                    await _authService.signOut();
-                    if (!mounted) return;
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  },
+                  onPressed: _signingOut ? null : _onSignOutTap,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.errorRed,
                     side: BorderSide(color: AppColors.errorRed.withAlpha(120)),
@@ -427,10 +447,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  icon: const Icon(Icons.logout, size: 20),
-                  label: const Text(
-                    'Sign Out',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  icon: _signingOut
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.logout, size: 20),
+                  label: Text(
+                    _signingOut ? 'Signing Out...' : 'Sign Out',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
         ),
