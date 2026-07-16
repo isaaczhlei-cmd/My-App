@@ -20,12 +20,13 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 3.38.x
+          # pubspec.lock requires Dart 3.11+ through sign_in_with_apple 8.1.0.
+          flutter-version: 3.44.6
           channel: stable
           cache: true
 

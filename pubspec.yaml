@@ -83,6 +83,12 @@ flutter_launcher_icons:
 # The following section is specific to Flutter packages.
 flutter:
 
+  # Keep iOS plugin dependency management on CocoaPods. Flutter's generated
+  # Swift package defaults to iOS 13 before a config-only build updates it,
+  # which can make Xcode Archive fail for Firebase packages that require iOS 15.
+  config:
+    enable-swift-package-manager: false
+
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

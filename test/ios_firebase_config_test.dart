@@ -49,4 +49,38 @@ void main() {
       expect(contents, contains(bundleId));
     }
   });
+
+  test('iOS Firebase plugins stay on the CocoaPods iOS 15 path', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(
+      pubspec,
+      contains('enable-swift-package-manager: false'),
+      reason:
+          'Enabling Flutter plugin SwiftPM recreates an iOS 13 wrapper package '
+          'that cannot host the Firebase iOS 15 packages during Xcode Archive.',
+    );
+
+    final podfile = File('ios/Podfile').readAsStringSync();
+    expect(podfile, contains("platform :ios, '15.0'"));
+    expect(
+      podfile,
+      contains("IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'"),
+    );
+
+    final xcodeProject = File(
+      'ios/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+    expect(xcodeProject, isNot(contains('FlutterGeneratedPluginSwiftPackage')));
+
+    final deploymentTargets = RegExp(
+      r'IPHONEOS_DEPLOYMENT_TARGET = ([0-9.]+);',
+    ).allMatches(xcodeProject).map((match) => match.group(1)!).toSet();
+    expect(deploymentTargets, isNotEmpty);
+    expect(
+      deploymentTargets.every(
+        (version) => double.parse(version) >= 15,
+      ),
+      isTrue,
+    );
+  });
 }
