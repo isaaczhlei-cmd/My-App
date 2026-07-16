@@ -35,7 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   firebase_core: ^4.4.0
-  firebase_auth: ^6.1.4
+  firebase_auth: ^6.5.6
   cloud_firestore: ^6.1.2
   google_sign_in: ^7.2.0
   flutter_dotenv: ^5.2.1
@@ -46,8 +46,7 @@ dependencies:
   url_launcher: ^6.3.1
   shared_preferences: ^2.5.3
   csv: ^5.0.0
-  sign_in_with_apple: ^6.1.4
-  crypto: ^3.0.6
+  sign_in_with_apple: ^8.1.0
   share_plus: ^13.1.0
   flutter_local_notifications: ^18.0.0
   timezone: ^0.9.4

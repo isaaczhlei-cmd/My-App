@@ -45,4 +45,28 @@ void main() {
       );
     });
   });
+
+  group('AuthService.getAppleSignInErrorMessage', () {
+    test('maps actionable Apple sign-in failures', () {
+      expect(
+        AuthService.getAppleSignInErrorMessage('network-request-failed'),
+        'Check your internet connection and try Apple sign-in again',
+      );
+      expect(
+        AuthService.getAppleSignInErrorMessage('operation-not-allowed'),
+        'Apple sign-in is not enabled right now',
+      );
+      expect(
+        AuthService.getAppleSignInErrorMessage('invalid-credential'),
+        'Apple could not verify this sign-in. Please try again',
+      );
+    });
+
+    test('uses a safe fallback for unknown native failures', () {
+      expect(
+        AuthService.getAppleSignInErrorMessage('unknown'),
+        'Apple sign-in is unavailable right now. Please try again',
+      );
+    });
+  });
 }

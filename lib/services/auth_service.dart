@@ -1,33 +1,18 @@
-import 'dart:convert';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../firebase_options.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'firestore_service.dart';
 
-String _generateNonce([int length = 32]) {
-  const charset =
-      '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
-  final random = Random.secure();
-  return List.generate(
-    length,
-    (_) => charset[random.nextInt(charset.length)],
-  ).join();
-}
-
-String _sha256ofString(String input) {
-  final bytes = utf8.encode(input);
-  return sha256.convert(bytes).toString();
-}
+AppleAuthProvider _createAppleProvider() => AppleAuthProvider()
+  ..addScope('email')
+  ..addScope('name');
 
 abstract class AuthServiceLike {
   Stream<User?> get authStateChanges;
@@ -278,36 +263,15 @@ class AuthService implements AuthServiceLike {
   @override
   Future<({UserCredential? user, String? error})> signInWithApple() async {
     try {
-      final rawNonce = _generateNonce();
-      final nonce = _sha256ofString(rawNonce);
-
-      final appleCredential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-        nonce: nonce,
+      final userCredential = await _auth.signInWithProvider(
+        _createAppleProvider(),
       );
-
-      final oauthCredential = OAuthProvider('apple.com').credential(
-        idToken: appleCredential.identityToken,
-        rawNonce: rawNonce,
-      );
-
-      final userCredential = await _auth.signInWithCredential(oauthCredential);
       final user = userCredential.user;
       if (user != null) {
-        final givenName = appleCredential.givenName;
-        final familyName = appleCredential.familyName;
-        final displayName = [givenName, familyName]
-            .whereType<String>()
-            .where((s) => s.isNotEmpty)
-            .join(' ');
-
         final profileError = await _upsertAppleProfile(
           user,
-          displayName: displayName.isEmpty ? null : displayName,
-          email: appleCredential.email,
+          displayName: user.displayName,
+          email: user.email,
         );
         if (profileError != null) {
           return (user: userCredential, error: profileError);
@@ -315,13 +279,19 @@ class AuthService implements AuthServiceLike {
       }
 
       return (user: userCredential, error: null);
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) {
+    } on FirebaseAuthException catch (e, stack) {
+      debugPrint('[auth:apple] ${e.code}: ${e.message}');
+      debugPrintStack(stackTrace: stack);
+      if (e.code == 'canceled') {
         return (user: null, error: 'Apple sign-in was cancelled');
       }
-      return (user: null, error: 'Error signing in with Apple: ${e.message}');
+      return (user: null, error: getAppleSignInErrorMessage(e.code));
     } catch (e) {
-      return (user: null, error: 'Error signing in with Apple: $e');
+      debugPrint('[auth:apple] Unexpected error: $e');
+      return (
+        user: null,
+        error: 'Apple sign-in is unavailable right now. Please try again',
+      );
     }
   }
 
@@ -425,12 +395,12 @@ class AuthService implements AuthServiceLike {
     if (user == null) {
       return (success: false, error: 'No signed-in user found');
     }
-    final store = _accountDeletionStore ??
+    final store =
+        _accountDeletionStore ??
         FirebaseAccountDeletionStore(user, _initializeGoogleSignIn);
-    return AccountDeletionCoordinator(store).deleteAccount(
-      uid: user.uid,
-      password: password,
-    );
+    return AccountDeletionCoordinator(
+      store,
+    ).deleteAccount(uid: user.uid, password: password);
   }
 
   /// Sign out
@@ -468,6 +438,23 @@ class AuthService implements AuthServiceLike {
         return 'Please sign in again before deleting your account';
       default:
         return 'An error occurred. Please try again';
+    }
+  }
+
+  @visibleForTesting
+  static String getAppleSignInErrorMessage(String code) {
+    switch (code) {
+      case 'network-request-failed':
+        return 'Check your internet connection and try Apple sign-in again';
+      case 'operation-not-allowed':
+        return 'Apple sign-in is not enabled right now';
+      case 'invalid-credential':
+      case 'invalid-response':
+        return 'Apple could not verify this sign-in. Please try again';
+      case 'too-many-requests':
+        return 'Too many Apple sign-in attempts. Please try again later';
+      default:
+        return 'Apple sign-in is unavailable right now. Please try again';
     }
   }
 }
@@ -528,14 +515,6 @@ class AccountDeletionCoordinator {
         success: false,
         error: 'Could not re-authenticate: ${e.description}',
       );
-    } on SignInWithAppleAuthorizationException catch (e) {
-      if (e.code == AuthorizationErrorCode.canceled) {
-        return (success: false, error: 'Sign-in cancelled');
-      }
-      return (
-        success: false,
-        error: 'Could not re-authenticate: ${e.message}',
-      );
     } catch (e) {
       return (success: false, error: 'An unexpected error occurred');
     }
@@ -574,22 +553,7 @@ class FirebaseAccountDeletionStore implements AccountDeletionStore {
 
   @override
   Future<void> reauthWithApple() async {
-    final rawNonce = _generateNonce();
-    final nonce = _sha256ofString(rawNonce);
-
-    final appleCredential = await SignInWithApple.getAppleIDCredential(
-      scopes: [
-        AppleIDAuthorizationScopes.email,
-        AppleIDAuthorizationScopes.fullName,
-      ],
-      nonce: nonce,
-    );
-
-    final cred = OAuthProvider('apple.com').credential(
-      idToken: appleCredential.identityToken,
-      rawNonce: rawNonce,
-    );
-    await _user.reauthenticateWithCredential(cred);
+    await _user.reauthenticateWithProvider(_createAppleProvider());
   }
 
   @override
